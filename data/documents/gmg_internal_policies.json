@@ -1,0 +1,76 @@
+{
+  "policies": [
+    {
+      "document_id": "POL-ESG-01",
+      "title": "Politique ESG Groupe",
+      "version": "2025.1",
+      "summary": "Exige reporting CO₂ fournisseurs pour matières à forte intensité carbone",
+      "key_requirements": [
+        "Collecte facteurs d'émission pour tous achats métaux > 100t/an",
+        "Audit ESG fournisseurs critiques tous les 2 ans",
+        "Objectif réduction Scope 3 de 30% d'ici 2030"
+      ],
+      "applicable_to": ["Achats", "ESG Data Owner", "Fournisseurs Tier 1"],
+      "effective_date": "2025-01-01"
+    },
+    {
+      "document_id": "POL-SANC-02",
+      "title": "Politique Sanctions & Screening",
+      "version": "2024.4",
+      "summary": "Screening obligatoire pour nouveaux fournisseurs, nouveaux clients et pays sensibles",
+      "key_requirements": [
+        "Screening contre listes OFAC, UE, ONU avant toute relation commerciale",
+        "Re-screening mensuel pour fournisseurs pays à risque",
+        "Clause de rupture contractuelle en cas de sanction",
+        "Déclaration UBO obligatoire pour fournisseurs hors UE/US"
+      ],
+      "applicable_to": ["Compliance Groupe", "Achats", "Commercial"],
+      "effective_date": "2024-10-01"
+    },
+    {
+      "document_id": "SOP-CUST-03",
+      "title": "Procédure Douanes UE",
+      "version": "2025.2",
+      "summary": "Workflow validation HS / origine / documents import",
+      "key_requirements": [
+        "Documents complets requis à J-2 avant arrivée",
+        "Validation HS code par Douanes EU avant première importation",
+        "Archivage documents 7 ans minimum",
+        "Escalation automatique si blocage > 24h"
+      ],
+      "applicable_to": ["Douanes EU", "Broker", "Achats"],
+      "effective_date": "2025-02-01"
+    },
+    {
+      "document_id": "SOP-EUDR-01",
+      "title": "Procédure Due Diligence EUDR",
+      "version": "2025.1",
+      "summary": "Exigences traçabilité pour produits concernés par EUDR (bois, caoutchouc)",
+      "key_requirements": [
+        "Géolocalisation parcelles obligatoire pour tous lots bois/caoutchouc",
+        "Chaîne de custody documentée de la plantation au port",
+        "Déclaration de conformité avant mise sur marché UE",
+        "Audit terrain fournisseurs à risque tous les 18 mois"
+      ],
+      "applicable_to": ["Achats", "Juriste UE", "Supply Chain"],
+      "effective_date": "2025-01-01"
+    },
+    {
+      "document_id": "SUP-AUD-Template",
+      "title": "Modèle d'audit fournisseur",
+      "version": "2024.3",
+      "summary": "Template standard pour audits fournisseurs (traçabilité / ESG / conformité)",
+      "sections": [
+        "Informations générales fournisseur",
+        "Documentation et certifications",
+        "Traçabilité matières premières",
+        "Performance ESG et empreinte carbone",
+        "Conformité réglementaire",
+        "Conditions de travail et droits humains",
+        "Plan d'amélioration si score < 70"
+      ],
+      "applicable_to": ["Achats", "Compliance Groupe"],
+      "effective_date": "2024-09-01"
+    }
+  ]
+}

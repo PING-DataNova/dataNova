@@ -1,0 +1,137 @@
+{
+  "company_id": "GMG-001",
+  "name": "Globex Manufacturing Group",
+  "short_name": "GMG",
+  "sector": "Industrie manufacturière (composants métalliques + équipements électromécaniques)",
+  "headquarters": {
+    "city": "Lyon",
+    "country": "France"
+  },
+  "zones_operation": ["Union Européenne", "Amérique du Nord", "Asie du Sud-Est"],
+  "employees": 6400,
+  "revenue_eur": 2100000000,
+  "business_model": {
+    "activities": [
+      "Import de matières premières (métaux, composants électroniques, bois certifié)",
+      "Fabrication / assemblage en UE et Asie",
+      "Export vers UE/US/Canada"
+    ]
+  },
+  "compliance_functions": [
+    "Conformité environnementale & reporting ESG",
+    "Conformité douanière (classification HS, origine, préférences tarifaires)",
+    "Conformité sanctions / embargo / screening partenaires",
+    "Due diligence chaîne d'approvisionnement (traçabilité, EUDR, devoir de vigilance)"
+  ],
+  "entities": [
+    {
+      "entity_id": "FR-MFG",
+      "name": "GMG France Manufacturing",
+      "country": "France",
+      "region": "EU",
+      "role": "Assemblage final + distribution EU",
+      "erp": "SAP S/4HANA (instance EU)"
+    },
+    {
+      "entity_id": "DE-CMP",
+      "name": "GMG Germany Components",
+      "country": "Allemagne",
+      "region": "EU",
+      "role": "Usinage acier + composants mécaniques",
+      "erp": "SAP S/4HANA (EU)"
+    },
+    {
+      "entity_id": "US-DIST",
+      "name": "GMG USA Distribution",
+      "country": "États-Unis",
+      "region": "US",
+      "role": "Import + entreposage + distribution Amérique du Nord",
+      "erp": "Oracle Netsuite (US)"
+    },
+    {
+      "entity_id": "VN-PLT",
+      "name": "GMG Vietnam Plant",
+      "country": "Vietnam",
+      "region": "Asia",
+      "role": "Fabrication sous-ensembles + export vers UE/US",
+      "erp": "Odoo Enterprise (Asia)"
+    }
+  ],
+  "internal_actors": [
+    {
+      "role": "Responsable Compliance Groupe",
+      "name": "Nadia Morel",
+      "scope": "gouvernance, validation des risques, arbitrage"
+    },
+    {
+      "role": "Juriste Réglementaire UE",
+      "name": "Thomas Klein",
+      "scope": "CBAM/CSRD/EUDR, textes EU, interprétation"
+    },
+    {
+      "role": "Responsable Douanes EU",
+      "name": "Claire Dufour",
+      "scope": "HS codes, origine, droits de douanes, conformité import"
+    },
+    {
+      "role": "Responsable Achats Groupe",
+      "name": "Ibrahim Mensah",
+      "scope": "contractualisation fournisseurs, exigences ESG/traçabilité"
+    },
+    {
+      "role": "ESG Data Owner",
+      "name": "Sophie Legrand",
+      "scope": "indicateurs CO₂, reporting interne, data quality"
+    },
+    {
+      "role": "Responsable Supply Chain",
+      "name": "Mark Jensen",
+      "scope": "flux, incoterms, transport, risques logistiques"
+    },
+    {
+      "role": "RSSI / Sécurité",
+      "name": "Hugo Pereira",
+      "scope": "confidentialité données & accès"
+    }
+  ],
+  "sites": {
+    "factories": [
+      {
+        "site_id": "FR-LYO-01",
+        "location": "Lyon, France",
+        "activity": "assemblage final + tests qualité",
+        "capacity": "220 000 unités/an",
+        "energy": "mix électricité réseau + contrats verts partiels",
+        "sensitivities": ["reporting CO₂ scope 2", "déchets industriels"]
+      },
+      {
+        "site_id": "DE-ESS-02",
+        "location": "Essen, Allemagne",
+        "activity": "découpe/laminage + pièces acier",
+        "capacity": "35 000 tonnes/an",
+        "sensitivities": ["émissions process", "conformité machines/REACH"]
+      },
+      {
+        "site_id": "VN-HCM-03",
+        "location": "Ho Chi Minh City, Vietnam",
+        "activity": "sous-ensembles, boîtiers, câblage",
+        "capacity": "480 000 sous-ensembles/an",
+        "sensitivities": ["conditions fournisseurs", "audits", "traçabilité matières"]
+      }
+    ],
+    "warehouses": [
+      {
+        "site_id": "WH-FR-MRS",
+        "location": "Marseille, France",
+        "role": "réception import maritime (Asie → EU)",
+        "controls": ["douane", "certificats", "documents d'origine"]
+      },
+      {
+        "site_id": "WH-US-NJ",
+        "location": "New Jersey, USA",
+        "role": "hub de distribution NA",
+        "controls": ["screening sanctions", "conformité import US"]
+      }
+    ]
+  }
+}
