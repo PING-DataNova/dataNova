@@ -50,6 +50,22 @@ class DocumentRepository:
         return self.session.query(Document)\
             .filter(Document.hash_sha256 == hash_sha256)\
             .first()
+
+    def find_by_url(self, source_url: str) -> Optional[Document]:
+    """
+    Trouver un document par son URL source
+    
+    Usage: Vérifier si un document existe déjà (utilisé par change_detector)
+    
+    Args:
+        source_url: URL source du document (EUR-Lex)
+    
+    Returns:
+        Document ou None
+    """
+    return self.session.query(Document)\
+        .filter(Document.source_url == source_url)\
+        .first()
     
     def list_new_documents(self, limit: int = 50) -> List[Document]:
         """
@@ -155,6 +171,135 @@ class DocumentRepository:
             if validated_by:
                 document.validated_by = validated_by
             self.session.flush()
+    
+    def find_by_url(self, source_url: str) -> Optional[Document]:
+        """
+        Trouver un document par son URL source
+        
+        Usage: Vérifier si un document existe déjà (utilisé par change_detector)
+        
+        Args:
+            source_url: URL source du document (EUR-Lex)
+        
+        Returns:
+            Document ou None
+        """
+        return self.session.query(Document)\
+            .filter(Document.source_url == source_url)\
+            .first()
+    
+    def upsert_document(
+        self,
+        source_url: str,
+        hash_sha256: str,
+        title: str,
+        content: str,
+        nc_codes: List[str],
+        regulation_type: str,
+        publication_date: Optional[datetime] = None,
+        document_metadata: Optional[dict] = None
+    ) -> tuple[Document, str]:
+        """
+        Insert ou Update un document (détection automatique nouveau/modifié/inchangé)
+        
+        Logique:
+        1. Chercher par hash → Si trouvé = contenu inchangé
+        2. Chercher par URL → Si trouvé = contenu modifié
+        3. Sinon → Nouveau document
+        
+        Args:
+            source_url: URL source du document
+            hash_sha256: Hash SHA-256 du contenu
+            title: Titre du document
+            content: Contenu extrait
+            nc_codes: Liste des codes NC trouvés
+            regulation_type: Type de réglementation (CBAM, EUDR, etc.)
+            publication_date: Date de publication (optionnel)
+            document_metadata: Métadonnées diverses (optionnel)
+        
+        Returns:
+            Tuple (Document, status) où status = "new" | "modified" | "unchanged"
+        
+        Usage Agent 1A:
+            doc, status = repo.upsert_document(
+                source_url=url,
+                hash_sha256=hash,
+                title=title,
+                content=text,
+                nc_codes=codes,
+                regulation_type="CBAM"
+            )
+            print(f"Document {status}: {doc.title}")
+        """
+        # Étape 1: Chercher par hash (contenu identique ?)
+        existing = self.find_by_hash(hash_sha256)
+        
+        if existing:
+            # Document existe avec même contenu = inchangé
+            existing.last_checked = datetime.utcnow()
+            existing.status = "unchanged"
+            self.session.flush()
+            return (existing, "unchanged")
+        
+        # Étape 2: Chercher par URL (même document, contenu différent ?)
+        existing_url = self.find_by_url(source_url)
+        
+        if existing_url:
+            # Document modifié (nouveau contenu)
+            existing_url.hash_sha256 = hash_sha256
+            existing_url.content = content
+            existing_url.nc_codes = nc_codes
+            existing_url.title = title
+            existing_url.publication_date = publication_date
+            existing_url.document_metadata = document_metadata or {}
+            existing_url.status = "modified"
+            existing_url.workflow_status = "raw"  # À réanalyser
+            existing_url.last_checked = datetime.utcnow()
+            self.session.flush()
+            return (existing_url, "modified")
+        
+        # Étape 3: Nouveau document
+        from src.storage.models import Document as DocumentModel
+        
+        doc = DocumentModel(
+            title=title,
+            source_url=source_url,
+            hash_sha256=hash_sha256,
+            content=content,
+            nc_codes=nc_codes,
+            regulation_type=regulation_type,
+            publication_date=publication_date,
+            document_metadata=document_metadata or {},
+            status="new",
+            workflow_status="raw"
+        )
+        self.session.add(doc)
+        self.session.flush()
+        return (doc, "new")
+    
+    def commit(self) -> None:
+        """
+        Helper pour commit la transaction
+        
+        Usage:
+            doc, status = repo.upsert_document(...)
+            repo.commit()
+        """
+        self.session.commit()
+    
+    def rollback(self) -> None:
+        """
+        Helper pour rollback la transaction en cas d'erreur
+        
+        Usage:
+            try:
+                doc = repo.upsert_document(...)
+                repo.commit()
+            except Exception:
+                repo.rollback()
+                raise
+        """
+        self.session.rollback()
 
 
 class AnalysisRepository:
@@ -187,6 +332,83 @@ class AnalysisRepository:
             .filter(Analysis.document_id == document_id)\
             .order_by(Analysis.created_at.desc())\
             .first()
+    def upsert_document(
+    self,
+    source_url: str,
+    hash_sha256: str,
+    title: str,
+    content: str,
+    nc_codes: List[str],
+    regulation_type: str,
+    publication_date: Optional[datetime] = None,
+    document_metadata: Optional[dict] = None
+) -> tuple[Document, str]:
+    """
+    Insert ou Update un document (détection automatique nouveau/modifié/inchangé)
+    
+    Logique:
+    1. Chercher par hash → Si trouvé = contenu inchangé
+    2. Chercher par URL → Si trouvé = contenu modifié
+    3. Sinon → Nouveau document
+    
+    Returns:
+        Tuple (Document, status) où status = "new" | "modified" | "unchanged"
+    
+    Usage Agent 1A:
+        doc, status = repo.upsert_document(
+            source_url=url,
+            hash_sha256=hash,
+            title=title,
+            content=text,
+            nc_codes=codes,
+            regulation_type="CBAM"
+        )
+    """
+    # 1. Chercher par hash (contenu identique ?)
+    existing = self.find_by_hash(hash_sha256)
+    
+    if existing:
+        # Document existe avec même contenu = inchangé
+        existing.last_checked = datetime.utcnow()
+        existing.status = "unchanged"
+        self.session.flush()
+        return (existing, "unchanged")
+    
+    # 2. Chercher par URL (même document, contenu différent ?)
+    existing_url = self.find_by_url(source_url)
+    
+    if existing_url:
+        # Document modifié (nouveau contenu)
+        existing_url.hash_sha256 = hash_sha256
+        existing_url.content = content
+        existing_url.nc_codes = nc_codes
+        existing_url.title = title
+        existing_url.publication_date = publication_date
+        existing_url.document_metadata = document_metadata or {}
+        existing_url.status = "modified"
+        existing_url.workflow_status = "raw"  # À réanalyser
+        existing_url.last_checked = datetime.utcnow()
+        self.session.flush()
+        return (existing_url, "modified")
+    
+    # 3. Nouveau document
+    from src.storage.models import Document as DocumentModel
+    
+    doc = DocumentModel(
+        title=title,
+        source_url=source_url,
+        hash_sha256=hash_sha256,
+        content=content,
+        nc_codes=nc_codes,
+        regulation_type=regulation_type,
+        publication_date=publication_date,
+        document_metadata=document_metadata or {},
+        status="new",
+        workflow_status="raw"
+    )
+    self.session.add(doc)
+    self.session.flush()
+    return (doc, "new")
     
     def list_relevant_analyses(self, validation_status: str = "approved") -> List[Analysis]:
         """
