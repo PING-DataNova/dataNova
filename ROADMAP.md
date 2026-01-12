@@ -1,26 +1,32 @@
-# 🗺️ ROADMAP - Projet PING Agent 1
+# 🗺️ ROADMAP - Projet PING Backend (Agent 1 + Agent 2)
 
 ## 📋 Vue d'ensemble
 
-**Objectif**: Développer un agent IA de veille réglementaire automatisée  
-**Équipe**: 3 développeurs  
-**Durée estimée**: 6-8 semaines  
+**Objectif**: Développer un système multi-agents backend de veille réglementaire automatisée avec validation humaine  
+**Équipe Backend**: 5 développeurs (3 sur Agent 1, 2 sur Agent 2)  
+**Frontend**: Équipe séparée (dépôt à part)  
+**Durée estimée**: 8-10 semaines  
 **Phase pilote**: CBAM uniquement  
 **Phase extension**: Multi-sources (EUDR, CSRD, Sanctions)
+
+**Architecture Backend**: Agent 1A → Agent 1B → [UI Validation Frontend] → Agent 2 → Notifications
 
 ---
 
 ## 🎯 Phase 1: Setup & Infrastructure (Semaine 1)
 
-### Tous ensemble
+### Tous ensemble (5 devs backend)
 - [x] Structure du projet créée
-- [ ] Installation de l'environnement (Poetry install)
+- [x] Migration Poetry → uv (10-100x plus rapide)
+- [ ] Installation de l'environnement (uv install)
 - [ ] Configuration .env
-- [ ] Base de données SQLite locale
+- [x] Base de données SQLite locale (56KB, 6 tables)
 - [ ] Logs structurés avec structlog
 - [ ] Tests unitaires de base (pytest)
 
-**Livrable**: Environnement de dev fonctionnel pour les 3 devs
+**Livrable**: Environnement de dev fonctionnel pour les 5 devs backend
+
+**✅ Statut**: Partiellement complété (structure + BDD OK)
 
 ---
 
@@ -83,25 +89,23 @@
 - Extraction texte + codes NC pour tous les documents test
 - Base de données populée avec métadonnées
 - Tests couvrant PDF complexes
-
----
-
-### 👨‍💻 **Développeur 3 : Agent 1A & Orchestration**
-**Responsabilité**: Coordination de l'Agent 1A avec LangChain
+### 👨‍💻 **Développeur 3 : Agent 1A & Orchestration + Storage**
+**Responsabilité**: Coordination de l'Agent 1A avec LangChain + Architecture BDD
 
 #### Tâches
-1. [ ] **Agent 1A ReAct** (`src/agent_1a/agent.py`)
+1. [ ] **Agent 1A ReAct** (`src/agent_1a/agent.py`) ⏳ **EN ATTENTE Dev 1/2**
    - Créer agent LangChain avec ReAct
    - Intégrer les 4 tools (scraper, fetcher, extractor, detector)
    - Définir le prompt système
    - Gérer l'état de l'agent
    - Logger les décisions
 
-2. [ ] **Stockage** (`src/storage/`)
-   - Modèles SQLAlchemy (documents, execution_logs)
-   - Repositories (DocumentRepository)
-   - Migration Alembic
-   - Tests CRUD
+2. [x] **Stockage complet** (`src/storage/`) ✅ **TERMINÉ**
+   - [x] 6 Modèles SQLAlchemy (documents, analyses, impact_assessments, alerts, execution_logs, company_profiles)
+   - [x] 5 Repositories avec workflow de validation
+   - [x] Méthodes `find_by_url()`, `upsert_document()`, `update_workflow_status()`, `update_validation()`
+   - [ ] Migration Alembic (déferré Phase 3+)
+   - [x] Tests CRUD (base testée)
 
 3. [ ] **Pipeline Agent 1A** (`src/orchestration/pipeline.py`)
    - Orchestrer l'exécution de bout en bout
@@ -110,95 +114,46 @@
    - Tests end-to-end
 
 **Livrables**:
+- [x] Base de données avec schéma complet (6 tables, workflow validation)
+- [ ] Agent 1A fonctionnel end-to-end
+- [ ] Exécution manuelle via `scripts/manual_run.py --agent 1a`
+
+**✅ Statut Phase 2**: Storage 100% terminé, Agent 1A en attente outils Dev 1/2
 - Agent 1A fonctionnel end-to-end
 - Base de données avec schéma complet
 - Exécution manuelle via `scripts/manual_run.py --agent 1a`
+## 🧠 Phase 3: Agent 1B - Analyse Pertinence (Semaines 4-5)
 
----
+**⚠️ CHANGEMENT MAJEUR**: Simplification vers **analyse LLM unique** (plus de triple filtrage)
 
-## 🧠 Phase 3: Agent 1B - Analyse (Semaines 4-5)
-
-### 👨‍💻 **Développeur 1 : Filtrage Niveau 1 & 2**
-**Responsabilité**: Filtres basiques (mots-clés, codes NC)
-
-#### Tâches
-1. [ ] **Filtre mots-clés** (`src/agent_1b/tools/keyword_filter.py`)
-   - Charger keywords depuis profil entreprise
-   - Recherche case-insensitive
-   - Score = nb_matches / nb_keywords
-   - Tests avec GMG et AeroRubber
-
-2. [ ] **Filtre codes NC** (`src/agent_1b/tools/nc_code_filter.py`)
-   - Charger NC codes depuis profil
-   - Matching exact + partiel (4002 vs 4002.19)
-   - Score basé sur criticité du code
-   - Tests avec faux positifs/négatifs
-
-3. [ ] **Profils entreprises** (charger depuis data/company_profiles/)
-   - Parser JSON GMG + AeroRubber
-   - Interface pour sélectionner profil actif
-   - Tests de validation
-
-**Livrables**:
-- Filtres Niveau 1 & 2 fonctionnels
-- Scores pour ~10 documents test
-- Tests avec différents profils
-
----
-
-### 👨‍💻 **Développeur 2 : Analyse Sémantique LLM**
-**Responsabilité**: Filtrage intelligent avec Claude/GPT
+### 👨‍💻 **Développeur 1 ou 2 : Analyse LLM Unique**
+**Responsabilité**: Analyse de pertinence complète via LLM
 
 #### Tâches
-1. [ ] **Analyseur sémantique** (`src/agent_1b/tools/semantic_analyzer.py`)
-   - Prompt template LangChain
+1. [x] ~~Filtre mots-clés~~ ❌ **SUPPRIMÉ** (intégré dans LLM)
+2. [x] ~~Filtre codes NC~~ ❌ **SUPPRIMÉ** (intégré dans LLM)
+3. [x] ~~Scoring multi-niveaux~~ ❌ **SUPPRIMÉ** (déplacé vers Agent 2)
+
+4. [ ] **Analyseur LLM unique** (`src/agent_1b/tools/semantic_analyzer.py`) 🆕
+   - Prompt LLM incluant : recherche mots-clés + codes NC + analyse sémantique
+   - Retour JSON : `{is_relevant: bool, confidence: float, matched_keywords: [], matched_nc_codes: [], reasoning: str}`
+   - Charger profil entreprise dans prompt
    - Chunking pour longs documents
-   - Appel Claude API (ou GPT-4)
-   - Parser réponse en score 0-1
-   - Cache des réponses (éviter double appels)
+   - Cache des réponses
    - Tests avec mocks
 
-2. [ ] **Prompts contextualisés**
-   - Inclure profil entreprise dans prompt
-   - Inclure type de réglementation
-   - Exemples few-shot si nécessaire
-   - Tests A/B sur qualité des réponses
-
-3. [ ] **Gestion coûts API**
-   - Logger nb tokens utilisés
-   - Alerter si dépassement budget
-   - Statistiques par analyse
-
-**Livrables**:
-- Analyse sémantique fonctionnelle
-- Scores LLM pour documents test
-- Documentation des prompts utilisés
-
----
-
-### 👨‍💻 **Développeur 3 : Scoring & Alertes**
-**Responsabilité**: Calcul final et génération alertes
-
-#### Tâches
-1. [ ] **Calculateur de score** (`src/agent_1b/tools/relevance_scorer.py`)
-   - Agréger 3 scores (0.3 + 0.3 + 0.4)
-   - Déterminer criticité (seuils)
-   - Charger pondérations depuis config
-   - Tests avec cas limites
-
-2. [ ] **Générateur d'alertes** (`src/agent_1b/tools/alert_generator.py`)
-   - Créer JSON structuré
-   - Sauvegarder en base
-   - Générer résumé lisible
-   - Tests de sérialisation
-
-3. [ ] **Agent 1B ReAct** (`src/agent_1b/agent.py`)
-   - Créer agent LangChain
-   - Intégrer les 5 tools
-   - Prompt système pour analyse
+5. [ ] **Agent 1B simplifié** (`src/agent_1b/agent.py`)
+   - Un seul outil : `semantic_analyzer`
+   - Créer Analysis avec `is_relevant`, `confidence`, `validation_status="pending"`
+   - Mettre à jour `document.workflow_status = "analyzed"` ou `"rejected_analysis"`
    - Tests end-to-end
 
 **Livrables**:
+- Agent 1B simplifié fonctionnel (LLM unique)
+- Analyses sauvegardées avec `validation_status="pending"`
+- Pipeline Agent 1A → Agent 1B opérationnel
+
+**✅ Statut**: Outils obsolètes supprimés, schéma BDD adapté
 - Agent 1B fonctionnel
 - Alertes JSON générées pour documents test
 - Pipeline Agent 1A → 1B opérationnel
@@ -256,7 +211,119 @@
    - Test pipeline complet
    - Test avec vraies données CBAM
    - Test envoi emails
-   - Couverture de code > 70%
+## 💼 Phase 4: Agent 2 - Analyse d'Impact (Semaines 6-7)
+
+**🆕 NOUVEAU**: Agent d'analyse d'impact et recommandations
+
+**Note**: Agent 2 lit les analyses avec `validation_status="approved"` (validation faite via frontend séparé)
+
+### 👨‍💻 **Développeur 4 : Agent 2 Principal**
+**Responsabilité**: Architecture Agent 2 et orchestration
+
+#### Tâches
+1. [ ] **Agent 2 ReAct** (`src/agent_2/agent.py`)
+   - Créer agent LangChain avec 3 outils
+   - Prompt système Agent 2
+   - Lire analyses avec `validation_status="approved"`
+   - Créer ImpactAssessment + Alert
+   - Tests end-to-end
+
+2. [ ] **Prompts Agent 2** (`src/agent_2/prompts/agent_2_prompt.py`)
+   - Prompt incluant profil entreprise + document + analyse
+   - Format JSON structuré
+   - Tests qualité réponses
+
+3. [ ] **API Endpoints Agent 2** (FastAPI)
+   - `POST /api/agent2/analyze` : Lancer analyse d'impact
+   - `GET /api/impact-assessments/{id}` : Récupérer impact assessment
+   - `GET /api/impact-assessments?criticality=CRITICAL` : Filtrer par criticité
+   - Tests API
+
+### 👨‍💻 **Développeur 5 : Outils Agent 2**
+**Responsabilité**: Implémentation des outils d'analyse
+
+#### Tâches
+1. [ ] **Scoring et criticité** (`src/agent_2/tools/scorer.py`)
+   - Calculer `total_score` (0-1) basé sur impacts
+   - Déterminer `criticality` (CRITICAL/HIGH/MEDIUM/LOW)
+   - Formule : `0.3*suppliers + 0.3*products + 0.2*financial + 0.2*urgency`
+   - Tests avec cas réels
+
+2. [ ] **Analyse d'impact** (`src/agent_2/tools/impact_analyzer.py`)
+   - Croiser avec fournisseurs (data/suppliers/*.json)
+   - Identifier produits impactés (codes NC)
+   - Analyser flux douaniers (data/customs_flows/*.json)
+   - Estimation financière
+   - Tests avec données GMG
+
+3. [ ] **Recommandations** (`src/agent_2/tools/action_recommender.py`)
+   - Générer plan d'action (priorités, deadlines)
+   - Stratégies d'atténuation des risques
+   - Timeline de mise en conformité
+   - Tests de génération
+
+**Livrables**:
+- Agent 2 fonctionnel
+- ImpactAssessments créés pour analyses validées
+- Alertes enrichies générées
+- API REST Agent 2 documentée
+- Pipeline complet : Agent 1A → 1B → [UI Frontend] → Agent 2
+
+**📋 Référence**: Voir `/src/agent_2/README.md` pour détails
+
+---
+
+## 📧 Phase 5: Notifications & Scheduling (Semaine 8)
+
+### 👨‍💻 **Développeur 1 : Notifications Email**
+
+#### Tâches
+1. [ ] **Envoi emails** (`src/notifications/email_sender.py`)
+   - Configuration SMTP (aiosmtplib)
+   - Template HTML d'alerte
+   - Envoi groupé par criticité
+   - Tests avec serveur SMTP local
+
+2. [ ] **Templates**
+   - Email CRITIQUE (rouge)
+   - Email ÉLEVÉ (orange)
+   - Email résumé hebdomadaire
+   - Tests de rendu HTML
+
+**Livrables**:
+- Emails fonctionnels
+- Template professionnel
+
+---
+
+### 👨‍💻 **Développeur 2 : Scheduler**
+
+#### Tâches
+1. [ ] **APScheduler** (`src/orchestration/scheduler.py`)
+   - Configuration cron hebdomadaire
+   - Gestion démarrage/arrêt
+   - Retry en cas d'échec
+   - Tests avec mock time
+
+2. [ ] **Point d'entrée** (`src/main.py`)
+   - Initialisation app
+   - Démarrage scheduler
+   - Signal handling (SIGTERM)
+   - Logs lifecycle
+
+**Livrables**:
+- Scheduler fonctionnel
+- Application déployable
+
+---
+
+### 👨‍💻 **Développeur 3 : Tests & Documentation**
+
+#### Tâches
+1. [ ] **Tests d'intégration**
+   - Test pipeline complet
+   - Test avec vraies données CBAM
+   - Test envoi emails
 
 2. [ ] **Documentation**
    - README.md (installation, usage)
@@ -270,7 +337,7 @@
 
 ---
 
-## 🚀 Phase 5: Déploiement & Extension (Semaines 7-8)
+## 🚀 Phase 6: Déploiement & Extension (Semaines 9-10)
 
 ### Tous ensemble
 
@@ -303,19 +370,34 @@
 | Métrique | Cible |
 |----------|-------|
 | Documents scrapés CBAM | 30-50 |
-| Taux de faux positifs | < 20% |
-| Taux de faux négatifs | < 5% |
-| Temps d'exécution hebdo | < 30 min |
+| **Taux validation UI** | **> 80% approuvés** (frontend) |
+| Taux de faux positifs Agent 1B | < 30% (avant validation) |
+| Taux de faux négatifs Agent 1B | < 5% |
+| **Précision scoring Agent 2** | **± 15% estimation coûts** |
+| Temps d'exécution hebdo | < 45 min (avec Agent 2) |
 | Couverture tests | > 70% |
-| Alertes générées (test) | 5-10 |
+| Alertes enrichies (test) | 3-8 (après validation UI) |
 
----
-
-## 🔄 Réunions d'équipe
+## 🔄 Réunions d'équipe backend
 
 - **Daily standup**: 15 min, 9h (optionnel)
 - **Review hebdo**: Vendredi 16h (demo + retro)
 - **Planning sprint**: Lundi 10h
+- **Sync Dev 3 ↔ Dev 1/2**: Lundi 14h (coordination Agent 1A)
+- **Sync Dev 4 ↔ Dev 5**: Mardi 14h (coordination Agent 2)
+- **Sync Backend ↔ Frontend**: Mercredi 15h (API validation + impact assessments)
+
+## 👥 Répartition équipe backend (5 devs)
+
+| Dev | Responsabilité principale | Phases |
+|-----|---------------------------|--------|
+| **Dev 1** | Scraping + Sources (Agent 1A) | Phase 2 |
+| **Dev 2** | Extraction PDF + Parsing (Agent 1A) | Phase 2 |
+| **Dev 3** | Storage + Orchestration + Agent 1A | Phase 2-3 |
+| **Dev 4** | Agent 2 Principal + API | Phase 4 |
+| **Dev 5** | Agent 2 Tools (scoring, impacts) | Phase 4 |
+
+**Frontend** : Équipe séparée (dépôt à part) - UI validation des analyses
 
 ---
 
