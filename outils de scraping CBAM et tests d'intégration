@@ -1,0 +1,178 @@
+[1mdiff --git a/src/agent_1a/tools.py b/src/agent_1a/tools.py[m
+[1mindex 93c74b8..a1f0193 100644[m
+[1m--- a/src/agent_1a/tools.py[m
+[1m+++ b/src/agent_1a/tools.py[m
+[36m@@ -4,44 +4,83 @@[m [mOutils LangChain pour l'Agent 1A[m
+ Chaque outil est une fonction décorée avec @tool qui peut être utilisée par l'agent.[m
+ """[m
+ [m
+[32m+[m[32mimport asyncio[m
+[32m+[m[32mimport json[m
+[32m+[m[32mfrom pathlib import Path[m
+[32m+[m
+ from langchain_core.tools import tool[m
+ [m
+[31m-# TODO: Implémenter les outils suivants (DEV 1)[m
+[32m+[m[32mfrom src.agent_1a.tools.scraper import scrape_cbam_page, ScrapeResult[m
+[32m+[m[32mfrom src.agent_1a.tools.document_fetcher import download_document, DownloadResult[m
+[32m+[m[32mfrom src.agent_1a.tools.pdf_extractor import extract_pdf_content, PDFContent[m
+[32m+[m[32mfrom src.agent_1a.tools.change_detector import check_document_exists, ChangeStatus[m
+ [m
+ [m
+ @tool[m
+[31m-def scrape_source(source_id: str) -> dict:[m
+[32m+[m[32mdef scrape_source(source_url: str, source_id: str = "cbam-legislation") -> dict:[m
+     """[m
+     Scrape une source réglementaire pour détecter les documents disponibles.[m
+     [m
+     Args:[m
+[32m+[m[32m        source_url: URL de la source à scraper[m
+         source_id: Identifiant de la source (ex: "cbam-legislation")[m
+     [m
+     Returns:[m
+         dict: Liste des documents trouvés avec leurs métadonnées[m
+     """[m
+[31m-    # TODO: Implémenter le scraping[m
+[31m-    return {"documents": [], "status": "not_implemented"}[m
+[32m+[m[32m    result: ScrapeResult = asyncio.run(scrape_cbam_page(source_url, source_id))[m
+[32m+[m[41m    [m
+[32m+[m[32m    # Convertir en dict pour LangChain[m
+[32m+[m[32m    return {[m
+[32m+[m[32m        "source_id": result.source_id,[m
+[32m+[m[32m        "source_url": str(result.source_url),[m
+[32m+[m[32m        "scraped_at": result.scraped_at.isoformat(),[m
+[32m+[m[32m        "total_found": result.total_found,[m
+[32m+[m[32m        "status": result.status,[m
+[32m+[m[32m        "error": result.error,[m
+[32m+[m[32m        "documents": [[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "title": doc.title,[m
+[32m+[m[32m                "url": str(doc.url),[m
+[32m+[m[32m                "celex_id": doc.celex_id,[m
+[32m+[m[32m                "document_type": doc.document_type,[m
+[32m+[m[32m                "publication_date": doc.publication_date,[m
+[32m+[m[32m                "metadata": doc.metadata[m
+[32m+[m[32m            }[m
+[32m+[m[32m            for doc in result.documents[m
+[32m+[m[32m        ][m
+[32m+[m[32m    }[m
+ [m
+ [m
+ @tool[m
+[31m-def download_document(document_url: str, document_id: str) -> dict:[m
+[32m+[m[32mdef download_document_tool(document_url: str, celex_id: str = None) -> dict:[m
+     """[m
+     Télécharge un document depuis une URL.[m
+     [m
+     Args:[m
+         document_url: URL du document à télécharger[m
+[31m-        document_id: Identifiant unique du document[m
+[32m+[m[32m        celex_id: Identifiant CELEX du document (optionnel)[m
+     [m
+     Returns:[m
+         dict: Chemin du fichier téléchargé et métadonnées[m
+     """[m
+[31m-    # TODO: Implémenter le téléchargement[m
+[31m-    return {"file_path": None, "status": "not_implemented"}[m
+[32m+[m[32m    result: DownloadResult = asyncio.run(download_document(document_url, celex_id))[m
+[32m+[m[41m    [m
+[32m+[m[32m    return {[m
+[32m+[m[32m        "celex_id": result.celex_id,[m
+[32m+[m[32m        "file_path": str(result.file_path) if result.file_path else None,[m
+[32m+[m[32m        "file_hash": result.file_hash,[m
+[32m+[m[32m        "file_size_bytes": result.file_size_bytes,[m
+[32m+[m[32m        "downloaded_at": result.downloaded_at.isoformat(),[m
+[32m+[m[32m        "format": result.format,[m
+[32m+[m[32m        "status": result.status,[m
+[32m+[m[32m        "error": result.error,[m
+[32m+[m[32m        "url": str(result.url)[m
+[32m+[m[32m    }[m
+ [m
+ [m
+ @tool[m
+[31m-def extract_pdf_content(file_path: str) -> dict:[m
+[32m+[m[32mdef extract_pdf_content_tool(file_path: str) -> dict:[m
+     """[m
+     Extrait le contenu textuel et les métadonnées d'un PDF.[m
+     [m
+[36m@@ -51,46 +90,82 @@[m [mdef extract_pdf_content(file_path: str) -> dict:[m
+     Returns:[m
+         dict: Contenu extrait, codes NC détectés, métadonnées[m
+     """[m
+[31m-    # TODO: Implémenter l'extraction PDF[m
+[31m-    return {"content": "", "nc_codes": [], "status": "not_implemented"}[m
+[32m+[m[32m    result: PDFContent = extract_pdf_content(Path(file_path))[m
+[32m+[m[41m    [m
+[32m+[m[32m    return {[m
+[32m+[m[32m        "file_path": str(result.file_path),[m
+[32m+[m[32m        "total_pages": result.total_pages,[m
+[32m+[m[32m        "text_content": result.text_content[:1000] + "..." if len(result.text_content) > 1000 else result.text_content,[m
+[32m+[m[32m        "text_length": len(result.text_content),[m
+[32m+[m[32m        "nc_codes": [[m
+[32m+[m[32m            {[m
+[32m+[m[32m                "code": nc.code,[m
+[32m+[m[32m                "context": nc.context,[m
+[32m+[m[32m                "page_number": nc.page_number[m
+[32m+[m[32m            }[m
+[32m+[m[32m            for nc in result.nc_codes[m
+[32m+[m[32m        ],[m
+[32m+[m[32m        "tables_count": len(result.tables),[m
+[32m+[m[32m        "metadata": result.metadata,[m
+[32m+[m[32m        "extraction_status": result.extraction_status,[m
+[32m+[m[32m        "error": result.error[m
+[32m+[m[32m    }[m
+ [m
+ [m
+ @tool[m
+[31m-def save_document_data(document_data: dict) -> dict:[m
+[32m+[m[32mdef check_document_exists_tool(document_hash: str, celex_id: str = None) -> dict:[m
+     """[m
+[31m-    Sauvegarde les données d'un document dans la base de données.[m
+[32m+[m[32m    Vérifie si un document existe déjà dans la base de données.[m
+     [m
+     Args:[m
+[31m-        document_data: Dictionnaire contenant les données du document[m
+[32m+[m[32m        document_hash: Hash SHA-256 du document[m
+[32m+[m[32m        celex_id: Identifiant CELEX (optionnel)[m
+     [m
+     Returns:[m
+[31m-        dict: Confirmation de la sauvegarde[m
+[32m+[m[32m        dict: Statut du document (nouveau, modifié, inchangé)[m
+     """[m
+[31m-    # TODO: Implémenter la sauvegarde[m
+[31m-    return {"saved": False, "status": "not_implemented"}[m
+[32m+[m[32m    result: ChangeStatus = check_document_exists(document_hash, celex_id)[m
+[32m+[m[41m    [m
+[32m+[m[32m    return {[m
+[32m+[m[32m        "document_hash": result.document_hash,[m
+[32m+[m[32m        "celex_id": result.celex_id,[m
+[32m+[m[32m        "status": result.status,[m
+[32m+[m[32m        "existing_document_id": result.existing_document_id,[m
+[32m+[m[32m        "previous_hash": result.previous_hash,[m
+[32m+[m[32m        "checked_at": result.checked_at.isoformat()[m
+[32m+[m[32m    }[m
+ [m
+ [m
+ @tool[m
+[31m-def check_document_exists(document_hash: str) -> bool:[m
+[32m+[m[32mdef save_document_data(document_data: str) -> dict:[m
+     """[m
+[31m-    Vérifie si un document existe déjà dans la base de données.[m
+[32m+[m[32m    Sauvegarde les données d'un document dans la base de données.[m
+     [m
+     Args:[m
+[31m-        document_hash: Hash SHA-256 du document[m
+[32m+[m[32m        document_data: JSON string contenant les données du document[m
+     [m
+     Returns:[m
+[31m-        bool: True si le document existe, False sinon[m
+[32m+[m[32m        dict: Confirmation de la sauvegarde[m
+     """[m
+[31m-    # TODO: Implémenter la vérification[m
+[31m-    return False[m
+[32m+[m[32m    # Parse le JSON[m
+[32m+[m[32m    data = json.loads(document_data)[m
+[32m+[m[41m    [m
+[32m+[m[32m    # TODO: Implémenter la sauvegarde dans la base de données[m
+[32m+[m[32m    # Cette partie sera complétée par Dev 3 (Storage)[m
+[32m+[m[41m    [m
