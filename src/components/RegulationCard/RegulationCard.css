@@ -1,0 +1,155 @@
+.regulation-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  border: 2px solid #e5e5e5;
+  transition: all 0.3s ease;
+}
+
+.regulation-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  border-color: #dc2626;
+  transform: translateY(-3px);
+}
+
+.regulation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.regulation-info {
+  flex: 1;
+}
+
+.regulation-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a2332;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.regulation-reference {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.regulation-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.status-icon.validated {
+  color: #16a34a;
+}
+
+.status-icon.rejected {
+  color: #dc2626;
+}
+
+.status-icon.to-review {
+  color: #f97316;
+}
+
+.status-icon.pending {
+  color: #6b7280;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.validated {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #16a34a;
+}
+
+.status-badge.rejected {
+  background: #fecaca;
+  color: #991b1b;
+  border: 1px solid #dc2626;
+}
+
+.status-badge.to-review {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.status-badge.pending {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #6b7280;
+}
+
+.regulation-description {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+}
+
+.regulation-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.validate-btn {
+  background: #06d6a0;
+  color: white;
+}
+
+.validate-btn:hover {
+  background: #05a085;
+  transform: translateY(-1px);
+}
+
+.reject-btn {
+  background: #f72585;
+  color: white;
+}
+
+.reject-btn:hover {
+  background: #d11d69;
+  transform: translateY(-1px);
+}
+
+.review-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+  border: 1px solid #fbbf24;
+}
+
+.review-btn:hover {
+  background: #e6a800;
+  transform: translateY(-1px);
+}

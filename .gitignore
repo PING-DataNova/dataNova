@@ -1,0 +1,4 @@
+node_modules/
+backend_dataNova/
+dist/
+.env.local

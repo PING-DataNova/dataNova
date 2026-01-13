@@ -1,0 +1,127 @@
+import React, { useState } from 'react';
+import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import './LoginPage.css';
+
+interface LoginPageProps {
+  onLogin: (userType: 'juridique' | 'decisive', userData: any) => void;
+}
+
+export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      // Simulation de la connexion - remplacer par vraie API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Logique de connexion basée sur l'email
+      if (email.includes('juriste') || email.includes('legal')) {
+        onLogin('juridique', {
+          id: '1',
+          name: 'Juriste Hutchinson',
+          email: email,
+          role: 'juridique'
+        });
+      } else if (email.includes('decideur') || email.includes('decision')) {
+        onLogin('decisive', {
+          id: '2', 
+          name: 'Décideur Hutchinson',
+          email: email,
+          role: 'decisive'
+        });
+      } else {
+        setError('Utilisateur non reconnu. Utilisez un email avec "juriste" ou "decideur".');
+      }
+    } catch (err) {
+      setError('Erreur de connexion. Veuillez réessayer.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <div className="logo-container">
+            <div className="logo">G</div>
+          </div>
+          <h1>Plateforme de veille réglementaire durable</h1>
+        </div>
+
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="input-group">
+            <div className="input-wrapper">
+              <User className="input-icon" />
+              <input
+                type="email"
+                placeholder="juriste@hutchinson.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="login-input"
+              />
+            </div>
+          </div>
+
+          <div className="input-group">
+            <div className="input-wrapper">
+              <Lock className="input-icon" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="•••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="login-input"
+              />
+              <button
+                type="button"
+                className="toggle-password"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="login-button"
+          >
+            {loading ? 'Connexion...' : 'Connexion'}
+          </button>
+
+          <div className="login-footer">
+            <a href="#" className="forgot-password">Mot de passe oublié ?</a>
+          </div>
+        </form>
+
+        <div className="demo-info">
+          <p><strong>Demo:</strong></p>
+          <p>• juriste@hutchinson.com → Interface Juridique</p>
+          <p>• decideur@hutchinson.com → Dashboard Décideur</p>
+        </div>
+      </div>
+
+      <div className="login-background">
+        <p>© Hutchinson 2026 - Tous droits réservés</p>
+      </div>
+    </div>
+  );
+};
