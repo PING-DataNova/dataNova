@@ -12,7 +12,7 @@
 }
 
 .main-header {
-  background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(90deg, #1a1a1a 0%, #2d2d2d 100%);
   padding: 24px 32px;
   border-bottom: 1px solid #e5e7eb;
   display: flex;

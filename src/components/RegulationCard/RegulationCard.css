@@ -133,23 +133,23 @@
 }
 
 .reject-btn {
-  background: #f72585;
+  background: #06d6a0;
   color: white;
 }
 
 .reject-btn:hover {
-  background: #d11d69;
+  background: #05a085;
   transform: translateY(-1px);
 }
 
 .review-btn {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  background: #06d6a0;
   color: white;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-  border: 1px solid #fbbf24;
+  box-shadow: 0 4px 12px rgba(6, 214, 160, 0.3);
+  border: 1px solid #06d6a0;
 }
 
 .review-btn:hover {
-  background: #e6a800;
+  background: #05a085;
   transform: translateY(-1px);
 }
