@@ -1,80 +1,146 @@
 """
-Agent autonome 1A - Collecte de données
+Agent 1A - Collecte et analyse de documents réglementaires CBAM
 
-Utilise LangChain pour créer un agent ReAct qui décide quelles actions entreprendre.
+Agent ReAct utilisant Claude 3.5 Sonnet avec 4 outils :
+- Scraper : Extraction de documents depuis la page CBAM
+- Document Fetcher : Téléchargement de documents
+- PDF Extractor : Extraction de contenu (texte, tableaux, codes NC)
+- Change Detector : Détection de modifications
+
+Responsable: Dev 1
 """
 
-from langchain.agents import AgentExecutor, create_react_agent
+import os
+from pathlib import Path
+import structlog
 from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import PromptTemplate
+from langgraph.prebuilt import create_react_agent
+from dotenv import load_dotenv
 
-from src.agent_1a.tools import get_agent_1a_tools
-from src.config import settings
+# Charger les variables d'environnement depuis .env
+env_path = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
-# Prompt pour l'agent ReAct
-AGENT_1A_PROMPT = PromptTemplate.from_template(
-    """Tu es l'Agent 1A, spécialisé dans la collecte et l'extraction de documents réglementaires.
+from .tools import get_agent_1a_tools
 
-Ta mission:
-1. Scraper les sources configurées pour détecter de nouveaux documents
-2. Télécharger les documents pertinents
-3. Extraire le contenu et les métadonnées
-4. Sauvegarder les données structurées
-
-Outils disponibles:
-{tools}
-
-Utilise ce format:
-Question: la tâche à accomplir
-Thought: ce que tu penses faire
-Action: l'outil à utiliser
-Action Input: l'entrée de l'outil
-Observation: le résultat de l'action
-... (ce cycle Thought/Action/Action Input/Observation peut se répéter)
-Thought: Je sais maintenant la réponse finale
-Final Answer: la réponse finale
-
-Question: {input}
-
-{agent_scratchpad}
-"""
-)
+logger = structlog.get_logger()
 
 
-def create_agent_1a() -> AgentExecutor:
-    """Crée l'agent 1A avec ses outils."""
+def create_agent_1a(
+    model_name: str = "claude-3-5-sonnet-20240620",
+    temperature: float = 0.1,
+    max_tokens: int = 4096
+):
+    """
+    Crée l'Agent 1A avec Claude 3.5 Sonnet et ses 4 outils.
     
-    # LLM
+    Args:
+        model_name: Modèle Anthropic à utiliser
+        temperature: Température de génération (0.0 = déterministe)
+        max_tokens: Nombre maximum de tokens
+    
+    Returns:
+        Agent LangGraph prêt à l'emploi
+    """
+    logger.info("agent_1a_initialization_started", model=model_name)
+    
+    # 1. Initialiser le modèle Claude
     llm = ChatAnthropic(
-        model="claude-3-5-sonnet-20241022",
-        api_key=settings.anthropic_api_key,
-        temperature=0,
+        model=model_name,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        timeout=120,
+        max_retries=2
     )
     
-    # Outils
+    # 2. Récupérer les outils
     tools = get_agent_1a_tools()
+    logger.info("agent_1a_tools_loaded", tool_count=len(tools))
+      # 3. Créer le prompt système
+    system_prompt = """Tu es l'Agent 1A, spécialisé dans la collecte automatisée de documents réglementaires CBAM.
+
+RÈGLES IMPORTANTES :
+1. Toujours utiliser scrape_cbam_page_tool EN PREMIER pour trouver les documents
+2. Utiliser fetch_document_tool pour télécharger UN document à la fois
+3. Utiliser extract_pdf_content_tool APRÈS avoir téléchargé un PDF
+4. Utiliser detect_changes_tool pour comparer avec la base de données
+5. TOUJOURS fournir le résultat en JSON structuré dans la réponse finale"""
     
-    # Agent
-    agent = create_react_agent(llm, tools, AGENT_1A_PROMPT)
-    
-    # Executor
-    agent_executor = AgentExecutor(
-        agent=agent,
+    # 4. Créer l'agent avec LangGraph (nouvelle API)
+    agent = create_react_agent(
+        model=llm,
         tools=tools,
-        verbose=True,
-        handle_parsing_errors=True,
-        max_iterations=10,
+        prompt=system_prompt
     )
     
-    return agent_executor
+    logger.info("agent_1a_initialization_completed")
+    return agent
 
 
-def run_agent_1a(task: str) -> dict:
-    """Exécute l'agent 1A avec une tâche donnée."""
-    agent = create_agent_1a()
-    result = agent.invoke({"input": task})
-    return result
+async def run_agent_1a(query: str) -> dict:
+    """
+    Exécute l'Agent 1A avec une requête.
+    
+    Args:
+        query: Question ou instruction pour l'agent
+    
+    Returns:
+        dict: Résultat de l'exécution avec output et étapes intermédiaires
+    """
+    logger.info("agent_1a_execution_started", query=query)
+    
+    try:
+        agent = create_agent_1a()
+        
+        # LangGraph utilise ainvoke avec un dict contenant "messages"
+        result = await agent.ainvoke(
+            {"messages": [("user", query)]},
+            config={"recursion_limit": 10}
+        )
+        
+        # Extraire la réponse finale
+        final_message = result["messages"][-1]
+        output = final_message.content if hasattr(final_message, 'content') else str(final_message)
+        
+        logger.info("agent_1a_execution_completed", status="success")
+        return {
+            "status": "success",
+            "output": output,
+            "intermediate_steps": result.get("messages", [])
+        }
+        
+    except Exception as e:
+        logger.error("agent_1a_execution_error", error=str(e), exc_info=True)
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 
-# À IMPLÉMENTER PAR DEV 1
-# TODO: Compléter l'implémentation de l'agent
+# Pour tester l'agent directement
+if __name__ == "__main__":
+    import asyncio
+    
+    async def test_agent():
+        print("=" * 80)
+        print("🤖 TEST AGENT 1A - Collecte de documents CBAM")
+        print("=" * 80)
+        
+        # Test 1 : Scraping simple
+        query1 = "Scrape la page CBAM et donne-moi le nombre total de documents trouvés"
+        print(f"\n📝 Query 1: {query1}")
+        result1 = await run_agent_1a(query1)
+        print(f"✅ Résultat: {result1['output']}")
+        
+        # Test 2 : Télécharger et extraire
+        query2 = """Scrape la page CBAM, télécharge le premier document PDF trouvé, 
+        puis extrait son contenu et compte les codes NC"""
+        print(f"\n📝 Query 2: {query2}")
+        result2 = await run_agent_1a(query2)
+        print(f"✅ Résultat: {result2['output']}")
+        
+        print("\n" + "=" * 80)
+        print("✅ Tests terminés !")
+        print("=" * 80)
+    
+    asyncio.run(test_agent())

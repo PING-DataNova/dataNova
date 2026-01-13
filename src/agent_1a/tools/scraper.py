@@ -25,6 +25,8 @@ from typing import List, Dict, Any, Optional
 
 import httpx
 import structlog
+from langchain.tools import tool
+import json
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, HttpUrl
 from urllib.parse import urljoin, urlparse
@@ -414,3 +416,30 @@ if __name__ == "__main__":
             print(f"   CELEX: {doc.celex_id}")
             print(f"   Type: {doc.document_type}")
             print(f"   URL: {doc.url}")
+
+
+@tool
+async def scrape_cbam_page_tool(url: str = "https://taxation-customs.ec.europa.eu/carbon-border-adjustment-mechanism_en") -> str:
+    """
+    Scrape la page CBAM pour extraire tous les documents réglementaires.
+    
+    Args:
+        url: URL de la page CBAM (par défaut la page officielle)
+    
+    Returns:
+        JSON string contenant la liste des documents trouvés
+    """
+    result = await scrape_cbam_page(url)
+    return json.dumps({
+        "status": result.status,
+        "total_documents": len(result.documents),
+        "documents": [
+            {
+                "url": doc.url,
+                "title": doc.title,
+                "doc_type": doc.doc_type
+            }
+            for doc in result.documents
+        ],
+        "error": result.error
+    }, ensure_ascii=False, indent=2)

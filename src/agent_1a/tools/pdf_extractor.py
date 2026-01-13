@@ -17,7 +17,8 @@ PDF Extractor - Extraction de contenu et codes NC depuis PDFs
 
 Responsable: Dev 1 (ou Dev 2)
 """
-
+from langchain.tools import tool
+import json
 import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -423,3 +424,34 @@ if __name__ == "__main__":
             print(f"   Page {table['page']}, {table['rows']} lignes × {table['columns']} colonnes")
     else:
         print(f"\n❌ Erreur: {result.error}")
+
+@tool
+async def extract_pdf_content_tool(file_path: str) -> str:
+    """
+    Extrait le contenu d'un PDF : texte, tableaux, et codes NC (Nomenclature Combinée).
+    
+    Args:
+        file_path: Chemin vers le fichier PDF
+    
+    Returns:
+        JSON string avec le texte extrait, les tableaux et les codes NC détectés
+    """
+    result = await extract_pdf_content(file_path)
+    return json.dumps({
+        "status": result.status,
+        "file_path": result.file_path,
+        "page_count": result.page_count,
+        "text_preview": result.text[:500] + "..." if len(result.text) > 500 else result.text,
+        "total_characters": len(result.text),
+        "table_count": len(result.tables),
+        "nc_codes_count": len(result.nc_codes),
+        "nc_codes": [
+            {
+                "code": nc.code,
+                "context": nc.context[:100] + "..." if len(nc.context) > 100 else nc.context,
+                "confidence": nc.confidence
+            }
+            for nc in result.nc_codes[:10]  # Limiter à 10 codes
+        ],
+        "error": result.error
+    }, ensure_ascii=False, indent=2)

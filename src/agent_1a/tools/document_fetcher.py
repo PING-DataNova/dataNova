@@ -19,7 +19,8 @@ Document Fetcher - Téléchargement de documents réglementaires
 
 Responsable: Dev 1
 """
-
+from langchain.tools import tool
+import json
 import hashlib
 import re
 from datetime import datetime
@@ -260,3 +261,25 @@ if __name__ == "__main__":
         print(f"Type: {result.document.content_type}")
     else:
         print(f"\n❌ Erreur: {result.error}")
+
+@tool
+async def fetch_document_tool(url: str, output_dir: str = "data/documents") -> str:
+    """
+    Télécharge un document depuis une URL et calcule son hash SHA-256.
+    
+    Args:
+        url: URL du document à télécharger
+        output_dir: Répertoire de sauvegarde (défaut: data/documents)
+    
+    Returns:
+        JSON string avec le résultat du téléchargement (chemin, hash, taille)
+    """
+    result = await fetch_document(url, output_dir)
+    return json.dumps({
+        "status": result.status,
+        "url": result.url,
+        "file_path": result.file_path,
+        "hash_sha256": result.hash_sha256,
+        "file_size": result.file_size,
+        "error": result.error
+    }, ensure_ascii=False, indent=2)
