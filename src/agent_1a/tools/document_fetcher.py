@@ -275,11 +275,24 @@ async def fetch_document_tool(url: str, output_dir: str = "data/documents") -> s
         JSON string avec le résultat du téléchargement (chemin, hash, taille)
     """
     result = await fetch_document(url, output_dir)
-    return json.dumps({
-        "status": result.status,
-        "url": result.url,
-        "file_path": result.file_path,
-        "hash_sha256": result.hash_sha256,
-        "file_size": result.file_size,
-        "error": result.error
-    }, ensure_ascii=False, indent=2)
+    
+    if result.success and result.document:
+        return json.dumps({
+            "success": True,
+            "url": str(result.url),
+            "file_path": result.document.file_path,
+            "hash_sha256": result.document.hash_sha256,
+            "file_size": result.document.file_size,
+            "content_type": result.document.content_type,
+            "error": None
+        }, ensure_ascii=False, indent=2)
+    else:
+        return json.dumps({
+            "success": False,
+            "url": str(result.url),
+            "file_path": None,
+            "hash_sha256": None,
+            "file_size": None,
+            "content_type": None,
+            "error": result.error
+        }, ensure_ascii=False, indent=2)

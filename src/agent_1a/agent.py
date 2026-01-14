@@ -27,13 +27,13 @@ logger = structlog.get_logger()
 
 
 def create_agent_1a(
-    model_name: str = "claude-3-5-sonnet-20240620",
+    model_name: str = "claude-3-haiku-20240307",
     temperature: float = 0.1,
     max_tokens: int = 4096
 ):
     """
-    Crée l'Agent 1A avec Claude 3.5 Sonnet et ses 4 outils.
-    
+    Crée l'Agent 1A avec Claude 3.5 Haiku et ses 4 outils.
+
     Args:
         model_name: Modèle Anthropic à utiliser
         temperature: Température de génération (0.0 = déterministe)

@@ -435,9 +435,9 @@ async def scrape_cbam_page_tool(url: str = "https://taxation-customs.ec.europa.e
         "total_documents": len(result.documents),
         "documents": [
             {
-                "url": doc.url,
+                "url": str(doc.url),  # Convert HttpUrl to string
                 "title": doc.title,
-                "doc_type": doc.doc_type
+                "doc_type": doc.document_type
             }
             for doc in result.documents
         ],
