@@ -1,25 +1,38 @@
 """
 Pipeline de coordination des agents
 
-Orchestration du workflow: Agent 1A → Agent 1B → Notifications
+Orchestration du workflow: Agent 1A → Agent 1B → [UI Validation] → Agent 2 → Notifications
+
 """
 
+import json
+from pathlib import Path
+
 import structlog
+
+from src.config import settings
+from src.storage.database import get_session
+from src.storage.repositories import CompanyProfileRepository
 
 logger = structlog.get_logger()
 
 
 def run_pipeline():
     """
-    Exécute le pipeline complet de veille réglementaire.
+    Exécute le pipeline Agent 1A → Agent 1B (Phase 2-3).
     
     Workflow:
-    1. Charger la configuration (sources, profil entreprise)
-    2. Lancer Agent 1A pour collecter les nouveaux documents
+    1. Charger la configuration (sources CBAM)
+    2. Lancer Agent 1A pour scraper et détecter les nouveaux documents
     3. Pour chaque nouveau document:
-       - Lancer Agent 1B pour l'analyser
-       - Si pertinent: générer et envoyer une alerte
+       - Lancer Agent 1B pour analyser
+       - Sauvegarder Analysis avec validation_status="pending"
     4. Logger les statistiques d'exécution
+    
+    Notes:
+    - Pas de notifications ici (Phase 4 uniquement après Agent 2)
+    - UI poll GET /api/analyses?validation_status=pending pour validation
+    - Agent 2 sera déclenché après validation UI (Phase 4)
     """
     
     logger.info("pipeline_démarré")
@@ -38,25 +51,23 @@ def run_pipeline():
         logger.info("agent_1a_terminé", nb_documents=len(new_documents))
         
         # 3. Analyser chaque document avec Agent 1B
-        alerts = []
+        # Note: Agent 1B sauvegarde lui-même via son outil save_analysis()
+        analyses_count = 0
         for doc in new_documents:
             logger.info("analyse_document", document_id=doc["id"])
-            analysis = run_agent_1b_pipeline(doc, company_profile)
-            
-            if analysis.get("is_relevant"):
-                alert = generate_and_send_alert(analysis, doc)
-                alerts.append(alert)
+            run_agent_1b_pipeline(doc, company_profile)
+            analyses_count += 1
         
         logger.info(
             "pipeline_terminé",
             nb_documents_analysés=len(new_documents),
-            nb_alertes=len(alerts)
+            nb_analyses=analyses_count
         )
         
         return {
             "status": "success",
             "documents_analyzed": len(new_documents),
-            "alerts_generated": len(alerts)
+            "analyses_created": analyses_count
         }
         
     except Exception as e:
@@ -65,30 +76,103 @@ def run_pipeline():
 
 
 def load_sources_config() -> list:
-    """Charge la configuration des sources à surveiller."""
-    # TODO (DEV 3): Implémenter
-    return []
+    """
+    Charge la configuration des sources à surveiller depuis sources_config.json.
+    
+    Returns:
+        Liste des sources activées (enabled=True)
+    """
+    config_path = settings.data_dir / "sources_config.json"
+    
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+        
+        # Retourner uniquement les sources activées
+        enabled_sources = []
+        for source in config_data.get("sources", []):
+            if source.get("enabled", False):
+                enabled_sources.append(source)
+        
+        logger.info(
+            "sources_chargées",
+            total=len(config_data.get("sources", [])),
+            enabled=len(enabled_sources)
+        )
+        
+        return enabled_sources
+        
+    except FileNotFoundError:
+        logger.error("sources_config_introuvable", path=str(config_path))
+        return []
+    except json.JSONDecodeError as e:
+        logger.error("sources_config_json_invalide", error=str(e))
+        return []
 
 
 def load_company_profile() -> dict:
-    """Charge le profil de l'entreprise."""
-    # TODO (DEV 3): Implémenter
-    return {}
+    """
+    Charge le profil de l'entreprise depuis la base de données.
+    
+    Utilise settings.default_company_profile pour identifier l'entreprise.
+    
+    Returns:
+        Dictionnaire avec les données du profil ou {} si non trouvé
+    """
+    session = get_session()
+    repo = CompanyProfileRepository(session)
+    
+    try:
+        profile = repo.find_by_name(settings.default_company_profile)
+        
+        if not profile:
+            logger.warning(
+                "profil_entreprise_introuvable",
+                name=settings.default_company_profile
+            )
+            return {}
+        
+        logger.info(
+            "profil_entreprise_chargé",
+            company=profile.company_name,
+            nc_codes=len(profile.nc_codes or [])
+        )
+        
+        # Convertir le modèle en dict 
+        return {
+            "id": profile.id,
+            "company_name": profile.company_name,
+            "nc_codes": profile.nc_codes or [],
+            "keywords": profile.keywords or [],
+            "regulations": profile.regulations or [],
+            "contact_emails": profile.contact_emails or [],
+            "config": profile.config or {}
+        }
+        
+    except Exception as e:
+        logger.error("erreur_chargement_profil", error=str(e))
+        return {}
+    finally:
+        session.close()
 
 
 def run_agent_1a_pipeline(sources: list) -> list:
-    """Exécute Agent 1A pour toutes les sources configurées."""
+    """
+    Exécute Agent 1A pour toutes les sources configurées.
+    
+    Agent 1A utilise son outil save_document_data() pour sauvegarder.
+    """
     # TODO (DEV 3): Implémenter l'appel à l'Agent 1A
     return []
 
 
-def run_agent_1b_pipeline(document: dict, company_profile: dict) -> dict:
-    """Exécute Agent 1B pour analyser un document."""
-    # TODO (DEV 3): Implémenter l'appel à l'Agent 1B
-    return {}
+def run_agent_1b_pipeline(document: dict, company_profile: dict) -> None:
+    """
+    Exécute Agent 1B pour analyser un document.
+    
+    Agent 1B utilise son outil save_analysis() pour sauvegarder lui-même
+    dans la table 'analyses' avec validation_status="pending".
+    """
+    # TODO (DEV 1 Godson): Implémenter l'appel à l'Agent 1B
+    pass
 
-
-def generate_and_send_alert(analysis: dict, document: dict) -> dict:
-    """Génère et envoie une alerte par email."""
-    # TODO (DEV 3): Implémenter l'envoi d'alertes
-    return {}
