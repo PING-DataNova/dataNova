@@ -8,6 +8,7 @@ from src.agent_1a.agent import run_agent_1a, create_agent_1a
 
 
 @pytest.mark.asyncio
+@pytest.mark.timeout(180)  # Timeout de 3 minutes (suffisant pour scraping)
 async def test_agent_1a_scraping():
     """Test : L'agent peut scraper la page CBAM"""
     query = "Scrape la page CBAM et retourne le nombre de documents trouvés en JSON"

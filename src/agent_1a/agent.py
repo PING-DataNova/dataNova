@@ -43,14 +43,13 @@ def create_agent_1a(
         Agent LangGraph prêt à l'emploi
     """
     logger.info("agent_1a_initialization_started", model=model_name)
-    
-    # 1. Initialiser le modèle Claude
+      # 1. Initialiser le modèle Claude
     llm = ChatAnthropic(
         model=model_name,
         temperature=temperature,
         max_tokens=max_tokens,
-        timeout=120,
-        max_retries=2
+        timeout=60,  # Réduit de 120 à 60 secondes
+        max_retries=1  # Réduit de 2 à 1 retry
     )
     
     # 2. Récupérer les outils
@@ -91,11 +90,10 @@ async def run_agent_1a(query: str) -> dict:
     
     try:
         agent = create_agent_1a()
-        
-        # LangGraph utilise ainvoke avec un dict contenant "messages"
+          # LangGraph utilise ainvoke avec un dict contenant "messages"
         result = await agent.ainvoke(
             {"messages": [("user", query)]},
-            config={"recursion_limit": 10}
+            config={"recursion_limit": 5}  # Réduit de 10 à 5 pour éviter les boucles longues
         )
         
         # Extraire la réponse finale
