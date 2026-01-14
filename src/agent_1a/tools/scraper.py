@@ -20,7 +20,7 @@ Responsable: Dev 1
 """
 
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 
 import httpx
@@ -335,9 +335,7 @@ async def scrape_cbam_page(url: str, source_id: str = "cbam-legislation") -> Scr
                         "original_href": href
                     }
                 )
-                documents.append(doc)
-        
-        # Dédupliquer par URL complète
+                documents.append(doc)        # Dédupliquer par URL complète
         seen_urls = set()
         unique_documents = []
         for doc in documents:
@@ -359,7 +357,7 @@ async def scrape_cbam_page(url: str, source_id: str = "cbam-legislation") -> Scr
         return ScrapeResult(
             source_id=source_id,
             source_url=url,
-            scraped_at=datetime.utcnow(),
+            scraped_at=datetime.now(timezone.utc),
             documents=unique_documents,
             total_found=len(unique_documents),
             status="success"
@@ -370,7 +368,7 @@ async def scrape_cbam_page(url: str, source_id: str = "cbam-legislation") -> Scr
         return ScrapeResult(
             source_id=source_id,
             source_url=url,
-            scraped_at=datetime.utcnow(),
+            scraped_at=datetime.now(timezone.utc),
             documents=[],
             total_found=0,
             status="error",
@@ -382,7 +380,7 @@ async def scrape_cbam_page(url: str, source_id: str = "cbam-legislation") -> Scr
         return ScrapeResult(
             source_id=source_id,
             source_url=url,
-            scraped_at=datetime.utcnow(),
+            scraped_at=datetime.now(timezone.utc),
             documents=[],
             total_found=0,
             status="error",

@@ -43,7 +43,8 @@ def create_agent_1a(
         Agent LangGraph prêt à l'emploi
     """
     logger.info("agent_1a_initialization_started", model=model_name)
-      # 1. Initialiser le modèle Claude
+    
+    # 1. Initialiser le modèle Claude
     llm = ChatAnthropic(
         model=model_name,
         temperature=temperature,
@@ -55,7 +56,8 @@ def create_agent_1a(
     # 2. Récupérer les outils
     tools = get_agent_1a_tools()
     logger.info("agent_1a_tools_loaded", tool_count=len(tools))
-      # 3. Créer le prompt système
+    
+    # 3. Créer le prompt système
     system_prompt = """Tu es l'Agent 1A, spécialisé dans la collecte automatisée de documents réglementaires CBAM.
 
 RÈGLES IMPORTANTES :
@@ -90,10 +92,11 @@ async def run_agent_1a(query: str) -> dict:
     
     try:
         agent = create_agent_1a()
-          # LangGraph utilise ainvoke avec un dict contenant "messages"
+        
+        # LangGraph utilise ainvoke avec un dict contenant "messages"
         result = await agent.ainvoke(
             {"messages": [("user", query)]},
-            config={"recursion_limit": 5}  # Réduit de 10 à 5 pour éviter les boucles longues
+            config={"recursion_limit": 15}  # Suffisant pour pipelines multi-étapes (scrape+download+extract)
         )
         
         # Extraire la réponse finale

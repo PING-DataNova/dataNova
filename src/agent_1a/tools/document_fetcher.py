@@ -23,7 +23,7 @@ from langchain.tools import tool
 import json
 import hashlib
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -116,9 +116,7 @@ async def fetch_document(
             file_path=str(file_path),
             file_size=file_size,
             hash=hash_sha256[:16] + "..."
-        )
-        
-        # Créer le résultat
+        )        # Créer le résultat
         document = FetchedDocument(
             url=url,
             file_path=str(file_path),
@@ -126,7 +124,7 @@ async def fetch_document(
             file_size=file_size,
             content_type=content_type,
             status="success",
-            downloaded_at=datetime.utcnow(),
+            downloaded_at=datetime.now(timezone.utc),
             metadata={
                 "filename": filename,
                 "extension": file_path.suffix
