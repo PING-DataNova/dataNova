@@ -11,8 +11,7 @@ async def main():
     print("\n" + "="*80)
     print("🤖 DÉMONSTRATION AGENT 1A - SCRAPING CBAM")
     print("="*80)
-    
-    # Test 1: Scraping simple
+      # Test 1: Scraping simple
     print("\n📝 Test 1: Scraping simple")
     print("-" * 80)
     query1 = "Scrape la page CBAM et retourne le nombre de documents trouvés en JSON"
@@ -20,9 +19,11 @@ async def main():
     
     print(f"Status: {result1['status']}")
     print(f"\n=== RÉSULTAT ===\n")
-    print(result1['output'])
-    
-    # Test 2: Scraping + téléchargement
+    if result1['status'] == 'success':
+        print(result1['output'])
+    else:
+        print(f"❌ ERREUR: {result1.get('error', 'Erreur inconnue')}")
+      # Test 2: Scraping + téléchargement
     print("\n\n📝 Test 2: Scraping + Téléchargement + Extraction")
     print("-" * 80)
     query2 = """Scrape la page CBAM, télécharge le premier document PDF trouvé, 
@@ -31,7 +32,10 @@ async def main():
     
     print(f"Status: {result2['status']}")
     print(f"\n=== RÉSULTAT ===\n")
-    print(result2['output'])
+    if result2['status'] == 'success':
+        print(result2['output'])
+    else:
+        print(f"❌ ERREUR: {result2.get('error', 'Erreur inconnue')}")
     
     print("\n" + "="*80)
     print("✅ Tests terminés !")

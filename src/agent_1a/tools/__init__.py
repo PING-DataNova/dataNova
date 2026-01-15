@@ -1,14 +1,11 @@
 """
-Outils LangChain pour Agent 1A
-"""
-"""
-Agent 1A Tools - Export des outils LangChain
+Outils LangChain pour Agent 1A - Version EUR-Lex
 """
 
-from .scraper import scrape_cbam_page_tool
+from .eurlex_scraper import search_eurlex_tool
 from .document_fetcher import fetch_document_tool
 from .pdf_extractor import extract_pdf_content_tool
-from .change_detector import detect_changes_tool
+from .summarizer import generate_summary_tool
 
 def get_agent_1a_tools():
     """
@@ -18,16 +15,16 @@ def get_agent_1a_tools():
         List[Tool]: Liste des outils LangChain
     """
     return [
-        scrape_cbam_page_tool,
+        search_eurlex_tool,
         fetch_document_tool,
         extract_pdf_content_tool,
-        detect_changes_tool
+        generate_summary_tool
     ]
 
 __all__ = [
-    "scrape_cbam_page_tool",
+    "search_eurlex_tool",
     "fetch_document_tool",
     "extract_pdf_content_tool",
-    "detect_changes_tool",
+    "generate_summary_tool",
     "get_agent_1a_tools"
 ]
