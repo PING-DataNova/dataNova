@@ -245,3 +245,5 @@ def get_agent_1a_tools() -> list:
         # Dev 3 - Sauvegarde
         save_document_to_db,
     ]
+    
+    return tools
