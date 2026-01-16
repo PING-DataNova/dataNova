@@ -1,11 +1,13 @@
 """
 Outils LangChain pour Agent 1A - Version EUR-Lex
+
+Dev 1 (Godson) - Responsable des outils de collecte
 """
 
-from .eurlex_scraper import search_eurlex_tool
+from .scraper import search_eurlex_tool
 from .document_fetcher import fetch_document_tool
-from .pdf_extractor import extract_pdf_content_tool
-from .summarizer import generate_summary_tool
+# from .pdf_extractor import extract_pdf_content_tool  # Dev 2
+# from .summarizer import generate_summary_tool  # Bonus Dev 1
 
 def get_agent_1a_tools():
     """
@@ -17,14 +19,14 @@ def get_agent_1a_tools():
     return [
         search_eurlex_tool,
         fetch_document_tool,
-        extract_pdf_content_tool,
-        generate_summary_tool
+        # extract_pdf_content_tool,  # Dev 2 - À ajouter
+        # generate_summary_tool  # Bonus - À réactiver si besoin
     ]
 
 __all__ = [
     "search_eurlex_tool",
     "fetch_document_tool",
-    "extract_pdf_content_tool",
-    "generate_summary_tool",
+    # "extract_pdf_content_tool",  # Dev 2
+    # "generate_summary_tool",  # Bonus
     "get_agent_1a_tools"
 ]

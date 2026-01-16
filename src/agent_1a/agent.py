@@ -207,8 +207,7 @@ if __name__ == "__main__":
             # Afficher les documents
             for i, doc in enumerate(result.get("documents", []), 1):
                 print(f"\n{'='*60}")
-                print(f"Document {i}: {doc.get('title', 'Sans titre')[:80]}...")
-                print(f"{'='*60}")
+                print(f"Titre : {doc.get('title', 'Sans titre')}")
                 print(f"CELEX: {doc.get('celex_number', 'N/A')}")
                 print(f"Type: {doc.get('document_type', 'N/A')}")
                 print(f"Status: {doc.get('status', 'N/A')}")
