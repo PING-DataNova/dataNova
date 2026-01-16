@@ -81,7 +81,6 @@ logs/
 Thumbs.db
 .DS_Store
 
-# LangChain/LangGraph specific
-.langchain/
-.langgraph/
-langsmith_traces/
+# Jupyter
+.ipynb_checkpoints/
+nora_agents/

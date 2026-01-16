@@ -36,7 +36,8 @@ def start_scheduler():
     if not settings.scheduler_enabled:
         logger.warning("scheduler_désactivé")
         return
-    
+    #Le mode bloquant fait que le programme s'arrête là et 
+    #ne fait QUE attendre et exécuter les jobs planifiés, sans rien faire d'autre.
     scheduler = BlockingScheduler()
     
     # Ajouter le job avec le cron configuré

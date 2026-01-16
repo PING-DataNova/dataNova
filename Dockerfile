@@ -17,7 +17,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 # Copy dependency files
 COPY pyproject.toml ./
 
-# Install dependencies with uv (10-100x faster than pip/poetry)
+# Install dependencies with uv
 RUN uv pip install --system -r pyproject.toml
 
 # Copy application
