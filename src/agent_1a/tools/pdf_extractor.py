@@ -3,24 +3,24 @@ PDF Extractor with Docling - Agent 1A Tool
 Extrait texte, tableaux et codes NC des PDFs réglementaires EUR-Lex
 Utilise Docling au lieu de pdfplumber (meilleur pour tableaux et structure)
 """
-
+ 
 import os
 import logging
 import tempfile
 import re
 from pathlib import Path
 from typing import List, Dict, Optional
-
+ 
 import requests
-
+ 
 try:
     from docling.document_converter import DocumentConverter
 except ImportError:
     raise ImportError("pip install docling")
-
+ 
 logger = logging.getLogger(__name__)
-
-
+ 
+ 
 class PDFExtractor:
     """
     Extrait contenu structuré des PDFs EUR-Lex avec Docling.
@@ -218,3 +218,5 @@ class PDFExtractor:
             })
         
         return amounts
+ 
+pdf extrator 

@@ -1,32 +1,41 @@
 """
-Outils LangChain pour Agent 1A - Version EUR-Lex
+Implémentations des outils Agent 1A
 
-Dev 1 (Godson) - Responsable des outils de collecte
+Ce fichier exporte les implémentations brutes (fonctions et classes).
+Pour l'interface LangChain avec décorateurs @tool, voir ../tools.py
+
+Architecture:
+- scraper.py          → search_eurlex() + search_eurlex_tool
+- document_fetcher.py → fetch_document() + fetch_document_tool
+- pdf_extractor.py    → class PDFExtractor
+- change_detector.py  → class ChangeDetector
+
+Note: get_agent_1a_tools() est maintenant dans ../tools.py (Dev 3)
 """
 
-from .scraper import search_eurlex_tool
-from .document_fetcher import fetch_document_tool
-# from .pdf_extractor import extract_pdf_content_tool  # Dev 2
-# from .summarizer import generate_summary_tool  # Bonus Dev 1
+# ✅ CORRECTION: Ne plus exporter get_agent_1a_tools() ici
+# Cette fonction est maintenant dans ../tools.py pour centraliser l'interface
 
-def get_agent_1a_tools():
-    """
-    Retourne la liste des outils disponibles pour l'Agent 1A.
-    
-    Returns:
-        List[Tool]: Liste des outils LangChain
-    """
-    return [
-        search_eurlex_tool,
-        fetch_document_tool,
-        # extract_pdf_content_tool,  # Dev 2 - À ajouter
-        # generate_summary_tool  # Bonus - À réactiver si besoin
-    ]
+# Export des implémentations brutes
+from .scraper import search_eurlex, search_eurlex_tool, EURLexSearchResult, EURLexDocument
+from .document_fetcher import fetch_document, fetch_document_tool, FetchResult, FetchedDocument
+from .pdf_extractor import PDFExtractor
+from .change_detector import ChangeDetector
 
 __all__ = [
+    # Fonctions de scraping
+    "search_eurlex",
     "search_eurlex_tool",
+    "EURLexSearchResult",
+    "EURLexDocument",
+    
+    # Fonctions de téléchargement
+    "fetch_document",
     "fetch_document_tool",
-    # "extract_pdf_content_tool",  # Dev 2
-    # "generate_summary_tool",  # Bonus
-    "get_agent_1a_tools"
+    "FetchResult",
+    "FetchedDocument",
+    
+    # Classes d'extraction et détection
+    "PDFExtractor",
+    "ChangeDetector",
 ]

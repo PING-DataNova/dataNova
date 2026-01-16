@@ -1,9 +1,10 @@
+tools.py
 """
 Outils LangChain pour l'Agent 1A
-
+ 
 Chaque outil est une fonction décorée avec @tool qui peut être utilisée par l'agent.
 Les implémentations détaillées sont dans le dossier tools/
-
+ 
 Architecture:
 - tools/scraper.py          → Dev 1 (Godson)
 - tools/document_fetcher.py → Dev 1 (Godson)  
@@ -11,22 +12,22 @@ Architecture:
 - tools/change_detector.py  → Dev 2 (Nora)
 - Ce fichier (tools.py)     → Dev 3 (Marc) - Centralise et expose les @tool
 """
-
+ 
 from langchain_core.tools import tool
-
+ 
 # Import des classes d'implémentation
 from src.agent_1a.tools.pdf_extractor import PDFExtractor
 from src.agent_1a.tools.change_detector import ChangeDetector
-
+ 
 # TODO: Importer quand Dev 1 aura implémenté
 # from src.agent_1a.tools.scraper import CBAMScraper
 # from src.agent_1a.tools.document_fetcher import DocumentFetcher
-
-
+ 
+ 
 # ═══════════════════════════════════════════════════════════
 # DEV 1 - SCRAPING & TÉLÉCHARGEMENT (TODO)
 # ═══════════════════════════════════════════════════════════
-
+ 
 @tool
 def scrape_source(source_id: str) -> dict:
     """
@@ -40,8 +41,8 @@ def scrape_source(source_id: str) -> dict:
     """
     # TODO: Dev 1 - Implémenter avec CBAMScraper
     return {"documents": [], "status": "not_implemented"}
-
-
+ 
+ 
 @tool
 def download_document(document_url: str, document_id: str) -> dict:
     """
@@ -56,23 +57,23 @@ def download_document(document_url: str, document_id: str) -> dict:
     """
     # TODO: Dev 1 - Implémenter avec DocumentFetcher
     return {"file_path": None, "status": "not_implemented"}
-
-
+ 
+ 
 # ═══════════════════════════════════════════════════════════
 # DEV 2 - EXTRACTION & DÉTECTION
 # ═══════════════════════════════════════════════════════════
-
+ 
 # Instance globale pour éviter réinitialisation à chaque appel
 _pdf_extractor = None
-
+ 
 def _get_pdf_extractor() -> PDFExtractor:
     """Lazy initialization du PDFExtractor"""
     global _pdf_extractor
     if _pdf_extractor is None:
         _pdf_extractor = PDFExtractor()
     return _pdf_extractor
-
-
+ 
+ 
 @tool
 def extract_pdf_content(file_path: str) -> dict:
     """
@@ -109,8 +110,8 @@ def extract_pdf_content(file_path: str) -> dict:
         return extractor.extract_from_url(file_path)
     else:
         return extractor.extract_from_file(file_path)
-
-
+ 
+ 
 @tool
 def check_document_changes(document_hash: str, source_url: str) -> dict:
     """
@@ -145,12 +146,12 @@ def check_document_changes(document_hash: str, source_url: str) -> dict:
         return detector.detect(document_hash, source_url)
     finally:
         session.close()
-
-
+ 
+ 
 # ═══════════════════════════════════════════════════════════
 # DEV 3 - SAUVEGARDE EN BASE DE DONNÉES
 # ═══════════════════════════════════════════════════════════
-
+ 
 @tool
 def save_document_to_db(
     title: str,
@@ -227,12 +228,12 @@ def save_document_to_db(
         return {"status": "error", "error": str(e)}
     finally:
         session.close()
-
-
+ 
+ 
 # ═══════════════════════════════════════════════════════════
 # EXPORT DES OUTILS POUR AGENT 1A
 # ═══════════════════════════════════════════════════════════
-
+ 
 def get_agent_1a_tools() -> list:
     """Retourne la liste des outils disponibles pour l'Agent 1A."""
     return [
@@ -245,5 +246,3 @@ def get_agent_1a_tools() -> list:
         # Dev 3 - Sauvegarde
         save_document_to_db,
     ]
-    
-    return tools

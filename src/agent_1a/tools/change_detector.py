@@ -1,20 +1,20 @@
 """
 Change Detector - Agent 1A Tool
 Détecte si un document est nouveau, modifié ou inchangé
-
+ 
 Compare le hash SHA-256 du contenu téléchargé avec celui stocké en DB.
 Permet d'éviter de ré-extraire des documents inchangés.
 """
-
+ 
 import hashlib
 import logging
 from typing import Dict, Optional
-
+ 
 from sqlalchemy.orm import Session
-
+ 
 logger = logging.getLogger(__name__)
-
-
+ 
+ 
 class ChangeDetector:
     """
     Détecte les changements dans les documents réglementaires.
@@ -152,3 +152,4 @@ class ChangeDetector:
             str: Hash SHA-256 (64 caractères hexadécimaux)
         """
         return hashlib.sha256(content_bytes).hexdigest()
+ 
