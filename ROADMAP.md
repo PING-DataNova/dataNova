@@ -243,7 +243,7 @@
 
 ## 🧠 Phase 3: Agent 1B + Agent 2 Tools (Semaine 3)
 
-### 👨‍💻 Dev 1 (Godson) : Analyse LLM Unique
+### 👨‍💻 Dev 2  : Analyse LLM Unique
 **Fichiers**: `src/agent_1b/tools/semantic_analyzer.py`, `src/agent_1b/agent.py`
 
 #### Tâches
@@ -268,7 +268,7 @@
 
 ---
 
-### 👨‍💻 Dev 2 : Tests & Fixtures
+### 👨‍💻 Dev 1 : Tests & Fixtures
 **Fichiers**: `tests/`, `data/fixtures/`
 
 #### Tâches
