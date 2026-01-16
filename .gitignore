@@ -56,12 +56,6 @@ htmlcov/
 data/documents/*
 !data/documents/.gitkeep
 
-# Agent 1A - Fichiers spécifiques à ignorer
-src/agent_1a/tools/change_detector.py
-src/agent_1a/tools/summarizer.py
-src/agent_1a/tools/pdf_extractor.py
-src/agent_1a/agent.py
-
 # Logs
 *.log
 logs/
