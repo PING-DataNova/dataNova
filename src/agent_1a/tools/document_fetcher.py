@@ -1,21 +1,5 @@
 """
-TODO: Outil de téléchargement de documents (LangChain @tool)
-
-Tâches:
-1. Décorer avec @tool
-2. Télécharger PDF/HTML depuis EUR-Lex
-3. Gérer les redirections
-4. Sauvegarder localement avec hash
-5. Détecter les changements (compare hash)
-
-Formats:
-- PDF
-- HTML
-- XML (optionnel)
-"""
-
-"""
-Document Fetcher - Téléchargement de documents réglementaires
+Document Fetcher - Téléchargement de documents réglementaires (SCÉNARIO 2 OPTIMISÉ)
 
 Responsable: Dev 1
 """
@@ -54,26 +38,138 @@ class FetchResult(BaseModel):
     error: Optional[str] = None
 
 
+# ============================================================================
+# NOUVELLES FONCTIONS POUR SCÉNARIO 2
+# ============================================================================
+
+async def get_remote_file_hash(
+    url: str,
+    timeout: int = 30
+) -> Optional[str]:
+    """
+    Obtient le hash SHA-256 d'un fichier distant SANS le télécharger entièrement.
+    
+    Stratégies (dans l'ordre) :
+    1. Utiliser l'en-tête ETag si disponible (rapide)
+    2. Télécharger et calculer le hash (fiable)
+    
+    Args:
+        url: URL du fichier distant
+        timeout: Timeout en secondes
+    
+    Returns:
+        str: Hash SHA-256 ou ETag, ou None si erreur
+    """
+    logger.info("get_remote_hash_started", url=url)
+    
+    try:
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            # Essayer d'abord avec HEAD (plus rapide, juste les métadonnées)
+            response = await client.head(url)
+            response.raise_for_status()
+            
+            # Vérifier si ETag est disponible
+            etag = response.headers.get('ETag', '').strip('"')
+            if etag and len(etag) == 64:  # ETag est un hash SHA-256
+                logger.info("get_remote_hash_completed", method="ETag", hash=etag[:16] + "...")
+                return etag
+            
+            # Si pas d'ETag fiable, télécharger et calculer le hash
+            logger.info("get_remote_hash_fallback", method="download_and_hash")
+            response = await client.get(url)
+            response.raise_for_status()
+            
+            hash_sha256 = hashlib.sha256(response.content).hexdigest()
+            logger.info("get_remote_hash_completed", method="download", hash=hash_sha256[:16] + "...")
+            return hash_sha256
+            
+    except Exception as e:
+        logger.error("get_remote_hash_error", url=url, error=str(e))
+        return None
+
+
+async def check_if_document_changed(
+    url: str,
+    existing_hash: Optional[str] = None,
+    timeout: int = 30
+) -> str:
+    """
+    Vérifie si un document a changé par rapport à une version existante.
+    
+    Args:
+        url: URL du document
+        existing_hash: Hash SHA-256 existant (None si nouveau document)
+        timeout: Timeout en secondes
+    
+    Returns:
+        str: "new" | "modified" | "unchanged"
+    """
+    remote_hash = await get_remote_file_hash(url, timeout)
+    
+    if remote_hash is None:
+        # En cas d'erreur, on considère comme "modified" pour être prudent
+        return "modified"
+    
+    if existing_hash is None:
+        return "new"
+    
+    if remote_hash == existing_hash:
+        return "unchanged"
+    else:
+        return "modified"
+
+
+# ============================================================================
+# FONCTION PRINCIPALE MODIFIÉE
+# ============================================================================
+
 async def fetch_document(
     url: str,
     output_dir: str = "data/documents",
     filename: Optional[str] = None,
-    timeout: int = 60
+    timeout: int = 60,
+    skip_if_exists: bool = False,
+    existing_hash: Optional[str] = None
 ) -> FetchResult:
     """
     Télécharge un document depuis une URL et le sauvegarde localement.
+    
+    SCÉNARIO 2 : Vérification avant téléchargement
     
     Args:
         url: URL du document à télécharger
         output_dir: Dossier de destination
         filename: Nom du fichier (optionnel, sinon généré depuis l'URL)
         timeout: Timeout en secondes
+        skip_if_exists: Si True et document inchangé, ne pas télécharger
+        existing_hash: Hash existant pour comparaison
     
     Returns:
         FetchResult: Résultat du téléchargement avec métadonnées
     """
-    logger.info("fetch_started", url=url, output_dir=output_dir)
+    logger.info("fetch_started", url=url, output_dir=output_dir, skip_if_exists=skip_if_exists)
     
+    # NOUVEAU : Vérifier si le document a changé
+    if skip_if_exists and existing_hash:
+        change_status = await check_if_document_changed(url, existing_hash, timeout)
+        
+        if change_status == "unchanged":
+            logger.info("fetch_skipped", url=url, reason="document_unchanged")
+            return FetchResult(
+                url=url,
+                success=True,
+                document=FetchedDocument(
+                    url=url,
+                    file_path="",  # Pas de fichier téléchargé
+                    hash_sha256=existing_hash,
+                    file_size=0,
+                    status="skipped",
+                    downloaded_at=datetime.now(timezone.utc),
+                    metadata={"reason": "unchanged"}
+                )
+            )
+    
+    # RESTE DU CODE INCHANGÉ
     try:
         # Créer le dossier de destination s'il n'existe pas
         output_path = Path(output_dir)
@@ -116,7 +212,9 @@ async def fetch_document(
             file_path=str(file_path),
             file_size=file_size,
             hash=hash_sha256[:16] + "..."
-        )        # Créer le résultat
+        )
+        
+        # Créer le résultat
         document = FetchedDocument(
             url=url,
             file_path=str(file_path),
@@ -241,24 +339,9 @@ def fetch_document_sync(
     return asyncio.run(fetch_document(url, output_dir, filename, timeout))
 
 
-# Pour tester le module directement
-if __name__ == "__main__":
-    import asyncio
-    
-    # URL de test (un document CBAM)
-    test_url = "https://taxation-customs.ec.europa.eu/document/download/74a278ac-6212-4a3d-bd3b-060a32dab8d6_en?filename=IA%20on%20Methodology_0.pdf"
-    
-    # Tester le téléchargement
-    result = asyncio.run(fetch_document(test_url))
-    
-    if result.success:
-        print(f"\n✅ Téléchargement réussi !")
-        print(f"Fichier: {result.document.file_path}")
-        print(f"Taille: {result.document.file_size} bytes")
-        print(f"Hash: {result.document.hash_sha256}")
-        print(f"Type: {result.document.content_type}")
-    else:
-        print(f"\n❌ Erreur: {result.error}")
+# ============================================================================
+# OUTILS LANGCHAIN
+# ============================================================================
 
 @tool
 async def fetch_document_tool(url: str, output_dir: str = "data/documents") -> str:
@@ -294,3 +377,23 @@ async def fetch_document_tool(url: str, output_dir: str = "data/documents") -> s
             "content_type": None,
             "error": result.error
         }, ensure_ascii=False, indent=2)
+
+
+# Pour tester le module directement
+if __name__ == "__main__":
+    import asyncio
+    
+    # URL de test (un document CBAM)
+    test_url = "https://taxation-customs.ec.europa.eu/document/download/74a278ac-6212-4a3d-bd3b-060a32dab8d6_en?filename=IA%20on%20Methodology_0.pdf"
+    
+    # Tester le téléchargement
+    result = asyncio.run(fetch_document(test_url))
+    
+    if result.success:
+        print(f"\n✅ Téléchargement réussi !")
+        print(f"Fichier: {result.document.file_path}")
+        print(f"Taille: {result.document.file_size} bytes")
+        print(f"Hash: {result.document.hash_sha256}")
+        print(f"Type: {result.document.content_type}")
+    else:
+        print(f"\n❌ Erreur: {result.error}")

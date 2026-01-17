@@ -1,5 +1,5 @@
 """
-EUR-Lex Scraper - Recherche et extraction de documents réglementaires
+EUR-Lex Scraper - Recherche et extraction de documents réglementaires (SCÉNARIO 2 OPTIMISÉ)
 
 Scrape directement EUR-Lex pour récupérer les réglementations par mot-clé.
 
@@ -45,6 +45,41 @@ class EURLexSearchResult(BaseModel):
     error: Optional[str] = None
 
 
+# ============================================================================
+# NOUVELLE FONCTION POUR SCÉNARIO 2
+# ============================================================================
+
+async def get_remote_pdf_hash(pdf_url: str, timeout: int = 30) -> Optional[str]:
+    """
+    Obtient le hash SHA-256 d'un PDF distant SANS le télécharger entièrement.
+    
+    SCÉNARIO 2 : Optimisation pour éviter les téléchargements inutiles
+    
+    Args:
+        pdf_url: URL du PDF
+        timeout: Timeout en secondes
+    
+    Returns:
+        str: Hash SHA-256 ou None si erreur
+    """
+    try:
+        import hashlib
+        
+        logger.info("get_remote_pdf_hash_started", url=pdf_url)
+        
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            response = await client.get(pdf_url)
+            response.raise_for_status()
+            
+            hash_sha256 = hashlib.sha256(response.content).hexdigest()
+            logger.info("get_remote_pdf_hash_completed", hash=hash_sha256[:16] + "...")
+            return hash_sha256
+            
+    except Exception as e:
+        logger.error("get_remote_pdf_hash_error", url=pdf_url, error=str(e))
+        return None
+
+
 async def search_eurlex(
     keyword: str,
     max_results: int = 50,
@@ -52,6 +87,8 @@ async def search_eurlex(
 ) -> EURLexSearchResult:
     """
     Recherche des documents sur EUR-Lex par mot-clé.
+    
+    SCÉNARIO 2 : Inclut le hash distant pour optimisation
     
     Args:
         keyword: Mot-clé de recherche (ex: "CBAM", "EUDR", "CSRD")
@@ -206,7 +243,16 @@ async def search_eurlex(
                 # Déterminer le statut
                 status = _determine_eurlex_status(result_container, doc_type)
                 
-                # Créer le document
+                # ============================================================================
+                # NOUVEAU POUR SCÉNARIO 2 : Obtenir le hash du PDF distant
+                # ============================================================================
+                remote_hash = None
+                if pdf_url:
+                    remote_hash = await get_remote_pdf_hash(str(pdf_url), timeout=10)
+                    if remote_hash:
+                        logger.info("remote_hash_obtained", celex=celex_number, hash=remote_hash[:16] + "...")
+                
+                # Créer le document avec le hash distant dans les métadonnées
                 doc = EURLexDocument(
                     title=title,
                     celex_number=celex_number,
@@ -219,7 +265,8 @@ async def search_eurlex(
                     metadata={
                         "source": "EUR-Lex Search",
                         "keyword": keyword,
-                        "result_position": idx
+                        "result_position": idx,
+                        "remote_hash": remote_hash  # ← NOUVEAU : Hash du PDF distant
                     }
                 )
                 
@@ -373,7 +420,8 @@ async def search_eurlex_tool(keyword: str = "CBAM", max_results: int = 10) -> st
                 "url": str(doc.url),
                 "pdf_url": str(doc.pdf_url) if doc.pdf_url else None,
                 "summary": doc.summary,
-                "status": doc.status
+                "status": doc.status,
+                "remote_hash": doc.metadata.get("remote_hash")  # ← NOUVEAU
             }
             for doc in result.documents
         ],
@@ -393,7 +441,7 @@ if __name__ == "__main__":
     
     async def test_eurlex():
         print("=" * 80)
-        print("🔍 TEST EUR-LEX SCRAPER - Recherche CBAM")
+        print("🔍 TEST EUR-LEX SCRAPER - Recherche CBAM (SCÉNARIO 2)")
         print("=" * 80)
         
         # Rechercher les documents CBAM
@@ -414,6 +462,7 @@ if __name__ == "__main__":
             print(f"Date: {doc.publication_date}")
             print(f"URL: {doc.url}")
             print(f"PDF: {doc.pdf_url}")
+            print(f"Remote Hash: {doc.metadata.get('remote_hash', 'N/A')[:16]}...")
         
         print("\n" + "=" * 80)
         print("✅ Test terminé !")
