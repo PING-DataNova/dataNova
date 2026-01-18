@@ -1,131 +1,88 @@
 """
-Outils LangChain pour l'Agent 1B
+Agent 1B Tools - Outils disponibles pour l'Agent 1B
 
-Chaque outil implémente une partie de l'analyse de pertinence.
+Intègre tous les outils nécessaires pour l'analyse de pertinence.
+
+Responsable: Dev 1
+Chemin final: src/agent_1b/tools.py
 """
 
-from langchain_core.tools import tool
-
-# TODO: Implémenter les outils suivants (DEV 2)
-
-
-@tool
-def filter_by_keywords(document_content: str, keywords: list[str]) -> dict:
-    """
-    Filtre un document par mots-clés (Niveau 1).
-    
-    Args:
-        document_content: Contenu textuel du document
-        keywords: Liste des mots-clés à rechercher
-    
-    Returns:
-        dict: Score de correspondance (0-1) et mots-clés trouvés
-    """
-    # TODO: Implémenter le filtrage par mots-clés
-    return {"keyword_score": 0.0, "matched_keywords": [], "status": "not_implemented"}
+from langchain.tools import tool
+from src.agent_1b.tools.semantic_analyzer import analyze_document_relevance
+from src.agent_1b.tools.company_loader import load_company_profile, extract_analysis_profile
 
 
 @tool
-def verify_nc_codes(document_content: str, target_nc_codes: list[str]) -> dict:
-    """
-    Vérifie la présence de codes NC dans le document (Niveau 2).
-    
-    Args:
-        document_content: Contenu textuel du document
-        target_nc_codes: Codes NC de l'entreprise (ex: ["4002.19"])
-    
-    Returns:
-        dict: Score de correspondance (0-1) et codes trouvés
-    """
-    # TODO: Implémenter la vérification des codes NC
-    return {"nc_code_score": 0.0, "found_codes": [], "status": "not_implemented"}
-
-
-@tool
-def semantic_analysis(document_content: str, company_context: str) -> dict:
-    """
-    Analyse sémantique approfondie par LLM (Niveau 3).
-    
-    Args:
-        document_content: Contenu du document
-        company_context: Contexte de l'entreprise (secteur, produits, supply chain)
-    
-    Returns:
-        dict: Score sémantique (0-1), raison, et impacts potentiels
-    """
-    # TODO: Implémenter l'analyse sémantique avec Claude
-    return {
-        "semantic_score": 0.0,
-        "reasoning": "",
-        "potential_impacts": [],
-        "status": "not_implemented"
-    }
-
-
-@tool
-def calculate_relevance_score(
-    keyword_score: float,
-    nc_code_score: float,
-    semantic_score: float
+async def semantic_analyzer_tool(
+    document_content: str,
+    document_title: str,
+    company_id: str
 ) -> dict:
     """
-    Calcule le score de pertinence global pondéré.
+    Outil d'analyse sémantique pour déterminer la pertinence d'un document.
+    
+    Analyse un document réglementaire par rapport au profil d'une entreprise.
+    Détecte les mots-clés pertinents, codes NC, et génère un résumé.
     
     Args:
-        keyword_score: Score du filtrage mots-clés (0-1)
-        nc_code_score: Score des codes NC (0-1)
-        semantic_score: Score de l'analyse sémantique (0-1)
+        document_content: Contenu textuel du document
+        document_title: Titre du document
+        company_id: ID de l'entreprise (ex: "GMG-001")
     
     Returns:
-        dict: Score final et niveau de criticité
-    """
-    # TODO: Implémenter le calcul du score avec les poids configurés
-    return {
-        "final_score": 0.0,
-        "criticality": "LOW",
-        "status": "not_implemented"
-    }
-
-
-@tool
-def generate_alert(analysis_result: dict, document_metadata: dict) -> dict:
-    """
-    Génère une alerte structurée en JSON.
+        dict avec:
+        - is_relevant: bool
+        - confidence: float (0.0-1.0)
+        - matched_keywords: list
+        - matched_nc_codes: list
+        - summary: str
+        - reasoning: str
     
-    Args:
-        analysis_result: Résultat de l'analyse (scores, criticité)
-        document_metadata: Métadonnées du document
+    Example:
+        >>> result = await semantic_analyzer_tool(
+        ...     document_content="Le CBAM s'applique...",
+        ...     document_title="Regulation (EU) 2023/956",
+        ...     company_id="GMG-001"
+        ... )
+        >>> print(result["is_relevant"])
+        True
+    """
+    
+    try:
+        # Charger le profil d'entreprise
+        company_data = load_company_profile(company_id)
+        company_profile = extract_analysis_profile(company_data)
+        
+        # Analyser la pertinence
+        analysis_result = await analyze_document_relevance(
+            content=document_content,
+            title=document_title,
+            company_profile=company_profile
+        )
+        
+        return analysis_result.to_dict()
+    
+    except Exception as e:
+        return {
+            "is_relevant": False,
+            "confidence": 0.0,
+            "matched_keywords": [],
+            "matched_nc_codes": [],
+            "summary": f"Erreur lors de l'analyse: {str(e)}",
+            "reasoning": f"Exception: {str(e)}"
+        }
+
+
+def get_agent_1b_tools():
+    """
+    Retourne la liste des outils disponibles pour l'Agent 1B.
     
     Returns:
-        dict: Alerte structurée prête à être envoyée
+        list: Liste des outils LangChain
     """
-    # TODO: Implémenter la génération d'alertes
-    return {"alert": {}, "status": "not_implemented"}
-
-
-@tool
-def save_analysis(document_id: str, analysis_result: dict) -> dict:
-    """
-    Sauvegarde le résultat de l'analyse dans la base de données.
     
-    Args:
-        document_id: Identifiant du document
-        analysis_result: Résultat complet de l'analyse
-    
-    Returns:
-        dict: Confirmation de la sauvegarde
-    """
-    # TODO: Implémenter la sauvegarde
-    return {"saved": False, "status": "not_implemented"}
-
-
-def get_agent_1b_tools() -> list:
-    """Retourne la liste des outils disponibles pour l'Agent 1B."""
-    return [
-        filter_by_keywords,
-        verify_nc_codes,
-        semantic_analysis,
-        calculate_relevance_score,
-        generate_alert,
-        save_analysis,
+    tools = [
+        semantic_analyzer_tool,
     ]
+    
+    return tools

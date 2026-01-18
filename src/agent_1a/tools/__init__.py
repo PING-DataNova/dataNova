@@ -2,10 +2,9 @@
 Outils LangChain pour Agent 1A - Version EUR-Lex
 """
 
-from .eurlex_scraper import search_eurlex_tool
+from .scraper import search_eurlex_tool
 from .document_fetcher import fetch_document_tool
 from .pdf_extractor import extract_pdf_content_tool
-from .summarizer import generate_summary_tool
 
 def get_agent_1a_tools():
     """

@@ -9,7 +9,7 @@ from langchain.tools import BaseTool
 from .tools.eurlex_scraper import search_eurlex_tool      # NOUVEAU
 from .tools.document_fetcher import fetch_document_tool
 from .tools.pdf_extractor import extract_pdf_content_tool
-from .tools.summarizer import generate_summary_tool       # NOUVEAU
+
 
 
 def get_agent_1a_tools() -> List[BaseTool]:

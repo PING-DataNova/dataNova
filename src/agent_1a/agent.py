@@ -31,7 +31,7 @@ env_path = Path(__file__).parent.parent.parent / ".env"
 load_dotenv(dotenv_path=env_path)
 
 from .tools import get_agent_1a_tools
-from .tools.eurlex_scraper import search_eurlex
+from .tools.scraper import search_eurlex
 from .tools.document_fetcher import fetch_document
 from .tools.pdf_extractor import extract_pdf_content
 
