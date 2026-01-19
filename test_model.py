@@ -12,6 +12,7 @@ models = [
     "claude-3-sonnet-20240229",
     "claude-3-5-sonnet-20241022",
     "claude-3-haiku-20240307",
+    "claude-sonnet-4-5-20250929"
 ]
 
 print("🔍 Test des modèles Claude disponibles...\n")

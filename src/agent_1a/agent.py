@@ -32,8 +32,8 @@ logger = structlog.get_logger()
 
 def create_agent_1a(
     model_name: str = "claude-3-haiku-20240307",
-    temperature: float = 0.1,
-    max_tokens: int = 4096
+    temperature: float = 0.,
+    max_tokens: int = 900
 ):
     """
     Crée l'Agent 1A avec Claude 3.5 Haiku et ses outils.
@@ -53,47 +53,23 @@ def create_agent_1a(
         model=model_name,
         temperature=temperature,
         max_tokens=max_tokens,
-        timeout=60,
-        max_retries=1
+        timeout=90,
+        max_retries=2
     )
     
     # 2. Récupérer les outils
     tools = get_agent_1a_tools()
     logger.info("agent_1a_tools_loaded", tool_count=len(tools))
     
-    # 3. Créer le prompt système
-    system_prompt = """Tu es l'Agent 1A, spécialisé dans la collecte automatisée de documents réglementaires via EUR-Lex.
+    # 3. Créer le prompt système (réduit pour éviter rate limits)
+    system_prompt = """Agent 1A : Collecte de documents EUR-Lex.
 
-WORKFLOW COMPLET :
-1. Rechercher sur EUR-Lex avec search_eurlex_tool (mot-clé fourni par l'utilisateur)
-2. Pour CHAQUE document trouvé :
-   a. Télécharger le PDF avec fetch_document_tool (utiliser pdf_url si disponible, sinon url)
-   b. Extraire le contenu avec extract_pdf_content_tool
-   c. Générer un résumé avec generate_summary_tool
-3. Retourner le JSON final avec TOUS les documents enrichis
+Workflow :
+1. search_eurlex_tool avec le mot-clé
+2. Pour chaque doc : fetch_document_tool → extract_pdf_content_tool → generate_summary_tool
+3. Retour JSON : {"documents": [{"title","celex_number","document_type","publication_date","url","pdf_url","summary","status"}]}
 
-RÈGLES IMPORTANTES :
-- Traiter TOUS les documents trouvés (ou jusqu'à la limite spécifiée)
-- Le résumé doit être concis (2-4 phrases) et mentionner les points clés
-- Format de sortie : JSON avec la structure exacte demandée
-- Ne pas arrêter tant que tous les documents n'ont pas été traités
-- Utiliser pdf_url en priorité pour le téléchargement
-
-FORMAT DE SORTIE ATTENDU :
-{
-  "documents": [
-    {
-      "title": "...",
-      "celex_number": "32023R0956",
-      "document_type": "REGULATION|DIRECTIVE|DECISION|PROPOSAL",
-      "publication_date": "YYYY-MM-DDTHH:MM:SS",
-      "url": "...",
-      "pdf_url": "...",
-      "summary": "Résumé généré par LLM (2-4 phrases)",
-      "status": "ACTIVE_LAW|PROPOSAL|DECISION"
-    }
-  ]
-}"""
+Règles : Traiter tous les docs, résumé 2-4 phrases, utiliser pdf_url en priorité."""
     
     # 4. Créer l'agent avec LangGraph
     agent = create_react_agent(
@@ -128,10 +104,13 @@ async def run_agent_1a_eurlex(
         # Construire la requête
         query = f"Recherche sur EUR-Lex le mot-clé '{keyword}', limite à {max_documents} documents. Pour chaque document, télécharge le PDF, extrait le contenu et génère un résumé. Retourne le JSON au format demandé."
         
+        # Recursion limit dynamique : 10 base + 5 par document
+        recursion_limit = 10 + (5 * max_documents)
+        
         # LangGraph utilise ainvoke avec un dict contenant "messages"
         result = await agent.ainvoke(
             {"messages": [("user", query)]},
-            config={"recursion_limit": 100}  # Augmenté pour traiter plusieurs documents
+            config={"recursion_limit": recursion_limit}
         )
         
         # Extraire la réponse finale

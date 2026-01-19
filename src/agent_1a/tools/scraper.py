@@ -347,16 +347,7 @@ def _determine_eurlex_status(parent_element, doc_type: str) -> str:
 
 @tool
 async def search_eurlex_tool(keyword: str = "CBAM", max_results: int = 10) -> str:
-    """
-    Recherche des documents réglementaires sur EUR-Lex par mot-clé.
-    
-    Args:
-        keyword: Mot-clé de recherche (ex: "CBAM", "EUDR", "CSRD")
-        max_results: Nombre maximum de résultats (défaut: 10)
-    
-    Returns:
-        JSON string contenant les documents trouvés avec métadonnées complètes
-    """
+    """Recherche EUR-Lex. Retourne JSON: {documents:[{title,celex_number,url,pdf_url,document_type,date,status}]}"""
     result = await search_eurlex(keyword, max_results)
     
     return json.dumps({

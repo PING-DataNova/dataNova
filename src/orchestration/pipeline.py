@@ -162,8 +162,35 @@ def run_agent_1a_pipeline(sources: list) -> list:
     
     Agent 1A utilise son outil save_document_data() pour sauvegarder.
     """
-    # TODO (DEV 3): Implémenter l'appel à l'Agent 1A
-    return []
+    import asyncio
+    from src.agent_1a.agent import run_agent_1a_eurlex
+    
+    logger.info("agent_1a_pipeline_started", nb_sources=len(sources))
+    
+    all_documents = []
+    
+    for source in sources:
+        try:
+            keyword = source.get("keyword", "CBAM")
+            max_docs = source.get("max_documents", 10)
+            
+            logger.info("processing_source", keyword=keyword, max_docs=max_docs)
+            
+            # Exécuter l'agent 1A de manière asynchrone
+            result = asyncio.run(run_agent_1a_eurlex(keyword, max_documents=max_docs))
+            
+            if result["status"] == "success":
+                documents = result["output"].get("documents", [])
+                all_documents.extend(documents)
+                logger.info("source_processed", keyword=keyword, nb_docs=len(documents))
+            else:
+                logger.error("source_failed", keyword=keyword, error=result.get("error"))
+        
+        except Exception as e:
+            logger.error("source_error", keyword=source.get("keyword"), error=str(e))
+    
+    logger.info("agent_1a_pipeline_completed", total_documents=len(all_documents))
+    return all_documents
 
 
 def run_agent_1b_pipeline(document: dict, company_profile: dict) -> None:
@@ -173,6 +200,18 @@ def run_agent_1b_pipeline(document: dict, company_profile: dict) -> None:
     Agent 1B utilise son outil save_analysis() pour sauvegarder lui-même
     dans la table 'analyses' avec validation_status="pending".
     """
-    # TODO (DEV 1 Godson): Implémenter l'appel à l'Agent 1B
-    pass
+    from src.agent_1b.agent import run_agent_1b
+    
+    logger.info("agent_1b_analysis_started", document_id=document.get("id"))
+    
+    try:
+        # L'agent 1B n'est pas encore implémenté
+        # Pour l'instant, on log juste l'intention
+        logger.warning("agent_1b_not_implemented", document_id=document.get("id"))
+        # TODO: Décommenter quand Agent 1B sera implémenté
+        # result = run_agent_1b(document["id"], company_profile)
+        # logger.info("agent_1b_analysis_completed", document_id=document["id"], result=result)
+    
+    except Exception as e:
+        logger.error("agent_1b_error", document_id=document.get("id"), error=str(e))
 

@@ -1,7 +1,7 @@
 """
-PDF Extractor with Docling - Agent 1A Tool
-Extrait texte, tableaux et codes NC des PDFs réglementaires EUR-Lex
-Utilise Docling au lieu de pdfplumber (meilleur pour tableaux et structure)
+PDF Extractor with PyMuPDF - Agent 1A Tool
+Extrait texte et codes NC des PDFs réglementaires EUR-Lex
+Utilise PyMuPDF (fitz) - 10-100x plus rapide que Docling
 """
 
 import os
@@ -14,28 +14,26 @@ from typing import List, Dict, Optional
 import requests
 
 try:
-    from docling.document_converter import DocumentConverter
+    import fitz  # PyMuPDF
 except ImportError:
-    raise ImportError("pip install docling")
+    raise ImportError("pip install pymupdf")
 
 logger = logging.getLogger(__name__)
 
 
 class PDFExtractor:
     """
-    Extrait contenu structuré des PDFs EUR-Lex avec Docling.
+    Extrait contenu structuré des PDFs EUR-Lex avec PyMuPDF (ultra rapide).
     
     Fonctionnalités :
-    - Extraction texte complet avec structure (sections, chapitres)
-    - Extraction tableaux (taux CBAM, listes NC codes)
+    - Extraction texte complet (très rapide)
     - Détection automatique codes NC (regex)
     - Extraction montants (EUR, %, tonnes)
     """
     
     def __init__(self):
-        """Initialiser le converter Docling"""
-        self.converter = DocumentConverter()
-        logger.info("✅ Docling PDF Extractor initialized")
+        """Initialiser l'extracteur PDF rapide"""
+        logger.info("✅ PyMuPDF PDF Extractor initialized (fast mode)")
     
     def extract_from_url(self, pdf_url: str) -> Dict[str, any]:
         """
@@ -78,59 +76,47 @@ class PDFExtractor:
     
     def extract_from_file(self, pdf_path: str) -> Dict[str, any]:
         """
-        Extrait contenu d'un fichier PDF local.
+        Extrait contenu d'un fichier PDF local avec PyMuPDF (rapide).
         
         Args:
             pdf_path: Chemin vers le PDF
         
         Returns:
-            Dict avec text, tables, nc_codes, sections, metadata
+            Dict avec text, nc_codes, metadata
         """
         logger.info(f"📄 Extracting PDF: {pdf_path}")
         
         try:
-            # Convertir le PDF avec Docling
-            result = self.converter.convert(pdf_path)
+            # Ouvrir le PDF avec PyMuPDF
+            doc = fitz.open(pdf_path)
             
             # Structure de données
             extracted = {
                 "text": "",
-                "tables": [],
+                "tables": [],  # Non supporté avec PyMuPDF basique
                 "sections": [],
                 "metadata": {},
                 "nc_codes": [],
                 "amounts": []
             }
             
-            # Extraire le contenu
-            if hasattr(result, 'document'):
-                doc = result.document
-                
-                # Texte complet en Markdown
-                extracted["text"] = doc.export_to_markdown()
-                
-                # Métadonnées
-                if hasattr(doc, 'metadata'):
-                    extracted["metadata"] = {
-                        "title": getattr(doc.metadata, 'title', ''),
-                        "author": getattr(doc.metadata, 'author', ''),
-                        "pages": getattr(doc.metadata, 'num_pages', 0)
-                    }
-                
-                # Tableaux structurés
-                if hasattr(doc, 'tables'):
-                    for table in doc.tables:
-                        table_data = self._extract_table_data(table)
-                        extracted["tables"].append(table_data)
-                
-                # Sections (Chapitres, Articles)
-                if hasattr(doc, 'sections'):
-                    for section in doc.sections:
-                        extracted["sections"].append({
-                            "title": getattr(section, 'title', ''),
-                            "level": getattr(section, 'level', 0),
-                            "text": getattr(section, 'text', '')
-                        })
+            # Extraire le texte de toutes les pages
+            text_parts = []
+            for page_num in range(len(doc)):
+                page = doc[page_num]
+                text_parts.append(page.get_text())
+            
+            extracted["text"] = "\n\n".join(text_parts)
+            
+            # Métadonnées
+            extracted["metadata"] = {
+                "title": doc.metadata.get("title", ""),
+                "author": doc.metadata.get("author", ""),
+                "pages": len(doc)
+            }
+            
+            # Fermer le document
+            doc.close()
             
             # Extraction spécifique : NC codes
             extracted["nc_codes"] = self._extract_nc_codes(extracted["text"])
@@ -139,8 +125,7 @@ class PDFExtractor:
             extracted["amounts"] = self._extract_amounts(extracted["text"])
             
             logger.info(f"✅ Extracted: {len(extracted['text'])} chars, "
-                       f"{len(extracted['tables'])} tables, "
-                       f"{len(extracted['nc_codes'])} NC codes")
+                       f"{len(extracted['nc_codes'])} NC codes from {extracted['metadata']['pages']} pages")
             
             return extracted
         
@@ -182,15 +167,25 @@ class PDFExtractor:
         """
         Extrait les codes NC (Nomenclature Combinée) du texte.
         Pattern : 4 ou 8 chiffres (ex: 7208, 4002.19)
+        Exige indicateur CN/NC/TARIC pour réduire faux positifs.
         """
-        # Pattern NC : 4 chiffres, parfois avec point et 2 chiffres (4002.19)
-        nc_pattern = r'\b(?:NC[:\s]+)?(\d{4}(?:\.\d{2})?)\b'
+        # Pattern NC amélioré : exiger CN/NC/TARIC autour
+        nc_pattern = r'(?:CN|NC|TARIC)[\s:]+code[s]?[\s:]*([\d\.\s,-]+)|(?:CN|NC|TARIC)[\s:]+(\d{4}(?:\.\d{2})?)'
         matches = re.findall(nc_pattern, text, re.IGNORECASE)
         
-        # Dédupliquer et filtrer
-        nc_codes = list(set(matches))
+        # Flatten tuples et nettoyer
+        nc_codes = set()
+        for match in matches:
+            for group in match:
+                if group:
+                    # Extraire tous les codes numériques
+                    codes = re.findall(r'\d{4}(?:\.\d{2})?', group)
+                    nc_codes.update(codes)
         
-        return sorted(nc_codes)
+        # Filtrer années/numéros d'articles (éviter 2023, 2024, etc.)
+        filtered = [code for code in nc_codes if not (len(code) == 4 and code.startswith('20'))]
+        
+        return sorted(filtered)
     
     def _extract_amounts(self, text: str) -> List[Dict[str, any]]:
         """
@@ -218,3 +213,43 @@ class PDFExtractor:
             })
         
         return amounts
+
+
+# ═══════════════════════════════════════════════════════════
+# LANGCHAIN TOOL WRAPPER
+# ═══════════════════════════════════════════════════════════
+
+from langchain.tools import tool
+import json
+
+MAX_TEXT_PREVIEW = 8000  # Limite preview texte pour éviter rate limits
+
+@tool
+def extract_pdf_content_tool(file_path: str) -> dict:
+    """Extrait PDF. Retourne dict: {text_preview,text_path,nc_codes,metadata,stats}"""
+    extractor = PDFExtractor()
+    
+    # Détecter si c'est une URL ou un fichier local
+    if file_path.startswith('http'):
+        result = extractor.extract_from_url(file_path)
+    else:
+        result = extractor.extract_from_file(file_path)
+    
+    # Sauvegarder texte complet sur disque
+    text_path = str(Path(file_path).with_suffix(".txt"))
+    Path(text_path).write_text(result["text"], encoding="utf-8")
+    
+    # Retourner dict optimisé (preview seulement)
+    return {
+        "text_preview": result["text"][:MAX_TEXT_PREVIEW],
+        "text_path": text_path,
+        "text_chars": len(result["text"]),
+        "nc_codes": result["nc_codes"][:50],  # Limiter NC codes
+        "amounts": result["amounts"][:20],    # Limiter montants
+        "metadata": result["metadata"],
+        "stats": {
+            "pages": result["metadata"].get("pages", 0),
+            "nc_codes_count": len(result["nc_codes"]),
+            "amounts_count": len(result["amounts"])
+        }
+    }

@@ -262,16 +262,7 @@ if __name__ == "__main__":
 
 @tool
 async def fetch_document_tool(url: str, output_dir: str = "data/documents") -> str:
-    """
-    Télécharge un document depuis une URL et calcule son hash SHA-256.
-    
-    Args:
-        url: URL du document à télécharger
-        output_dir: Répertoire de sauvegarde (défaut: data/documents)
-    
-    Returns:
-        JSON string avec le résultat du téléchargement (chemin, hash, taille)
-    """
+    """Télécharge document. Retourne JSON: {file_path,hash_sha256,file_size}"""
     result = await fetch_document(url, output_dir)
     
     if result.success and result.document:

@@ -11,56 +11,45 @@ from langchain_anthropic import ChatAnthropic
 import structlog
 
 logger = structlog.get_logger()
+# Instance LLM globale (lazy init) pour éviter réinitialisation
+_llm_instance = None
 
-
-@tool
-async def generate_summary_tool(document_content: str, document_title: str = "Document") -> str:
-    """
-    Génère un résumé concis d'un document réglementaire en utilisant Claude.
-    
-    Args:
-        document_content: Contenu textuel complet du document
-        document_title: Titre du document (optionnel)
-    
-    Returns:
-        str: Résumé en 2-4 phrases (JSON string)
-    """
-    logger.info("summary_generation_started", title=document_title, content_length=len(document_content))
-    
-    try:
-        # Limiter le contenu à 15000 caractères pour éviter les timeouts
-        content_preview = document_content[:15000]
-        if len(document_content) > 15000:
-            content_preview += "\n\n[...contenu tronqué...]"
-        
-        # Initialiser Claude
-        llm = ChatAnthropic(
+def _get_llm():
+    """Lazy initialization du LLM pour résumés."""
+    global _llm_instance
+    if _llm_instance is None:
+        _llm_instance = ChatAnthropic(
             model="claude-3-haiku-20240307",
-            api_key="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",  # ⬅️ Ajoutez cette ligne
+            api_key=os.getenv("ANTHROPIC_API_KEY"),
             temperature=0.3,
             max_tokens=500,
             timeout=30
         )
+        logger.info("llm_summarizer_initialized", model="claude-3-haiku")
+    return _llm_instance
 
+@tool
+async def generate_summary_tool(document_content: str, document_title: str = "Document") -> str:
+    """Résume document réglementaire (2-4 phrases)"""
+    logger.info("summary_generation_started", title=document_title, content_length=len(document_content))
+    
+    try:
+        # Limiter le contenu à 8k chars pour éviter rate limits
+        content_preview = document_content[:8000]
+        if len(document_content) > 8000:
+            content_preview += "\n[...tronqué...]"
         
-        # Prompt pour générer le résumé
-        prompt = f"""Tu es un expert en réglementation européenne. Analyse ce document et génère un résumé concis.
+        # Récupérer LLM global (lazy init)
+        llm = _get_llm()
+        
+        # Prompt ultra-court
+        prompt = f"""Résume ce document réglementaire en 2-4 phrases. Identifie: sujet principal, secteurs concernés, dates clés, impacts business.
 
 DOCUMENT: {document_title}
 
-CONTENU:
 {content_preview}
 
-INSTRUCTIONS:
-- Résumé en 2-4 phrases maximum
-- Identifier le sujet principal et l'objectif de la réglementation
-- Mentionner les secteurs/produits concernés (codes NC si présents)
-- Indiquer les dates clés (entrée en vigueur, deadlines)
-- Mentionner les impacts business principaux
-- Être factuel et précis
-
-FORMAT DE SORTIE:
-Retourne UNIQUEMENT le résumé en texte brut (pas de JSON, pas de formatage markdown)."""
+RÉSUMÉ (texte brut uniquement):"""
 
         # Générer le résumé
         response = await llm.ainvoke(prompt)

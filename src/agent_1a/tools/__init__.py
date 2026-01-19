@@ -6,8 +6,8 @@ Dev 1 (Godson) - Responsable des outils de collecte
 
 from .scraper import search_eurlex_tool
 from .document_fetcher import fetch_document_tool
-# from .pdf_extractor import extract_pdf_content_tool  # Dev 2
-# from .summarizer import generate_summary_tool  # Bonus Dev 1
+from .pdf_extractor import extract_pdf_content_tool
+from .summarizer import generate_summary_tool
 
 def get_agent_1a_tools():
     """
@@ -19,14 +19,14 @@ def get_agent_1a_tools():
     return [
         search_eurlex_tool,
         fetch_document_tool,
-        # extract_pdf_content_tool,  # Dev 2 - À ajouter
-        # generate_summary_tool  # Bonus - À réactiver si besoin
+        extract_pdf_content_tool,
+        generate_summary_tool
     ]
 
 __all__ = [
     "search_eurlex_tool",
     "fetch_document_tool",
-    # "extract_pdf_content_tool",  # Dev 2
-    # "generate_summary_tool",  # Bonus
+    "extract_pdf_content_tool",
+    "generate_summary_tool",
     "get_agent_1a_tools"
 ]
