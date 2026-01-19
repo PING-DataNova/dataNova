@@ -1,7 +1,7 @@
 """
 EUR-Lex Scraper - Recherche et extraction de documents réglementaires
 
-Scrape directement EUR-Lex pour récupérer les réglementations par mot-clé.
+Scrape directement EUR-Lex avec Playwright pour contourner AWS WAF.
 
 Responsable: Dev 1
 """
@@ -17,8 +17,48 @@ from langchain.tools import tool
 import json
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, HttpUrl
+from playwright.async_api import async_playwright
 
 logger = structlog.get_logger()
+
+# User-Agent pour éviter les blocages
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+]
+
+# Mapping des types de documents CELEX
+CELEX_DOCUMENT_TYPES = {
+    'R': 'REGULATION',
+    'D': 'DIRECTIVE',
+    'A': 'OPINION',
+    'C': 'COMMUNICATION',
+    'E': 'DECISION',
+    'L': 'LEGISLATION',
+}
+
+# Types de documents à inclure (seulement Regulations et Directives)
+ALLOWED_DOCUMENT_TYPES = {'R', 'D'}
+
+
+def _get_document_type_from_celex(celex_number: str) -> str:
+    """Extrait le type de document depuis le code CELEX (6ème caractère)"""
+    if not celex_number or len(celex_number) < 6:
+        return "UNKNOWN"
+    doc_type_char = celex_number[5].upper()
+    return CELEX_DOCUMENT_TYPES.get(doc_type_char, "UNKNOWN")
+
+
+def _should_include_document(celex_number: Optional[str]) -> bool:
+    """Filtre: garde seulement Regulations (R) et Directives (D)"""
+    if not celex_number or len(celex_number) < 6:
+        return False
+    doc_type_char = celex_number[5].upper()
+    should_include = doc_type_char in ALLOWED_DOCUMENT_TYPES
+    if not should_include:
+        doc_type = CELEX_DOCUMENT_TYPES.get(doc_type_char, "UNKNOWN")
+        logger.debug("document_filtered_out", celex=celex_number, type=doc_type)
+    return should_include
 
 
 class EURLexDocument(BaseModel):
@@ -51,7 +91,7 @@ async def search_eurlex(
     language: str = "en"
 ) -> EURLexSearchResult:
     """
-    Recherche des documents sur EUR-Lex par mot-clé.
+    Recherche des documents sur EUR-Lex avec Playwright (contourne AWS WAF).
     
     Args:
         keyword: Mot-clé de recherche (ex: "CBAM", "EUDR", "CSRD")
@@ -61,17 +101,31 @@ async def search_eurlex(
     Returns:
         EURLexSearchResult: Résultats de la recherche
     """
-    logger.info("eurlex_search_started", keyword=keyword, max_results=max_results)
+    logger.info("eurlex_search_started", keyword=keyword, max_results=max_results, method="playwright")
     
     # Construire l'URL de recherche
     search_url = f"https://eur-lex.europa.eu/search.html?text={quote(keyword)}&lang={language}&type=quick&scope=EURLEX"
     
     try:
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-            response = await client.get(search_url)
-            response.raise_for_status()
+        # Utiliser Playwright pour contourner AWS WAF
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            
+            # Naviguer vers la page (timeout augmenté + domcontentloaded au lieu de networkidle)
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
+            
+            # Attendre que les résultats soient chargés (liens avec id "cellar_X")
+            try:
+                await page.wait_for_selector('a[id^="cellar_"]', timeout=30000)
+            except Exception:
+                logger.warning("eurlex_no_results_found", keyword=keyword)
+            
+            # Récupérer le contenu HTML
+            content = await page.content()
+            await browser.close()
         
-        soup = BeautifulSoup(response.text, 'lxml')
+        soup = BeautifulSoup(content, 'lxml')
         documents = []
         
         # Extraire le nombre total de résultats
@@ -145,6 +199,10 @@ async def search_eurlex(
                         celex_number = celex_match.group(1)
                         pdf_url = f"https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:{celex_number}"
                 
+                # ✅ FILTRAGE: Ignorer opinions (A) et communications (C)
+                if not _should_include_document(celex_number):
+                    continue
+                
                 # Extraire la date de publication
                 pub_date = None
                 
@@ -181,27 +239,8 @@ async def search_eurlex(
                     if date_match:
                         pub_date = _parse_eurlex_date(date_match.group(1))
                 
-                # Déterminer le type de document
-                doc_type = _determine_eurlex_document_type(title, celex_number)
-                
-                # FILTRE : Exclure les documents non contraignants
-                # Ne garder que les actes juridiques contraignants
-                binding_types = [
-                    "REGULATION",
-                    "IMPLEMENTING_REGULATION",
-                    "DELEGATED_REGULATION",
-                    "DIRECTIVE",
-                    "DECISION"
-                ]
-                
-                # Si le document n'est pas un acte juridique, on le saute
-                if doc_type not in binding_types:
-                    logger.debug(
-                        "document_filtered_out",
-                        doc_type=doc_type,
-                        title=title[:80]
-                    )
-                    continue
+                # Déterminer le type de document depuis CELEX
+                doc_type = _get_document_type_from_celex(celex_number)
                 
                 # Déterminer le statut
                 status = _determine_eurlex_status(result_container, doc_type)
