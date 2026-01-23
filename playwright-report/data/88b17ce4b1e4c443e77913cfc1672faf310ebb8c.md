@@ -1,0 +1,58 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e8]: G
+      - heading "Décideur Hutchinson" [level=2] [ref=e9]
+    - navigation [ref=e10]:
+      - generic [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+        - generic [ref=e13]: Dashboard
+      - generic [ref=e14] [cursor=pointer]:
+        - img [ref=e15]
+        - generic [ref=e18]: Profil
+      - generic [ref=e20] [cursor=pointer]: Déconnexion
+  - generic [ref=e21]:
+    - banner [ref=e22]:
+      - generic [ref=e23]:
+        - img [ref=e25]
+        - heading "Dashboard Décideurs" [level=1] [ref=e28]
+      - button "Exporter Dashboard PDF" [ref=e30] [cursor=pointer]:
+        - img [ref=e31]
+        - text: Exporter Dashboard PDF
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - heading "Indicateurs clés" [level=2] [ref=e36]
+        - generic [ref=e37]:
+          - generic [ref=e38]:
+            - img [ref=e40]
+            - generic [ref=e43]: "123"
+            - generic [ref=e44]: Réglementations suivies
+          - generic [ref=e45]:
+            - img [ref=e48]
+            - generic [ref=e51]: 78% / 22%
+            - generic [ref=e52]: En cours vs Validées
+          - generic [ref=e53]:
+            - img [ref=e55]
+            - generic [ref=e57]: "15"
+            - generic [ref=e58]: Risques élevés détectés
+          - generic [ref=e59]:
+            - img [ref=e61]
+            - generic [ref=e63]: "7"
+            - generic [ref=e64]: Deadlines critiques (6 mois)
+      - generic [ref=e65]:
+        - heading "Visualisations" [level=2] [ref=e66]
+        - generic [ref=e67]:
+          - generic [ref=e68]:
+            - heading "Répartition par date d'application" [level=3] [ref=e69]
+            - generic [ref=e70]:
+              - img [ref=e71]
+              - paragraph [ref=e72]: Graphique de répartition temporelle
+          - generic [ref=e73]:
+            - heading "Répartition par process" [level=3] [ref=e74]
+            - generic [ref=e75]:
+              - img [ref=e76]
+              - paragraph [ref=e79]: Graphique de répartition par processus
+```

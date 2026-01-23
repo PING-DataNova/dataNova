@@ -1,0 +1,136 @@
+<testsuites id="" name="" tests="4" failures="3" skipped="0" errors="0" time="15.40182">
+<testsuite name="auth.spec.ts" timestamp="2026-01-22T14:28:43.384Z" hostname="chromium" tests="4" failures="3" skipped="0" time="28.239" errors="0">
+<testcase name="Authentification et Navigation › Connexion juriste et accès interface juridique" classname="auth.spec.ts" time="8.375">
+<failure message="auth.spec.ts:5:3 Connexion juriste et accès interface juridique" type="FAILURE">
+<![CDATA[  [chromium] › auth.spec.ts:5:3 › Authentification et Navigation › Connexion juriste et accès interface juridique 
+
+    Error: expect(page).toHaveURL(expected) failed
+
+    Expected pattern: /legal-team/
+    Received string:  "http://localhost:3008/"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveURL" with timeout 5000ms
+        9 × unexpected value "http://localhost:3008/"
+
+
+      16 |     
+      17 |     // Vérifier la redirection vers l'interface juridique
+    > 18 |     await expect(page).toHaveURL(/legal-team/);
+         |                        ^
+      19 |     
+      20 |     // Vérifier que les éléments principaux sont présents
+      21 |     await expect(page.locator('h1')).toContainText('Équipe Juridique');
+        at C:\Users\Utilisateur\frontend-ping\tests\auth.spec.ts:18:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\auth-Authentification-et-N-6ff6d-t-accès-interface-juridique-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\auth-Authentification-et-N-6ff6d-t-accès-interface-juridique-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\test-results\auth-Authentification-et-N-6ff6d-t-accès-interface-juridique-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|auth-Authentification-et-N-6ff6d-t-accès-interface-juridique-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|auth-Authentification-et-N-6ff6d-t-accès-interface-juridique-chromium\video.webm]]
+
+[[ATTACHMENT|auth-Authentification-et-N-6ff6d-t-accès-interface-juridique-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Authentification et Navigation › Connexion décideur et accès dashboard" classname="auth.spec.ts" time="8.656">
+<failure message="auth.spec.ts:28:3 Connexion décideur et accès dashboard" type="FAILURE">
+<![CDATA[  [chromium] › auth.spec.ts:28:3 › Authentification et Navigation › Connexion décideur et accès dashboard 
+
+    Error: expect(page).toHaveURL(expected) failed
+
+    Expected pattern: /dashboard/
+    Received string:  "http://localhost:3008/"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveURL" with timeout 5000ms
+        9 × unexpected value "http://localhost:3008/"
+
+
+      36 |     
+      37 |     // Vérifier la redirection vers le dashboard
+    > 38 |     await expect(page).toHaveURL(/dashboard/);
+         |                        ^
+      39 |     
+      40 |     // Vérifier que les KPIs sont visibles
+      41 |     await expect(page.locator('.kpi-card')).toHaveCount(4);
+        at C:\Users\Utilisateur\frontend-ping\tests\auth.spec.ts:38:24
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\auth-Authentification-et-N-e41f5-décideur-et-accès-dashboard-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\auth-Authentification-et-N-e41f5-décideur-et-accès-dashboard-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\test-results\auth-Authentification-et-N-e41f5-décideur-et-accès-dashboard-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|auth-Authentification-et-N-e41f5-décideur-et-accès-dashboard-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|auth-Authentification-et-N-e41f5-décideur-et-accès-dashboard-chromium\video.webm]]
+
+[[ATTACHMENT|auth-Authentification-et-N-e41f5-décideur-et-accès-dashboard-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+<testcase name="Authentification et Navigation › Recherche de réglementations" classname="auth.spec.ts" time="7.678">
+<system-out>
+<![CDATA[✅ Recherche: 4 → 0 réglementations
+]]>
+</system-out>
+</testcase>
+<testcase name="Authentification et Navigation › Validation d&apos;une réglementation" classname="auth.spec.ts" time="3.53">
+<failure message="auth.spec.ts:72:3 Validation d&apos;une réglementation" type="FAILURE">
+<![CDATA[  [chromium] › auth.spec.ts:72:3 › Authentification et Navigation › Validation d'une réglementation 
+
+    TypeError: expect(...).toHaveCount.toBeGreaterThan is not a function
+
+      78 |     
+      79 |     // Attendre que la liste se charge
+    > 80 |     await expect(page.locator('.regulation-card')).toHaveCount.toBeGreaterThan(0);
+         |                                                                ^
+      81 |     
+      82 |     // Trouver une réglementation avec statut "Pending"
+      83 |     const pendingCard = page.locator('.regulation-card').filter({ hasText: 'Pending' }).first();
+        at C:\Users\Utilisateur\frontend-ping\tests\auth.spec.ts:80:64
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    ..\test-results\auth-Authentification-et-N-f13a9-dation-d-une-réglementation-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    ..\test-results\auth-Authentification-et-N-f13a9-dation-d-une-réglementation-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: ..\test-results\auth-Authentification-et-N-f13a9-dation-d-une-réglementation-chromium\error-context.md
+]]>
+</failure>
+<system-out>
+<![CDATA[
+[[ATTACHMENT|auth-Authentification-et-N-f13a9-dation-d-une-réglementation-chromium\test-failed-1.png]]
+
+[[ATTACHMENT|auth-Authentification-et-N-f13a9-dation-d-une-réglementation-chromium\video.webm]]
+
+[[ATTACHMENT|auth-Authentification-et-N-f13a9-dation-d-une-réglementation-chromium\error-context.md]]
+]]>
+</system-out>
+</testcase>
+</testsuite>
+</testsuites>

@@ -5,13 +5,42 @@
   margin-bottom: 16px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
   border: 2px solid #e5e5e5;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(5px);
+}
+
+.regulation-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+
+.regulation-card:hover::before {
+  left: 100%;
 }
 
 .regulation-card:hover {
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3), 0 0 20px rgba(220, 38, 38, 0.1);
   border-color: #dc2626;
-  transform: translateY(-3px);
+  transform: translateY(-6px) scale(1.02);
+  background: linear-gradient(135deg, #ffffff 0%, #fefefe 100%);
+}
+
+.regulation-card:hover .regulation-title {
+  color: #dc2626;
+  transform: translateX(2px);
+}
+
+.regulation-card:hover .regulation-status {
+  transform: scale(1.05);
 }
 
 .regulation-header {
@@ -31,6 +60,23 @@
   color: #1a2332;
   margin: 0 0 8px 0;
   line-height: 1.4;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.regulation-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #dc2626, #3b82f6);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.regulation-card:hover .regulation-title::after {
+  width: 100%;
 }
 
 .regulation-reference {
@@ -43,11 +89,18 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .status-icon {
   width: 18px;
   height: 18px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.regulation-status:hover .status-icon {
+  transform: rotate(10deg) scale(1.1);
+}
 }
 
 .status-icon.validated {

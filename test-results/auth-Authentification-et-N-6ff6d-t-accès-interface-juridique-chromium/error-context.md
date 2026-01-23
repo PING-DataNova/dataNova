@@ -1,0 +1,97 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e8]: G
+      - heading "Juriste Hutchinson" [level=2] [ref=e9]
+    - navigation [ref=e10]:
+      - generic [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+        - generic [ref=e15]: Réglementations
+        - generic [ref=e16]: "2"
+      - generic [ref=e17] [cursor=pointer]:
+        - img [ref=e18]
+        - generic [ref=e20]: À revoir
+        - generic [ref=e21]: "1"
+      - generic [ref=e22] [cursor=pointer]:
+        - img [ref=e23]
+        - generic [ref=e26]: Validées
+        - generic [ref=e27]: "1"
+      - generic [ref=e28] [cursor=pointer]:
+        - img [ref=e29]
+        - generic [ref=e33]: Rejetées
+      - generic [ref=e34] [cursor=pointer]:
+        - img [ref=e35]
+        - generic [ref=e38]: Profil
+      - generic [ref=e39] [cursor=pointer]:
+        - img [ref=e40]
+        - generic [ref=e43]: Déconnexion
+  - generic [ref=e44]:
+    - banner [ref=e45]:
+      - generic [ref=e46]:
+        - heading "Toutes les réglementations" [level=1] [ref=e47]
+        - paragraph [ref=e48]: Vue d'ensemble
+      - generic [ref=e49]:
+        - generic [ref=e50]:
+          - img [ref=e51]
+          - textbox "Rechercher..." [ref=e54]
+        - button "Filtres" [ref=e55] [cursor=pointer]:
+          - img [ref=e56]
+          - text: Filtres
+        - button [ref=e57] [cursor=pointer]:
+          - img [ref=e58]
+        - button "Déconnexion" [ref=e61] [cursor=pointer]
+    - generic [ref=e62]:
+      - paragraph [ref=e63]: 4 réglementations au total
+      - generic [ref=e64]:
+        - img [ref=e65]
+        - generic [ref=e67]: "Erreur: Mode démo - Backend non connecté"
+        - button "Réessayer" [ref=e68] [cursor=pointer]
+    - generic [ref=e69]:
+      - generic [ref=e70]:
+        - generic [ref=e71]:
+          - generic [ref=e72]:
+            - heading "Règlement sur les produits biocides (EU) 528/2012" [level=3] [ref=e73]
+            - text: EU 528/2012
+          - generic [ref=e74]:
+            - img [ref=e75]
+            - generic [ref=e78]: En attente
+        - paragraph [ref=e79]: Règlemente la mise sur le marché et l'utilisation des biocides.
+        - generic [ref=e80]:
+          - button "Valider" [ref=e81] [cursor=pointer]
+          - button "Rejeter" [ref=e82] [cursor=pointer]
+          - button "À revoir" [ref=e83] [cursor=pointer]
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - heading "Directive sur la protection des travailleurs contre les risques liés à l'exposition à des agents chimiques (98/24/CE)" [level=3] [ref=e87]
+            - text: 98/24/CE
+          - generic [ref=e88]:
+            - img [ref=e89]
+            - generic [ref=e92]: En attente
+        - paragraph [ref=e93]: Protège les travailleurs exposés aux substances chimiques dangereuses.
+        - generic [ref=e94]:
+          - button "Valider" [ref=e95] [cursor=pointer]
+          - button "Rejeter" [ref=e96] [cursor=pointer]
+          - button "À revoir" [ref=e97] [cursor=pointer]
+      - generic [ref=e98]:
+        - generic [ref=e99]:
+          - generic [ref=e100]:
+            - heading "Règlement REACH (CE) N° 1907/2006" [level=3] [ref=e101]
+            - text: CE 1907/2006
+          - generic [ref=e102]:
+            - img [ref=e103]
+            - generic [ref=e106]: Validée
+        - paragraph [ref=e107]: Enregistrement, évaluation, autorisation et restriction des substances chimiques.
+      - generic [ref=e108]:
+        - generic [ref=e109]:
+          - generic [ref=e110]:
+            - heading "Directive CLP (CE) N° 1272/2008" [level=3] [ref=e111]
+            - text: CE 1272/2008
+          - generic [ref=e112]:
+            - img [ref=e113]
+            - generic [ref=e115]: À revoir
+        - paragraph [ref=e116]: Classification, étiquetage et emballage des substances et mélanges.
+```

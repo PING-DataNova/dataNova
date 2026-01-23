@@ -1,0 +1,38 @@
+{
+  "name": "@hutchinson/frontend-ping-tests",
+  "version": "1.0.0",
+  "description": "Tests Playwright + Cucumber pour la plateforme de veille réglementaire",
+  "scripts": {
+    "test": "cucumber-js",
+    "test:debug": "cucumber-js --format @cucumber/pretty-formatter",
+    "test:html": "cucumber-js --format html:test-results/cucumber-report.html",
+    "test:parallel": "cucumber-js --parallel 2",
+    "playwright:install": "playwright install",
+    "playwright:test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^10.0.0",
+    "@playwright/test": "^1.40.0",
+    "playwright": "^1.40.0",
+    "typescript": "^5.2.0",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0"
+  },
+  "cucumber": {
+    "requireModule": [
+      "ts-node/register"
+    ],
+    "require": [
+      "tests/steps/*.ts"
+    ],
+    "format": [
+      "progress",
+      "html:test-results/cucumber-report.html",
+      "json:test-results/cucumber-report.json"
+    ],
+    "formatOptions": {
+      "snippetInterface": "async-await"
+    }
+  }
+}
