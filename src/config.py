@@ -23,12 +23,13 @@ class Settings(BaseSettings):
     logs_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent / "logs")
 
     # API Keys
-    anthropic_api_key: str = Field(default="", description="Clé API Anthropic (Claude)")
+    anthropic_api_key: str = Field(default="", description="ClÇ¸ API Anthropic (Claude)")
+    google_api_key: str = Field(default="", description="Cle API Google (Gemini)")
 
     # Database
     database_url: str = Field(
         default="sqlite:///./data/datanova.db",
-        description="URL de connexion à la base de données",
+        description="URL de connexion Çÿ la base de donnÇ¸es",
     )
 
     # Email
@@ -43,7 +44,7 @@ class Settings(BaseSettings):
 
     # Scheduling
     scheduler_enabled: bool = Field(default=True)
-    cron_schedule: str = Field(default="0 8 * * 1", description="Chaque lundi à 8h")
+    cron_schedule: str = Field(default="0 8 * * 1", description="Chaque lundi Çÿ 8h")
 
     # Logging
     log_level: str = Field(default="INFO")
@@ -70,7 +71,7 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Créer les répertoires s'ils n'existent pas
+        # CrÇ¸er les rÇ¸pertoires s'ils n'existent pas
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self.logs_dir.mkdir(parents=True, exist_ok=True)
 

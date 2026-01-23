@@ -1,71 +1,74 @@
 """
-Agent 2 - Analyse d'impact
-
-TODO (Dev 4): Implémenter l'agent d'analyse d'impact
-
-Fonctionnalités à implémenter :
-- Récupération des analyses validées (validation_status="approved")
-- Calcul du score d'impact (0-1)
-- Détermination de la criticité (CRITICAL/HIGH/MEDIUM/LOW)
-- Analyse des impacts fournisseurs/produits/flux
-- Estimation financière
-- Génération de recommandations
-- Création d'ImpactAssessment
-- Création d'Alert enrichie
+Agent 2 - Analyse d'impact (prototype base sur l'agent ReAct).
 """
 
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain_anthropic import ChatAnthropic
-from langchain.prompts import PromptTemplate
+from langchain.agents import create_agent
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+from src.agent_2.prompts.agent_2_prompt import AGENT_2_PROMPT
+from src.agent_2.tools import get_agent_2_tools
+from src.config import settings
 
 
 class Agent2:
     """
-    Agent 2 - Analyse d'impact et recommandations
-    
-    Responsable : Dev 4
-    
-    TODO: Implémenter
-    - __init__(): Initialisation LLM, outils
-    - run(): Pipeline principal
-    - _create_impact_assessment(): Créer ImpactAssessment
-    - _generate_alert(): Créer Alert
+    Agent 2 - Analyse d'impact et recommandations.
+
+    Version prototype: recuperation des analyses via outil.
     """
-    
+
     def __init__(self):
+        if not settings.google_api_key:
+            raise ValueError(
+                "GOOGLE_API_KEY renseigné dans .env"
+            )
+
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            api_key=settings.google_api_key,
+            temperature=0,
+        )
+
+        tools = get_agent_2_tools()
+
+        self.agent = create_agent(
+            model=llm,
+            tools=tools,
+            system_prompt=AGENT_2_PROMPT,
+            debug=False,
+        )
+
+    def run(self, validation_status: str = "approved", limit: int = 5):
         """
-        TODO: Initialiser l'agent
-        
-        - Charger ChatAnthropic (Claude 3.5 Sonnet)
-        - Charger les outils (impact_analyzer, scorer, etc.)
-        - Créer le prompt Agent 2
-        - Créer AgentExecutor
+        Recupere les analyses et renvoie une synthese.
         """
-        pass
-    
-    def run(self):
-        """
-        TODO: Exécuter le pipeline Agent 2
-        
-        1. Récupérer analyses avec validation_status="approved"
-        2. Pour chaque analyse :
-           - Calculer score et criticité
-           - Analyser impacts
-           - Générer recommandations
-           - Créer ImpactAssessment
-           - Créer Alert
-        3. Logger l'exécution
-        """
-        pass
-    
+        task = (
+            "Recupere les analyses depuis la base de donnees "
+            f"avec validation_status='{validation_status}' et limite {limit}."
+        )
+        return self.agent.invoke({"messages": [{"role": "user", "content": task}]})
+
     def analyze_impact(self, analysis_id: str):
         """
-        TODO: Analyser l'impact d'une analyse validée
-        
-        Args:
-            analysis_id: ID de l'analyse validée
-        
-        Returns:
-            ImpactAssessment créé
+        Recupere une analyse precise par ID.
         """
-        pass
+        task = f"Recupere l'analyse avec analysis_id='{analysis_id}'."
+        return self.agent.invoke({"messages": [{"role": "user", "content": task}]})
+
+
+if __name__ == "__main__":
+    agent = Agent2()
+    result = agent.run()
+    messages = result.get("messages", [])
+    if messages:
+        content = messages[-1].content
+        if isinstance(content, list):
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text_parts.append(item.get("text", ""))
+            print("\n".join([t for t in text_parts if t]))
+        else:
+            print(content)
+    else:
+        print(result)

@@ -1,10 +1,7 @@
 """
-Prompts pour Agent 2
-
-TODO (Dev 4): Définir les prompts LLM
+Prompts pour Agent 2.
 """
 
-# TODO: Importer les prompts
-# from .agent_2_prompt import AGENT_2_PROMPT
+from .agent_2_prompt import AGENT_2_PROMPT
 
-__all__ = []
+__all__ = ["AGENT_2_PROMPT"]
