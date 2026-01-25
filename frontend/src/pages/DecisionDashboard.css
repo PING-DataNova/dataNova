@@ -47,6 +47,7 @@
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  animation: pulse 3s ease-in-out infinite;
 }
 
 .decision-logo-icon::before {
@@ -70,6 +71,7 @@
 .decision-logo-icon:hover {
   transform: scale(1.1) rotate(5deg);
   box-shadow: 0 8px 25px rgba(220, 38, 38, 0.6);
+  animation: tada 1s ease;
 }
 
 .decision-user-name {
@@ -90,13 +92,15 @@
   gap: 12px;
   padding: 12px 20px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: rgba(255, 255, 255, 0.8);
 }
 
 .decision-nav-item:hover {
   background: rgba(255, 255, 255, 0.1);
   color: white;
+  transform: translateX(8px);
+  box-shadow: inset 4px 0 0 #dc2626;
 }
 
 .decision-nav-item.active {
@@ -149,6 +153,14 @@
 .decision-notification-icon {
   font-size: 24px;
   color: #f59e0b;
+  animation: swing 2s ease-in-out infinite;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.decision-notification-icon:hover {
+  animation: tada 1s ease;
+  transform: scale(1.2);
 }
 
 .decision-header-left h1 {
@@ -171,13 +183,31 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.decision-export-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s ease;
+}
+
+.decision-export-btn:hover::before {
+  left: 100%;
 }
 
 .decision-export-btn:hover {
-  background: #b91c1c;
-  transform: translateY(-1px);
+  background: linear-gradient(135deg, #b91c1c 0%, #7f1d1d 100%);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 8px 20px rgba(220, 38, 38, 0.5);
 }
 
 .btn-icon {
@@ -219,13 +249,15 @@
   text-align: center;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
   border: 2px solid #e5e5e5;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .decision-indicator-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  transform: translateY(-8px) scale(1.03);
+  box-shadow: 0 15px 40px rgba(220, 38, 38, 0.3);
   border-color: #dc2626;
+  background: linear-gradient(135deg, #ffffff 0%, #fee2e2 100%);
 }
 
 .decision-indicator-card.warning {
