@@ -1,0 +1,792 @@
+openapi: 3.1.0
+info:
+  title: DataNova API - Plateforme Veille Réglementaire Hutchinson
+  description: |
+    API REST pour la veille réglementaire automatisée (CBAM, EUDR, CSRD)
+    
+    **Architecture:**
+    - Agent 1A: Collecte documents EUR-Lex + CBAM Guidance
+    - Agent 1B: Analyse de pertinence (LLM)
+    - Agent 2: Évaluation d'impact détaillée
+    - UI: Validation juriste + Dashboard décideur
+    
+  version: 1.0.0
+  contact:
+    name: Backend Team
+    email: backend@hutchinson.com
+
+servers:
+  - url: http://localhost:8000/api
+    description: Développement local
+  - url: https://datanova.hutchinson.com/api
+    description: Production
+
+tags:
+  - name: Documents
+    description: Gestion des documents réglementaires collectés
+  - name: Analyses
+    description: Analyses de pertinence (Agent 1B)
+  - name: Impacts
+    description: Évaluations d'impact (Agent 2)
+  - name: Alertes
+    description: Alertes et notifications
+  - name: Stats
+    description: Statistiques et métriques
+  - name: Auth
+    description: Authentification
+
+paths:
+  # ==================== AUTHENTIFICATION ====================
+  /auth/login:
+    post:
+      summary: Connexion utilisateur
+      description: Authentifie un utilisateur (juriste ou décideur)
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: juriste@hutchinson.com
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  token:
+                    type: string
+                    description: JWT token
+        '401':
+          description: Identifiants invalides
+
+  # ==================== DOCUMENTS ====================
+  /documents:
+    get:
+      summary: Liste des documents réglementaires
+      description: Récupère tous les documents collectés par Agent 1A avec filtres
+      tags: [Documents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: regulation_type
+          in: query
+          description: Type de réglementation (CBAM, EUDR, CSRD)
+          schema:
+            type: string
+            enum: [CBAM, EUDR, CSRD]
+        - name: status
+          in: query
+          description: Statut du document
+          schema:
+            type: string
+            enum: [new, modified, unchanged]
+        - name: workflow_status
+          in: query
+          description: Statut dans le workflow
+          schema:
+            type: string
+            enum: [raw, analyzed, rejected_analysis, validated, rejected_validation]
+        - name: search
+          in: query
+          description: Recherche dans titre
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Liste des documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Document'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /documents/{id}:
+    get:
+      summary: Détails d'un document
+      description: Récupère un document avec son analyse et impact
+      tags: [Documents]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Document trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDetail'
+        '404':
+          description: Document non trouvé
+
+  # ==================== ANALYSES ====================
+  /analyses:
+    get:
+      summary: Liste des analyses de pertinence
+      description: Récupère les analyses réalisées par Agent 1B
+      tags: [Analyses]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: validation_status
+          in: query
+          description: Statut de validation
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+        - name: is_relevant
+          in: query
+          description: Filtrer par pertinence
+          schema:
+            type: boolean
+        - name: min_confidence
+          in: query
+          description: Confiance minimale (0-1)
+          schema:
+            type: number
+            minimum: 0
+            maximum: 1
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Liste des analyses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  analyses:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Analysis'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+
+  /analyses/{id}/validate:
+    put:
+      summary: Valider/Rejeter une analyse
+      description: Validation juriste d'une analyse Agent 1B
+      tags: [Analyses]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [validation_status]
+              properties:
+                validation_status:
+                  type: string
+                  enum: [approved, rejected]
+                validation_comment:
+                  type: string
+                  description: Commentaire du juriste
+      responses:
+        '200':
+          description: Validation enregistrée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Analysis'
+        '400':
+          description: Statut invalide
+        '404':
+          description: Analyse non trouvée
+
+  # ==================== IMPACTS ====================
+  /impacts:
+    get:
+      summary: Liste des évaluations d'impact
+      description: Récupère les impacts analysés par Agent 2
+      tags: [Impacts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: criticality
+          in: query
+          description: Niveau de criticité
+          schema:
+            type: string
+            enum: [CRITICAL, HIGH, MEDIUM, LOW]
+        - name: min_score
+          in: query
+          description: Score minimal (0-1)
+          schema:
+            type: number
+            minimum: 0
+            maximum: 1
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Liste des impacts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  impacts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ImpactAssessment'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+
+  /impacts/{id}:
+    get:
+      summary: Détails d'une évaluation d'impact
+      description: Récupère les détails complets d'un impact (Agent 2)
+      tags: [Impacts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Impact trouvé
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImpactAssessmentDetail'
+        '404':
+          description: Impact non trouvé
+
+  # ==================== ALERTES ====================
+  /alerts:
+    get:
+      summary: Liste des alertes
+      description: Récupère les alertes générées par Agent 2
+      tags: [Alertes]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, sent, failed]
+        - name: alert_type
+          in: query
+          schema:
+            type: string
+            enum: [email, webhook, slack]
+      responses:
+        '200':
+          description: Liste des alertes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+                  total:
+                    type: integer
+
+  # ==================== STATISTIQUES ====================
+  /stats/dashboard:
+    get:
+      summary: Statistiques pour le dashboard
+      description: Métriques globales pour le dashboard décideur
+      tags: [Stats]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Statistiques du dashboard
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  /stats/documents:
+    get:
+      summary: Statistiques des documents
+      description: Répartition et évolution des documents
+      tags: [Stats]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          description: Période d'analyse
+          schema:
+            type: string
+            enum: [7d, 30d, 90d, 1y]
+            default: 30d
+      responses:
+        '200':
+          description: Stats documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentStats'
+
+  /stats/analyses:
+    get:
+      summary: Statistiques des analyses
+      description: Métriques de pertinence et validation
+      tags: [Stats]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Stats analyses
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisStats'
+
+# ==================== COMPOSANTS ====================
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Non authentifié
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              detail:
+                type: string
+                example: Non authentifié
+
+  schemas:
+    # -------------------- User --------------------
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [juridique, decisive]
+          description: Type d'utilisateur
+
+    # -------------------- Document --------------------
+    Document:
+      type: object
+      required:
+        - id
+        - title
+        - regulation_type
+        - status
+        - workflow_status
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          description: Titre du document réglementaire
+        source_url:
+          type: string
+          format: uri
+          description: URL EUR-Lex ou CBAM Guidance
+        regulation_type:
+          type: string
+          enum: [CBAM, EUDR, CSRD]
+          description: Type de réglementation
+        publication_date:
+          type: string
+          format: date-time
+          description: Date de publication officielle
+        status:
+          type: string
+          enum: [new, modified, unchanged]
+          description: Statut de collecte Agent 1A
+        workflow_status:
+          type: string
+          enum: [raw, analyzed, rejected_analysis, validated, rejected_validation]
+          description: Position dans le workflow
+        nc_codes:
+          type: array
+          items:
+            type: string
+          description: Codes NC trouvés dans le document
+        first_seen:
+          type: string
+          format: date-time
+        last_checked:
+          type: string
+          format: date-time
+
+    DocumentDetail:
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - type: object
+          properties:
+            content:
+              type: string
+              description: Texte complet extrait du PDF
+            metadata:
+              type: object
+              description: Métadonnées du document
+            analysis:
+              $ref: '#/components/schemas/Analysis'
+            impact_assessment:
+              $ref: '#/components/schemas/ImpactAssessment'
+
+    # -------------------- Analysis --------------------
+    Analysis:
+      type: object
+      required:
+        - id
+        - document_id
+        - is_relevant
+        - confidence
+        - validation_status
+      properties:
+        id:
+          type: string
+          format: uuid
+        document_id:
+          type: string
+          format: uuid
+        is_relevant:
+          type: boolean
+          description: Document pertinent pour Hutchinson
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Niveau de confiance LLM
+        matched_keywords:
+          type: array
+          items:
+            type: string
+          description: Mots-clés détectés
+        matched_nc_codes:
+          type: array
+          items:
+            type: string
+          description: Codes NC correspondants
+        llm_reasoning:
+          type: string
+          description: Explication du LLM
+        validation_status:
+          type: string
+          enum: [pending, approved, rejected]
+          description: Statut de validation juriste
+        validation_comment:
+          type: string
+          description: Commentaire du juriste
+        validated_by:
+          type: string
+          description: Email du validateur
+        validated_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
+    # -------------------- Impact Assessment --------------------
+    ImpactAssessment:
+      type: object
+      required:
+        - id
+        - analysis_id
+        - total_score
+        - criticality
+      properties:
+        id:
+          type: string
+          format: uuid
+        analysis_id:
+          type: string
+          format: uuid
+        total_score:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Score d'impact global
+        criticality:
+          type: string
+          enum: [CRITICAL, HIGH, MEDIUM, LOW]
+          description: Niveau de criticité
+        affected_suppliers:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              impact_level:
+                type: string
+        affected_products:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              nc_code:
+                type: string
+              impact:
+                type: string
+        confidence_level:
+          type: string
+          enum: [HIGH, MEDIUM, LOW]
+        created_at:
+          type: string
+          format: date-time
+
+    ImpactAssessmentDetail:
+      allOf:
+        - $ref: '#/components/schemas/ImpactAssessment'
+        - type: object
+          properties:
+            affected_customs_flows:
+              type: array
+              items:
+                type: object
+                properties:
+                  origin:
+                    type: string
+                  destination:
+                    type: string
+                  volume:
+                    type: number
+            financial_impact:
+              type: object
+              properties:
+                estimated_cost:
+                  type: number
+                currency:
+                  type: string
+                timeframe:
+                  type: string
+            recommended_actions:
+              type: array
+              items:
+                type: object
+                properties:
+                  priority:
+                    type: string
+                  action:
+                    type: string
+                  deadline:
+                    type: string
+                    format: date
+            risk_mitigation:
+              type: array
+              items:
+                type: object
+                properties:
+                  risk:
+                    type: string
+                  strategy:
+                    type: string
+                  resources:
+                    type: string
+            llm_reasoning:
+              type: string
+
+    # -------------------- Alert --------------------
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        impact_assessment_id:
+          type: string
+          format: uuid
+        alert_type:
+          type: string
+          enum: [email, webhook, slack]
+        recipients:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [pending, sent, failed]
+        sent_at:
+          type: string
+          format: date-time
+        error_message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # -------------------- Stats --------------------
+    DashboardStats:
+      type: object
+      properties:
+        total_documents:
+          type: integer
+          description: Total documents collectés
+        new_this_week:
+          type: integer
+          description: Nouveaux documents cette semaine
+        pending_validation:
+          type: integer
+          description: Analyses en attente de validation
+        critical_impacts:
+          type: integer
+          description: Impacts critiques
+        by_regulation:
+          type: object
+          properties:
+            CBAM:
+              type: integer
+            EUDR:
+              type: integer
+            CSRD:
+              type: integer
+        by_workflow_status:
+          type: object
+          properties:
+            raw:
+              type: integer
+            analyzed:
+              type: integer
+            validated:
+              type: integer
+        recent_alerts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Alert'
+
+    DocumentStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        by_regulation:
+          type: object
+        by_status:
+          type: object
+        timeline:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+              count:
+                type: integer
+
+    AnalysisStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        relevant_count:
+          type: integer
+        average_confidence:
+          type: number
+        by_validation_status:
+          type: object
+          properties:
+            pending:
+              type: integer
+            approved:
+              type: integer
+            rejected:
+              type: integer

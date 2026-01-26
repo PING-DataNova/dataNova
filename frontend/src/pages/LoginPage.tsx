@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import { authService } from '../services/auth.service';
+import { config } from '../config/app.config';
 import './LoginPage.css';
 
 interface LoginPageProps {
@@ -19,29 +21,17 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     setError('');
 
     try {
-      // Simulation de la connexion - remplacer par vraie API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Utilise authService qui gère mock ou API selon la config
+      const response = await authService.login({
+        email,
+        password,
+      });
 
-      // Logique de connexion basée sur l'email
-      if (email.includes('juriste') || email.includes('legal')) {
-        onLogin('juridique', {
-          id: '1',
-          name: 'Juriste Hutchinson',
-          email: email,
-          role: 'juridique'
-        });
-      } else if (email.includes('decideur') || email.includes('decision')) {
-        onLogin('decisive', {
-          id: '2', 
-          name: 'Décideur Hutchinson',
-          email: email,
-          role: 'decisive'
-        });
-      } else {
-        setError('Utilisateur non reconnu. Utilisez un email avec "juriste" ou "decideur".');
-      }
+      // Connexion réussie
+      onLogin(response.user.role, response.user);
+      
     } catch (err) {
-      setError('Erreur de connexion. Veuillez réessayer.');
+      setError(err instanceof Error ? err.message : 'Erreur de connexion. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -113,9 +103,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         </form>
 
         <div className="demo-info">
-          <p><strong>Demo:</strong></p>
-          <p>• juriste@hutchinson.com → Interface Juridique</p>
-          <p>• decideur@hutchinson.com → Dashboard Décideur</p>
+          <p><strong>Mode: {config.mode.toUpperCase()}</strong></p>
+          {config.isMockMode() && (
+            <>
+              <p>• juriste@hutchinson.com → Interface Juridique</p>
+              <p>• decideur@hutchinson.com → Dashboard Décideur</p>
+            </>
+          )}
+          {config.isApiMode() && (
+            <p>• Connecté au backend: {config.apiUrl}</p>
+          )}
         </div>
       </div>
 
