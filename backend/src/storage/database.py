@@ -137,25 +137,6 @@ def drop_all_tables():
     print("✅ Toutes les tables ont été supprimées")
 
 
-def get_db():
-    """
-    Dépendance FastAPI pour obtenir une session de base de données
-    
-    Usage dans FastAPI:
-        @router.get("/items")
-        def get_items(db: Session = Depends(get_db)):
-            return db.query(Item).all()
-    
-    Yields:
-        Session SQLAlchemy
-    """
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
 def get_db_context():
     """
     Context manager pour gérer automatiquement les sessions
