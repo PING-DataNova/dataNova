@@ -59,6 +59,85 @@ class DocumentRepository:
             .filter(Document.hash_sha256 == hash_sha256)\
             .first()
     
+    def find_by_url(self, source_url: str) -> Optional[Document]:
+        """
+        Trouver un document par son URL source
+        
+        Args:
+            source_url: URL du document
+        
+        Returns:
+            Document ou None
+        """
+        return self.session.query(Document)\
+            .filter(Document.source_url == source_url)\
+            .first()
+    
+    def upsert_document(
+        self,
+        source_url: str,
+        hash_sha256: str,
+        title: str,
+        content: str,
+        nc_codes: Optional[list] = None,
+        regulation_type: str = "CBAM",
+        publication_date: Optional[datetime] = None,
+        document_metadata: Optional[dict] = None
+    ) -> tuple[Document, str]:
+        """
+        Insérer ou mettre à jour un document (upsert)
+        
+        Args:
+            source_url: URL source du document
+            hash_sha256: Hash SHA-256 du contenu
+            title: Titre du document
+            content: Contenu textuel extrait
+            nc_codes: Liste des codes NC trouvés
+            regulation_type: Type de réglementation
+            publication_date: Date de publication
+            document_metadata: Métadonnées additionnelles
+        
+        Returns:
+            Tuple (document, status) où status est "new", "modified" ou "unchanged"
+        """
+        existing = self.find_by_url(source_url)
+        
+        if existing:
+            # Document existant - vérifier si modifié
+            if existing.hash_sha256 != hash_sha256:
+                existing.status = "modified"
+                existing.content = content
+                existing.hash_sha256 = hash_sha256
+                existing.nc_codes = nc_codes
+                existing.document_metadata = document_metadata
+                existing.last_checked = datetime.utcnow()
+                self.session.flush()
+                return (existing, "modified")
+            else:
+                existing.status = "unchanged"
+                existing.last_checked = datetime.utcnow()
+                self.session.flush()
+                return (existing, "unchanged")
+        else:
+            # Nouveau document
+            document = Document(
+                source_url=source_url,
+                hash_sha256=hash_sha256,
+                title=title,
+                content=content,
+                nc_codes=nc_codes,
+                regulation_type=regulation_type,
+                publication_date=publication_date,
+                document_metadata=document_metadata,
+                status="new",
+                workflow_status="raw",
+                first_seen=datetime.utcnow(),
+                last_checked=datetime.utcnow()
+            )
+            self.session.add(document)
+            self.session.flush()
+            return (document, "new")
+    
     def list_new_documents(self, limit: int = 50) -> List[Document]:
         """
         Lister les documents avec status='new'
