@@ -61,3 +61,11 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Frontend (Node.js)
+node_modules/
+backend_dataNova/
+frontend/dist/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.playwright/

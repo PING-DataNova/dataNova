@@ -1,0 +1,209 @@
+.regulation-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f8f8 100%);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  border: 2px solid #e5e5e5;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(5px);
+  animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.regulation-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+
+.regulation-card:hover::before {
+  left: 100%;
+}
+
+.regulation-card:hover {
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3), 0 0 20px rgba(220, 38, 38, 0.1);
+  border-color: #dc2626;
+  transform: translateY(-6px) scale(1.02);
+  background: linear-gradient(135deg, #ffffff 0%, #fefefe 100%);
+}
+
+.regulation-card:hover .regulation-title {
+  color: #dc2626;
+  transform: translateX(2px);
+}
+
+.regulation-card:hover .regulation-status {
+  transform: scale(1.05);
+}
+
+.regulation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.regulation-info {
+  flex: 1;
+}
+
+.regulation-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a2332;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.regulation-title::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #dc2626, #3b82f6);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.regulation-card:hover .regulation-title::after {
+  width: 100%;
+}
+
+.regulation-reference {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.regulation-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.status-icon {
+  width: 18px;
+  height: 18px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.regulation-status:hover .status-icon {
+  transform: rotate(10deg) scale(1.1);
+}
+}
+
+.status-icon.validated {
+  color: #16a34a;
+}
+
+.status-icon.rejected {
+  color: #dc2626;
+}
+
+.status-icon.to-review {
+  color: #f97316;
+}
+
+.status-icon.pending {
+  color: #6b7280;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.validated {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #16a34a;
+}
+
+.status-badge.rejected {
+  background: #fecaca;
+  color: #991b1b;
+  border: 1px solid #dc2626;
+}
+
+.status-badge.to-review {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.status-badge.pending {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #6b7280;
+}
+
+.regulation-description {
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+}
+
+.regulation-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.validate-btn {
+  background: #06d6a0;
+  color: white;
+}
+
+.validate-btn:hover {
+  background: #05a085;
+  transform: translateY(-1px);
+}
+
+.reject-btn {
+  background: #06d6a0;
+  color: white;
+}
+
+.reject-btn:hover {
+  background: #05a085;
+  transform: translateY(-1px);
+}
+
+.review-btn {
+  background: #06d6a0;
+  color: white;
+  box-shadow: 0 4px 12px rgba(6, 214, 160, 0.3);
+  border: 1px solid #06d6a0;
+}
+
+.review-btn:hover {
+  background: #05a085;
+  transform: translateY(-1px);
+}

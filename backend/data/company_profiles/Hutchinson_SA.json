@@ -1,0 +1,933 @@
+{
+  "meta": {
+    "dataset_id": "SYN-HUTCH-INT-0002",
+    "generated_at": "2026-01-16T10:35:00+01:00",
+    "timezone": "Europe/Paris",
+    "disclaimer": "Jeu de données 100% fictif et synthétique pour tests (analyse sémantique / analyse d'impact). Ne reflète pas les données réelles de Hutchinson SA ni d'aucune entité réelle.",
+    "intended_use": [
+      "semantic_analysis",
+      "impact_assessment",
+      "trade_compliance_simulation",
+      "supply_chain_risk_assessment",
+      "esg_reporting_mock"
+    ],
+    "data_quality": {
+      "completeness_score": 0.94,
+      "consistency_notes": [
+        "Les volumes matières (caoutchoucs) sont cohérents avec une production multi-sites auto/industrie/aéro.",
+        "Les éléments réglementaires (CBAM/EUDR/CSRD) sont modélisés comme scénarios de conformité (mock), pas comme vérité juridique."
+      ]
+    }
+  },
+
+  "company": {
+    "company_id": "HUT-001",
+    "legal_name": "Hutchinson SA",
+    "company_name": "HUTCHINSON",
+    "legal_form": "Société Anonyme",
+    "registration": {
+      "country": "FR",
+      "trade_register": "RCS (fictif)",
+      "siren": "999999999",
+      "vat_number": "FR00999999999"
+    },
+    "headquarters": {
+      "address": "15 Avenue des Industries, 75015 Paris, France",
+      "geo": { "lat": 48.84, "lon": 2.29 }
+    },
+
+    "industry": {
+      "sector": "Advanced materials & engineered components",
+      "primary_nace_code": "C22.19",
+      "primary_nace_description": "Fabrication d'autres articles en caoutchouc",
+      "secondary_nace_codes": [
+        { "code": "C22.29", "description": "Fabrication d'autres articles en matières plastiques" },
+        { "code": "C25.62", "description": "Usinage" }
+      ],
+      "segments": [
+        "Automotive sealing & NVH",
+        "Aerospace elastomers & composite sealing",
+        "Industrial hoses & fluid transfer",
+        "Rail & energy vibration control"
+      ]
+    },
+
+    "markets": {
+      "aeronautics_defense": {
+        "percentage": 18,
+        "main_clients": [
+          "AeroBus Consortium (EU) (fictif)",
+          "EuroJet Engines (fictif)",
+          "AeroWorks International (fictif)"
+        ]
+      },
+      "automotive": {
+        "percentage": 56,
+        "main_clients": [
+          "EuroMotors Group (fictif)",
+          "StellaAuto Alliance (fictif)",
+          "NorthRoad EV (fictif)"
+        ]
+      },
+      "industrial_energy_rail": {
+        "percentage": 26,
+        "main_clients": [
+          "RailMotion Systems (fictif)",
+          "HydroGrid Solutions (fictif)",
+          "ProcessChem OEM (fictif)"
+        ]
+      }
+    },
+
+    "brand_and_ip": {
+      "brands": ["Hutchinson", "HutchFlex", "AeroSealX", "NVH-Pro"],
+      "patents_portfolio": {
+        "active_patents_count": 420,
+        "key_domains": ["elastomer compounds", "low-permeation seals", "vibration damping", "hydrogen-compatible materials"]
+      }
+    },
+
+    "strategy": {
+      "2026_2030_priorities": [
+        "Decarbonize operations (Scope 1&2 -45% by 2030 vs 2022 baseline)",
+        "Grow hydrogen & e-mobility product lines",
+        "Increase dual-sourcing and nearshoring for critical materials",
+        "Expand compliance automation (CBAM, sanctions screening, product compliance, EUDR traceability)"
+      ],
+      "materiality_topics": [
+        "Supply continuity of elastomers and metals",
+        "Trade compliance / sanctions / trade-defence exposure",
+        "Quality & safety for regulated industries",
+        "Cyber resilience (OT/IT convergence)",
+        "Energy price volatility",
+        "Deforestation-free sourcing for natural rubber (EUDR)"
+      ]
+    }
+  },
+
+  "locations": {
+    "production_sites": [
+      { "site_id": "FR-LEH-MFG1", "country": "France", "type": "Usine principale (Sealing/Compounding)" },
+      { "site_id": "PL-WRO-MFG2", "country": "Pologne", "type": "Usine secondaire (NVH/bonding)" },
+      { "site_id": "US-MI-OPS1", "country": "États-Unis", "type": "Usine (Fluid systems)" },
+      { "site_id": "MX-QUE-MFG3", "country": "Mexique", "type": "Assemblage (Hoses)" },
+      { "site_id": "IN-PUN-MFG4", "country": "Inde", "type": "Usine (Industrial seals)" }
+    ],
+    "distribution_zones": {
+      "union_europeenne": 62,
+      "etats_unis_canada": 22,
+      "reste_du_monde": 16
+    }
+  },
+
+  "organization": {
+    "business_units": [
+      {
+        "id": "BU-AUTO",
+        "name": "Automotive",
+        "revenue_share_pct": 56,
+        "main_products": ["dynamic seals", "anti-vibration mounts", "fluid hoses for EV"],
+        "primary_certifications": ["IATF 16949", "ISO 14001"]
+      },
+      {
+        "id": "BU-AERO",
+        "name": "Aerospace & Defense",
+        "revenue_share_pct": 18,
+        "main_products": ["aerospace seals", "fire-resistant elastomers", "composite sealing systems"],
+        "primary_certifications": ["EN 9100 / AS9100", "NADCAP (selected processes)"]
+      },
+      {
+        "id": "BU-IND",
+        "name": "Industrial & Energy",
+        "revenue_share_pct": 21,
+        "main_products": ["industrial hoses", "hydrogen-compatible pipes", "rail vibration control"],
+        "primary_certifications": ["ISO 9001", "ISO 14001"]
+      },
+      {
+        "id": "BU-SERV",
+        "name": "Aftermarket & Services",
+        "revenue_share_pct": 5,
+        "main_products": ["spare parts", "field services", "condition monitoring"],
+        "primary_certifications": ["ISO 9001"]
+      }
+    ],
+    "functions": [
+      { "id": "FN-PROC", "name": "Procurement", "global_process_owner": "Ravi N." },
+      { "id": "FN-QA", "name": "Quality", "global_process_owner": "Marie T." },
+      { "id": "FN-HSE", "name": "HSE", "global_process_owner": "Luc A." },
+      { "id": "FN-IT", "name": "IT & Digital", "global_process_owner": "Camille V." },
+      { "id": "FN-LEGAL", "name": "Legal & Compliance", "global_process_owner": "Elena G." },
+      { "id": "FN-SCM", "name": "Supply Chain", "global_process_owner": "Thomas B." },
+      { "id": "FN-CUSTOMS", "name": "Customs & Trade Operations", "global_process_owner": "Yasmine H." }
+    ]
+  },
+
+  "products": [
+    "Joints d'étanchéité (auto/aéro/industrie)",
+    "Amortisseurs & supports anti-vibration (NVH)",
+    "Flexibles / tuyaux (fuel, thermique, H2)",
+    "Systèmes d'étanchéité composites (aéronautique)"
+  ],
+
+  "sites": [
+    {
+      "site_id": "FR-PAR-DC1",
+      "name": "Paris HQ & Digital Center",
+      "country": "FR",
+      "city": "Paris",
+      "type": "HQ",
+      "employees": 780,
+      "certifications": ["ISO 27001 (scope IT)", "ISO 14001 (facilities)"],
+      "systems": { "erp": "SAP S/4HANA", "plm": "Teamcenter", "mes": "Ignition", "wms": "Manhattan", "hris": "Workday" }
+    },
+    {
+      "site_id": "FR-LEH-MFG1",
+      "name": "Le Havre Sealing Plant",
+      "country": "FR",
+      "city": "Le Havre",
+      "type": "Manufacturing",
+      "business_unit": "BU-AUTO",
+      "employees": 1350,
+      "certifications": ["IATF 16949", "ISO 14001", "ISO 45001"],
+      "key_processes": ["rubber compounding", "injection molding", "surface treatment", "end-of-line testing"],
+      "logistics": { "incoterms": ["DAP", "FCA"], "main_ports": ["FRLEH"] }
+    },
+    {
+      "site_id": "PL-WRO-MFG2",
+      "name": "Wroclaw Anti-Vibration Plant",
+      "country": "PL",
+      "city": "Wroclaw",
+      "type": "Manufacturing",
+      "business_unit": "BU-AUTO",
+      "employees": 980,
+      "certifications": ["IATF 16949", "ISO 14001"],
+      "key_processes": ["metal stamping", "bonding rubber-to-metal", "dynamic testing"]
+    },
+    {
+      "site_id": "DE-HAM-RDC1",
+      "name": "Hamburg R&D Center (Materials)",
+      "country": "DE",
+      "city": "Hamburg",
+      "type": "R&D",
+      "business_unit": "BU-IND",
+      "employees": 240,
+      "certifications": ["ISO 9001 (lab)", "ISO 14001"],
+      "labs": ["polymer characterization", "hydrogen permeation", "fatigue testing", "fire/smoke/toxicity"]
+    },
+    {
+      "site_id": "US-MI-OPS1",
+      "name": "Michigan Fluid Systems Plant",
+      "country": "US",
+      "city": "Grand Rapids",
+      "type": "Manufacturing",
+      "business_unit": "BU-AUTO",
+      "employees": 820,
+      "certifications": ["IATF 16949", "ISO 14001"],
+      "key_processes": ["extrusion", "braiding", "assembly", "pressure testing"]
+    },
+    {
+      "site_id": "MX-QUE-MFG3",
+      "name": "Queretaro Hose Assembly Plant",
+      "country": "MX",
+      "city": "Querétaro",
+      "type": "Manufacturing",
+      "business_unit": "BU-IND",
+      "employees": 610,
+      "certifications": ["ISO 9001", "ISO 14001"],
+      "key_processes": ["cut-to-length", "crimping", "final inspection"]
+    },
+    {
+      "site_id": "IN-PUN-MFG4",
+      "name": "Pune Industrial Seals Plant",
+      "country": "IN",
+      "city": "Pune",
+      "type": "Manufacturing",
+      "business_unit": "BU-IND",
+      "employees": 740,
+      "certifications": ["ISO 9001", "ISO 14001"],
+      "key_processes": ["compression molding", "machining", "packing"]
+    }
+  ],
+
+  "customers": [
+    {
+      "customer_id": "CUST-001",
+      "name": "EuroMotors Group (fictif)",
+      "segment": "Automotive OEM",
+      "regions": ["EU"],
+      "risk": { "credit_rating_internal": "A-", "payment_terms_days": 60 },
+      "kpi_2025": { "revenue_eur_m": 410, "ppm_quality": 18, "otd_pct": 96.2 }
+    },
+    {
+      "customer_id": "CUST-002",
+      "name": "AeroWorks International (fictif)",
+      "segment": "Aerospace Tier-1",
+      "regions": ["EU", "US"],
+      "risk": { "credit_rating_internal": "BBB+", "payment_terms_days": 75 },
+      "kpi_2025": { "revenue_eur_m": 135, "ppm_quality": 4, "otd_pct": 94.1 }
+    },
+    {
+      "customer_id": "CUST-003",
+      "name": "RailMotion Systems (fictif)",
+      "segment": "Rail OEM",
+      "regions": ["EU"],
+      "risk": { "credit_rating_internal": "A", "payment_terms_days": 45 },
+      "kpi_2025": { "revenue_eur_m": 82, "ppm_quality": 12, "otd_pct": 97.5 }
+    }
+  ],
+
+  "supply_chain": {
+    "natural_rubber": {
+      "volume_annual_tonnes": 8200,
+      "usage_notes": [
+        "Utilisation principalement: antivibratoire, certains flexibles/industrie, formulations spécifiques.",
+        "Risque EUDR élevé => traçabilité par plantation requise (mock)."
+      ],
+      "suppliers": [
+        {
+          "supplier_id": "SUP-TH-011",
+          "name": "Siam Natural Rubber PLC (fictif)",
+          "country": "Thaïlande",
+          "product": "Caoutchouc naturel TSR",
+          "volume_tonnes": 3600,
+          "nc_code": "4001.21",
+          "eudr_traceability": { "geo_required": true, "farm_polygons_coverage_pct": 68, "last_update": "2025-11-30" },
+          "risk": { "geo_risk": "medium", "single_source": false, "screening_status": "cleared", "screening_last_run": "2026-01-10" }
+        },
+        {
+          "supplier_id": "SUP-MY-006",
+          "name": "Malaya Latex Group (fictif)",
+          "country": "Malaisie",
+          "product": "Latex naturel",
+          "volume_tonnes": 2400,
+          "nc_code": "4001.22",
+          "eudr_traceability": { "geo_required": true, "farm_polygons_coverage_pct": 54, "last_update": "2025-12-15" },
+          "risk": { "geo_risk": "medium", "single_source": false, "screening_status": "cleared", "screening_last_run": "2026-01-10" }
+        },
+        {
+          "supplier_id": "SUP-CI-004",
+          "name": "IvoryRubber Cooperative (fictif)",
+          "country": "Côte d'Ivoire",
+          "product": "Caoutchouc naturel TSR",
+          "volume_tonnes": 2200,
+          "nc_code": "4001.21",
+          "eudr_traceability": { "geo_required": true, "farm_polygons_coverage_pct": 33, "last_update": "2025-10-20" },
+          "risk": { "geo_risk": "high", "single_source": false, "screening_status": "cleared", "screening_last_run": "2026-01-10" }
+        }
+      ]
+    },
+
+    "synthetic_rubber": {
+      "volume_annual_tonnes": 6100,
+      "usage_notes": [
+        "Utilisation: HNBR/EPDM/SBR selon familles produits; sensibilité aux prix pétrole/énergie.",
+        "Risque trade-defence/droits de douane selon origine (mock)."
+      ],
+      "suppliers": [
+        {
+          "supplier_id": "SUP-CN-018",
+          "name": "SinoRubber Materials Co. (fictif)",
+          "country": "Chine",
+          "product": "SBR (Styrene-Butadiene Rubber)",
+          "volume_tonnes": 2800,
+          "nc_code": "4002.19",
+          "contact": "procurement@sino-rubber.example",
+          "risk": {
+            "geo_risk": "medium",
+            "single_source": false,
+            "sanctions_screening": { "lists": ["OFAC", "UE", "ONU"], "status": "cleared", "last_run": "2026-01-10" },
+            "trade_defence_risk": "watchlist"
+          }
+        },
+        {
+          "supplier_id": "SUP-DE-021",
+          "name": "Rhein Elastomers GmbH (fictif)",
+          "country": "Allemagne",
+          "product": "EPDM / specialty elastomers",
+          "volume_tonnes": 2100,
+          "nc_code": "4002.70",
+          "risk": {
+            "geo_risk": "low",
+            "single_source": false,
+            "sanctions_screening": { "lists": ["UE", "ONU"], "status": "cleared", "last_run": "2026-01-10" }
+          }
+        },
+        {
+          "supplier_id": "SUP-US-033",
+          "name": "GulfChem Rubber Feedstock (fictif)",
+          "country": "États-Unis",
+          "product": "HNBR (grade HNBR-45 feedstock)",
+          "volume_tonnes": 1200,
+          "nc_code": "4002.59",
+          "risk": {
+            "geo_risk": "low",
+            "single_source": true,
+            "sanctions_screening": { "lists": ["OFAC", "UE", "ONU"], "status": "cleared", "last_run": "2026-01-10" }
+          },
+          "continuity": { "safety_stock_days": 28, "lead_time_days": 42 }
+        }
+      ]
+    },
+
+    "metals_and_additives": {
+      "notes": "Matières critiques déjà utilisées pour CBAM/risques (acier/alu) + additifs (noir de carbone) pour compounding.",
+      "critical_materials": [
+        { "material_id": "MAT-AL-7601", "hs_code": "7601.10", "description": "Unwrought aluminium", "annual_volume_tons": 12000, "origin_main": "AE" },
+        { "material_id": "MAT-ST-7208", "hs_code": "7208.38", "description": "Hot-rolled steel coil", "annual_volume_tons": 18000, "origin_main": "TR" },
+        { "material_id": "MAT-CB-N550", "hs_code": "2803.00", "description": "Carbon black N550", "annual_volume_tons": 3800, "origin_main": "US" }
+      ]
+    },
+
+    "total_import_volume_tonnes": 35300,
+    "import_volume_breakdown_tonnes": {
+      "natural_rubber": 8200,
+      "synthetic_rubber": 6100,
+      "steel": 18000,
+      "aluminium": 12000,
+      "other_additives_and_resins": 1000
+    }
+  },
+
+  "nc_codes": {
+    "imports": [
+      { "code": "4001.21", "description": "Caoutchouc naturel TSR (Thaïlande/Côte d'Ivoire) - mock" },
+      { "code": "4001.22", "description": "Latex naturel (Malaisie) - mock" },
+      { "code": "4002.19", "description": "Caoutchouc synthétique SBR (Chine) - mock" },
+      { "code": "4002.70", "description": "EPDM (Allemagne) - mock" },
+      { "code": "7208.38", "description": "Acier laminé à chaud (Turquie) - mock" },
+      { "code": "7601.10", "description": "Aluminium primaire (EAU) - mock" }
+    ],
+    "exports": [
+      { "code": "4016", "description": "Produits finis en caoutchouc (joints, pièces) - mock" },
+      { "code": "3917", "description": "Tuyaux/flexibles en plastique/assemblés - mock" },
+      { "code": "8803", "description": "Composants aéronautiques (selon classification) - mock" }
+    ]
+  },
+
+  "customs_and_trade_compliance": {
+    "master_data": {
+      "hs_classification_governance": {
+        "process_owner": "FN-LEGAL",
+        "tooling": ["SAP GTS (mock)", "Classification workflow (mock)"],
+        "review_frequency": "annual + on change",
+        "evidence_required": ["technical datasheet", "product drawing", "binding ruling if available"]
+      },
+      "hs_items": [
+        { "item_id": "HS-4016-93", "hs_code": "4016.93", "description": "Gaskets, washers and other seals, of vulcanised rubber", "typical_products": ["dynamic seals", "o-rings"] },
+        { "item_id": "HS-3917-39", "hs_code": "3917.39", "description": "Tubes, pipes and hoses, of plastics", "typical_products": ["H2 hoses barrier layer"] },
+        { "item_id": "HS-7307-22", "hs_code": "7307.22", "description": "Threaded elbows, bends and sleeves, of stainless steel", "typical_products": ["hose fittings"] }
+      ]
+    },
+    "sanctions_export_controls": {
+      "screening": {
+        "tool": "SanctionsScreen (mock)",
+        "lists_covered": ["EU", "UN", "UK", "US-OFAC (for global operations)"],
+        "screening_points": ["new supplier onboarding", "new customer onboarding", "shipment release", "payment release"],
+        "false_positive_handling_sla_hours": 24
+      },
+      "countries_of_concern": ["RU", "BY", "IR", "KP", "SY"],
+      "policy_rules": [
+        { "rule_id": "SANC-001", "description": "No direct/indirect shipment to embargoed destinations", "exceptions": "legal-approved humanitarian only" },
+        { "rule_id": "SANC-010", "description": "Enhanced due diligence for high-risk intermediaries", "threshold": "orders > EUR 50k" }
+      ]
+    },
+    "trade_defence_watchlist": {
+      "objective": "Detect anti-dumping/countervailing measures affecting raw materials or components.",
+      "watch_items": [
+        {
+          "watch_id": "TD-STEEL-7208",
+          "hs_code": "7208.38",
+          "risk_statement": "Flat steel products may be subject to safeguard or anti-dumping measures depending on origin (mock).",
+          "monitoring_frequency": "monthly",
+          "mitigation": ["maintain dual sourcing", "validate origin documentation", "simulate duty impact in pricing"]
+        },
+        {
+          "watch_id": "TD-RUBBER-4002",
+          "hs_code": "4002.19",
+          "risk_statement": "Synthetic rubber from certain origins may face duty changes or anti-dumping risk (mock).",
+          "monitoring_frequency": "quarterly",
+          "mitigation": ["shift volumes to EU/US suppliers", "negotiate duty pass-through clauses", "reclass/origin review"]
+        }
+      ]
+    },
+    "cbam": {
+      "status": "transitional_reporting_active (mock scenario)",
+      "in_scope_categories": ["iron_steel", "aluminium", "hydrogen"],
+      "linked_materials": [
+        { "material_id": "MAT-ST-7208", "cn_code": "7208", "annual_import_tons": 18000, "origin_main": "TR", "supplier_emissions_data_coverage_pct": 71 },
+        { "material_id": "MAT-AL-7601", "cn_code": "7601", "annual_import_tons": 12000, "origin_main": "AE", "supplier_emissions_data_coverage_pct": 58 }
+      ],
+      "reporting": {
+        "responsible_team": "FN-CUSTOMS",
+        "data_sources": ["supplier declarations", "shipping docs", "LCA model (mock)"],
+        "known_gaps": [
+          "supplier emissions data completeness for non-EU producers",
+          "mapping CN/HS to internal BOM cost objects",
+          "harmonizing plant-level vs group-level emissions factors"
+        ]
+      }
+    },
+    "eudr": {
+      "status": "implementation_program_active (mock)",
+      "in_scope_products": ["natural_rubber"],
+      "risk_countries": ["Thaïlande", "Malaisie", "Côte d'Ivoire", "Indonésie (potential)"],
+      "obligations": [
+        "Traceability to plantation",
+        "Geolocation (polygons/points) + risk assessment",
+        "Due diligence statement before placing on EU market (mock wording)"
+      ],
+      "data_requirements": [
+        "supplier chain-of-custody",
+        "farm polygons or point geolocation",
+        "harvest period / batch linking",
+        "deforestation risk scoring"
+      ],
+      "program_kpis": {
+        "geo_coverage_pct_weighted": 54,
+        "traceability_to_farm_pct": 61,
+        "high_risk_batches_pct": 14
+      }
+    }
+  },
+
+  "financials": {
+    "currency": "EUR",
+    "fiscal_year_end": "12-31",
+    "summary": {
+      "fy2023": { "revenue_eur_m": 4300, "ebitda_eur_m": 520, "ebit_margin_pct": 7.8, "capex_eur_m": 210, "net_debt_eur_m": 980 },
+      "fy2024": { "revenue_eur_m": 4550, "ebitda_eur_m": 545, "ebit_margin_pct": 8.1, "capex_eur_m": 240, "net_debt_eur_m": 910 },
+      "fy2025": { "revenue_eur_m": 4725, "ebitda_eur_m": 575, "ebit_margin_pct": 8.5, "capex_eur_m": 265, "net_debt_eur_m": 860 }
+    },
+    "budget_rubber_purchases": {
+      "natural_rubber_eur": 16800000,
+      "synthetic_rubber_eur": 26500000,
+      "total_eur": 43300000
+    },
+    "synthetic_rubber_price_per_tonne_eur": 4350,
+    "natural_rubber_price_per_tonne_eur": 2050,
+    "finished_products_margin_percent": 18.5,
+    "cost_drivers": [
+      { "driver": "energy", "sensitivity_note": "+10% electricity price => -0.3pp EBITDA margin (mock)" },
+      { "driver": "rubber_index", "sensitivity_note": "+10% rubber index => -0.5pp margin unless pass-through" },
+      { "driver": "duties_and_trade_measures", "sensitivity_note": "new duties/CBAM on metals could add EUR 12-25m cost/year (mock range)" }
+    ]
+  },
+
+  "regulations": {
+    "critical": [
+      {
+        "name": "CBAM",
+        "full_name": "Carbon Border Adjustment Mechanism",
+        "concerned_products": ["Acier (CN 72xx)", "Aluminium (CN 76xx)"],
+        "volume_tonnes_year": { "steel": 18000, "aluminium": 12000 },
+        "origins_main": { "steel": "TR (mock)", "aluminium": "AE (mock)" },
+        "effective_date_scenario": "2026",
+        "current_obligation_scenario": "Déclarations (phase transitoire) + préparation certificats (phase définitive) (mock)"
+      },
+      {
+        "name": "EUDR",
+        "full_name": "EU Deforestation Regulation",
+        "concerned_products": ["Caoutchouc naturel"],
+        "volume_tonnes_year": 8200,
+        "risk_countries": ["Thaïlande", "Malaisie", "Côte d'Ivoire", "Indonésie (potential)"],
+        "obligation": "Traçabilité + géolocalisation plantations + due diligence (mock)"
+      }
+    ],
+    "high": [
+      {
+        "name": "CSRD",
+        "full_name": "Corporate Sustainability Reporting Directive",
+        "obligation": "Reporting ESG (mock) incluant Scope 3 supply chain",
+        "scope": "Scope 3 - émissions achats matières + transport amont"
+      },
+      {
+        "name": "Sanctions internationales",
+        "description": "Surveillance renforcée fournisseurs/clients en zones à risque; screening multi-listes.",
+        "screening_lists": ["OFAC", "UE", "ONU", "UK"]
+      }
+    ],
+    "medium": [
+      {
+        "name": "Droits de douane / Trade defence",
+        "description": "Risque de variation droits sur caoutchouc synthétique selon origine + mesures anti-dumping (mock).",
+        "risk": "antidumping_watchlist"
+      },
+      {
+        "name": "REACH",
+        "full_name": "Règlement chimique",
+        "description": "Contrôle additifs (SVHC), restrictions PAHs, substances critiques dans formulations."
+      },
+      {
+        "name": "Dual-use / Export control",
+        "description": "Certaines pièces aéro/haute perf. peuvent nécessiter revue export control (mock)."
+      },
+      {
+        "name": "Normes sectorielles",
+        "standards": ["EN 9100 / AS9100 (aéronautique)", "IATF 16949 (automobile)", "ISO 9001/14001/45001"]
+      }
+    ]
+  },
+
+  "cbam_impact": {
+    "transitional_phase": {
+      "period": "2023-2025 (mock)",
+      "obligations": "Déclarations trimestrielles (mock)",
+      "cost_eur": 0,
+      "penalty_non_compliance": "Modèle interne: 10-50 €/tonne + plafonds selon gravité (mock)"
+    },
+    "definitive_phase": {
+      "start_year_scenario": 2026,
+      "cbam_certificate_price_eur": 85,
+      "annual_cost_estimate_eur": 1380000,
+      "cost_breakdown": [
+        {
+          "material": "steel (MAT-ST-7208)",
+          "annual_volume_tonnes": 18000,
+          "estimated_emissions_tco2_per_ton": 1.9,
+          "estimated_annual_cost_eur": 2907000,
+          "notes": "Réduction via données réelles fournisseur + déductions carbone payé localement (mock)."
+        },
+        {
+          "material": "aluminium (MAT-AL-7601)",
+          "annual_volume_tonnes": 12000,
+          "estimated_emissions_tco2_per_ton": 7.2,
+          "estimated_annual_cost_eur": 7344000,
+          "notes": "Impact très sensible au mix énergétique du producteur (mock)."
+        }
+      ],
+      "mitigation_levers": [
+        "Collecte facteurs d'émission réels (remplacer valeurs défaut)",
+        "Shift volumes vers fournisseurs faible empreinte",
+        "Revue incoterms et clauses contractuelles (pass-through)",
+        "Optimisation BOM (réduction métal / substitution)",
+        "Nearshoring pour réduire transport amont (Scope 3)"
+      ]
+    },
+    "example_declaration_q4_2025": {
+      "deadline": "2026-01-31 (mock)",
+      "materials_reported": [
+        { "cn_code": "7208", "volume_tonnes": 4500 },
+        { "cn_code": "7601", "volume_tonnes": 3000 }
+      ],
+      "required_data": [
+        "Émissions directes (Scope 1) par installation",
+        "Émissions indirectes (Scope 2) par installation",
+        "Installation de production (ID/site) + méthode de calcul",
+        "Preuves (certification/attestation) ou valeurs par défaut"
+      ],
+      "supplier_data_required": {
+        "emissions_tco2_per_tonne": "variable (supplier-specific preferred)",
+        "scope_1": "required",
+        "scope_2": "required",
+        "certification": "ISO 14064 / vérification tierce (mock acceptable)",
+        "carbon_price_paid_outside_eu_eur": 0
+      }
+    }
+  },
+
+  
+    
+  "internal_contacts": {
+    "cbam_cell": [
+      {
+        "role": "Chef de projet",
+        "title": "CBAM Program Lead",
+        "department": "Compliance & Sustainability",
+        "name": "Amine R.",
+        "email": "amine.r@hutchinson.example",
+        "phone": "+33 1 70 00 10 01",
+        "responsibilities": [
+          "Pilotage CBAM (gouvernance, planning, arbitrages)",
+          "Coordination Achats/Douanes/Juridique/Finance",
+          "Validation des méthodes d’émissions et données fournisseurs"
+        ]
+      },
+      {
+        "role": "Achats",
+        "title": "Group Procurement Manager",
+        "department": "Procurement",
+        "name": "Claire D.",
+        "email": "claire.d@hutchinson.example",
+        "phone": "+33 1 70 00 10 11",
+        "responsibilities": [
+          "Clauses contractuelles (données carbone, conformité)",
+          "Collecte données fournisseurs + plans de remédiation",
+          "Stratégie sourcing (réduction risques pays/produits)"
+        ]
+      },
+      {
+        "role": "Douanes",
+        "title": "Import/Customs Manager",
+        "department": "Customs & Trade Compliance",
+        "name": "Julien P.",
+        "email": "julien.p@hutchinson.example",
+        "phone": "+33 1 70 00 10 21",
+        "responsibilities": [
+          "Classification NC/HS et conformité déclarative",
+          "Interface déclarant/douane, gestion audits",
+          "Contrôle cohérence volumes, pays d’origine, valeurs"
+        ]
+      },
+      {
+        "role": "Juridique",
+        "title": "Legal Counsel (Trade & ESG)",
+        "department": "Legal",
+        "name": "Sonia K.",
+        "email": "sonia.k@hutchinson.example",
+        "phone": "+33 1 70 00 10 31",
+        "responsibilities": [
+          "Analyse obligations CBAM/CSRD/REACH/contrats",
+          "Gestion risques (sanctions, contentieux, garanties)",
+          "Validation wording conformité (clients/fournisseurs)"
+        ]
+      },
+      {
+        "role": "Direction",
+        "title": "CFO",
+        "department": "Finance",
+        "name": "Marc L.",
+        "email": "marc.l@hutchinson.example",
+        "phone": "+33 1 70 00 10 41",
+        "responsibilities": [
+          "Arbitrages budget/CapEx/Opex liés conformité",
+          "Validation impacts marge/pricing et provisions",
+          "Supervision contrôles internes et auditabilité"
+        ]
+      }
+    ],
+
+    "legal_operational_service": {
+      "service_name": "Juridique Opérationnel",
+      "service_owner": {
+        "role": "Responsable service",
+        "title": "Head of Legal Operations",
+        "name": "Nadia F.",
+        "email": "nadia.f@hutchinson.example"
+      },
+      "team": [
+        {
+          "role": "Contract Manager",
+          "title": "Contract Manager (Suppliers)",
+          "name": "Thomas G.",
+          "email": "thomas.g@hutchinson.example",
+          "focus": ["clauses ESG/CBAM/EUDR", "SLA data", "pénalités & remèdes"]
+        },
+        {
+          "role": "Litigation & Claims",
+          "title": "Claims Counsel",
+          "name": "Ines B.",
+          "email": "ines.b@hutchinson.example",
+          "focus": ["gestion des litiges", "audits fournisseurs", "non-conformités"]
+        },
+        {
+          "role": "Privacy & Data",
+          "title": "DPO / Data Counsel",
+          "name": "Karim S.",
+          "email": "karim.s@hutchinson.example",
+          "focus": ["RGPD", "conservation preuves", "partage données supply chain"]
+        }
+      ],
+      "operational_processes": [
+        "Revue contrats fournisseurs (annexes data carbone/traçabilité)",
+        "Gestion des demandes clients (questionnaires ESG / audits)",
+        "Gestion preuves & dossier d’audit (audit trail)"
+      ],
+      "interfaces": ["Procurement", "Customs", "Quality", "IT/Data", "Sustainability"]
+    },
+
+    "procurement_service": {
+      "service_name": "Service Achats",
+      "service_owner": {
+        "role": "Directeur achats",
+        "title": "Chief Procurement Officer",
+        "name": "Paul M.",
+        "email": "paul.m@hutchinson.example"
+      },
+      "category_teams": [
+        {
+          "category": "Matières premières (élastomères)",
+          "lead": "Claire D.",
+          "kpis": ["OTIF", "cost/tonne", "risque pays", "qualité", "données CO2"]
+        },
+        {
+          "category": "Chimie / Additifs",
+          "lead": "Romain V.",
+          "email": "romain.v@hutchinson.example",
+          "kpis": ["conformité REACH", "substitution", "fiches de données sécurité"]
+        },
+        {
+          "category": "Transport & Logistique",
+          "lead": "Sarah N.",
+          "email": "sarah.n@hutchinson.example",
+          "kpis": ["incoterms", "lead time", "émissions transport", "coûts"]
+        }
+      ],
+      "procurement_controls": [
+        "Onboarding fournisseur + screening sanctions",
+        "Questionnaire ESG (CBAM/EUDR/CSRD) obligatoire",
+        "Clauses contractuelles data + right-to-audit",
+        "Plan de remédiation (délais, jalons, pénalités)"
+      ]
+    },
+
+    "esg_traceability_support": [
+      {
+        "role": "Traçabilité",
+        "title": "Traceability Manager",
+        "name": "Hector M.",
+        "email": "hector.m@hutchinson.example",
+        "scope": ["EUDR", "chaîne de traçabilité", "géolocalisation", "preuves"]
+      },
+      {
+        "role": "Qualité fournisseurs",
+        "title": "Supplier Quality Engineer",
+        "name": "Eva C.",
+        "email": "eva.c@hutchinson.example",
+        "scope": ["audits fournisseurs", "PPAP/FAI", "non-conformités", "CAPA"]
+      },
+      {
+        "role": "IT / Données",
+        "title": "Data Platform Owner",
+        "name": "Louis A.",
+        "email": "louis.a@hutchinson.example",
+        "scope": ["MDM", "référentiels articles", "connecteurs ERP", "data lineage"]
+      }
+    ]
+  },
+
+  "stakeholders": {
+    "decision_committee": {
+      "name": "Comité Décisif Conformité & Supply Chain",
+      "cadence": "Mensuel (extraordinaire si risque élevé)",
+      "members": [
+        {
+          "role": "Sponsor exécutif",
+          "title": "Group COO",
+          "name": "Delphine R.",
+          "decision_rights": ["priorisation", "arbitrage industriel", "allocation ressources"]
+        },
+        {
+          "role": "Finance",
+          "title": "CFO",
+          "name": "Marc L.",
+          "decision_rights": ["budget", "pricing", "provisions", "reporting audit"]
+        },
+        {
+          "role": "Achats",
+          "title": "CPO",
+          "name": "Paul M.",
+          "decision_rights": ["stratégie sourcing", "négociation clauses", "exit fournisseurs"]
+        },
+        {
+          "role": "Juridique",
+          "title": "General Counsel",
+          "name": "Nadia F.",
+          "decision_rights": ["risque juridique", "position contractuelle", "litiges"]
+        },
+        {
+          "role": "Douanes & Trade",
+          "title": "Head of Trade Compliance",
+          "name": "Julien P.",
+          "decision_rights": ["classification", "schémas import", "audit douanier"]
+        },
+        {
+          "role": "Sustainability",
+          "title": "Head of Sustainability",
+          "name": "Amina E.",
+          "decision_rights": ["méthodologie CO2", "CSRD", "gouvernance ESG"]
+        },
+        {
+          "role": "Industrie",
+          "title": "VP Operations",
+          "name": "Frédéric T.",
+          "decision_rights": ["plans industriels", "substitution matières", "qualif alternatives"]
+        },
+        {
+          "role": "IT / Data",
+          "title": "CIO / Data Lead",
+          "name": "Louis A.",
+          "decision_rights": ["priorités SI", "outillage traçabilité", "architecture data"]
+        }
+      ],
+      "decision_topics": [
+        "Validation des risques CBAM/EUDR (pays, produits, volumes)",
+        "Go/No-Go sur fournisseurs non conformes",
+        "Choix des méthodes de calcul émissions + preuves",
+        "Investissements SI (traçabilité, reporting, intégration ERP)",
+        "Stratégie de transfert de coût (pricing / clauses clients)"
+      ]
+    },
+
+    "raci": [
+      {
+        "workstream": "Collecte données émissions fournisseurs (CBAM)",
+        "responsible": "Procurement (Claire D.)",
+        "accountable": "CBAM Program Lead (Amine R.)",
+        "consulted": ["Sustainability (Amina E.)", "Customs (Julien P.)", "Legal (Sonia K.)"],
+        "informed": ["CFO (Marc L.)", "COO (Delphine R.)"]
+      },
+      {
+        "workstream": "Traçabilité & preuves (EUDR)",
+        "responsible": "Traceability (Hector M.)",
+        "accountable": "Head of Sustainability (Amina E.)",
+        "consulted": ["Procurement", "Legal Ops", "IT/Data", "Supplier Quality"],
+        "informed": ["Decision Committee"]
+      },
+      {
+        "workstream": "Déclarations douanières / conformité",
+        "responsible": "Customs (Julien P.)",
+        "accountable": "Head of Trade Compliance (Julien P.)",
+        "consulted": ["Procurement", "Finance", "Legal"],
+        "informed": ["CBAM Cell", "Decision Committee"]
+      }
+    ],
+
+    "external_key_stakeholders": [
+      {
+        "type": "Clients stratégiques",
+        "examples": ["Constructeurs automobiles (UE)", "Équipementiers aéronautiques (UE)"],
+        "expectations": ["questionnaires ESG", "preuves traçabilité", "empreinte carbone produits"]
+      },
+      {
+        "type": "Autorités",
+        "examples": ["Douanes (UE)", "Autorités compétentes EUDR", "Auditeurs CSRD"],
+        "expectations": ["dossiers auditables", "cohérence déclarations", "contrôles internes"]
+      },
+      {
+        "type": "Fournisseurs",
+        "examples": ["Producteurs élastomères", "Compounders", "Logisticiens"],
+        "expectations": ["formats de données standard", "processus d’audit", "plans de remédiation"]
+      }
+    
+    ],
+     "eudr_cell": [
+      { "role": "Chef de projet", "title": "EUDR Traceability Lead", "name": "Hector M." },
+      { "role": "Achats", "title": "Procurement Manager (Natural Rubber)", "name": "Lina P." },
+      { "role": "Qualité", "title": "Supplier Quality Engineer", "name": "Marie T." },
+      { "role": "ESG", "title": "Sustainability Reporting Manager", "name": "Chloé D." },
+      { "role": "IT/Data", "title": "Data Product Owner (Traceability)", "name": "Camille V." }
+    ]
+  
+},
+
+ 
+
+  "notes_for_semantic_analysis": {
+    "expected_hot_topics": [
+      "EUDR: traçabilité plantation + géolocalisation + scoring risque",
+      "CBAM: collecte émissions fournisseurs métal + projection coût",
+      "Trade defence: watchlist antidumping sur 4002.xx et 72xx",
+      "Sanctions screening: faux positifs et escalades",
+      "Single-source: HNBR feedstock / noir de carbone",
+      "Qualité: dérives process bonding, traceabilité lot-matière"
+    ],
+    "entity_linking_hints": {
+      "site_id": "impact mapping (prod/logistique)",
+      "supplier_id": "due diligence / sanctions / EUDR",
+      "nc_code": "import/export classification",
+      "hs_code": "customs/compliance correlation",
+      "material_id": "BOM -> coût -> risques",
+      "program_cells": "routing des tâches conformité"
+    }
+  }
+}

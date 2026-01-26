@@ -1,0 +1,29 @@
+[
+  {
+    "document_id": "3",
+    "title": "Règlement REACH (CE) N° 1907/2006",
+    "reference": "CE 1907/2006",
+    "regulation_type": "EU",
+    "source_url": "https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:CE 1907/2006",
+    "publication_date": "2024-12-05T00:00:00.000Z",
+    "workflow_status": "validated",
+    "validated_at": "2026-01-13T10:30:00.000Z",
+    "validated_by": "juriste@ping.com",
+    "analysis": {
+      "is_relevant": true,
+      "confidence": 0.95,
+      "matched_keywords": [
+        "biocides",
+        "substances chimiques",
+        "protection"
+      ],
+      "matched_nc_codes": [
+        "2804",
+        "2805",
+        "2806"
+      ],
+      "validation_status": "approved",
+      "validation_comment": "Document pertinent pour notre activité"
+    }
+  }
+]
