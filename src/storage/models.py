@@ -103,6 +103,7 @@ class Analysis(Base):
     validation_comment = Column(Text, nullable=True)
     validated_by = Column(String(200), nullable=True)
     validated_at = Column(DateTime, nullable=True)
+    regulation_type = Column(String(50), nullable=True)
     
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     
@@ -116,53 +117,40 @@ class Analysis(Base):
 
 class ImpactAssessment(Base):
     """
-    Analyses d'impact détaillées par Agent 2
-    
+    Analyses d'impact d??taill??es par Agent 2
+
     Attributes:
         id: Identifiant unique
-        analysis_id: Référence à l'analyse validée
-        total_score: Score d'impact final (0-1)
-        criticality: CRITICAL, HIGH, MEDIUM, LOW
-        affected_suppliers: Liste des fournisseurs impactés (JSON)
-        affected_products: Liste des produits impactés (JSON)
-        affected_customs_flows: Flux douaniers impactés (JSON)
-        financial_impact: Estimation financière (JSON)
-        recommended_actions: Plan d'action recommandé (JSON)
-        risk_mitigation: Stratégies d'atténuation (JSON)
-        llm_reasoning: Explication détaillée LLM
-        confidence_level: HIGH, MEDIUM, LOW
+        analysis_id: R??f??rence ?? l'analyse valid??e
+        risk_main: Risque principal (liste predefinie)
+        impact_level: Impact (faible, moyen, eleve)
+        risk_details: Details du risque
+        modality: Modalite de la reglementation
+        deadline: Deadline au format MM-YYYY
+        recommendation: Recommandations (texte libre)
+        llm_reasoning: Explication detaillee LLM
     """
     __tablename__ = "impact_assessments"
-    
+
     id = Column(String, primary_key=True, default=generate_uuid)
     analysis_id = Column(String, ForeignKey("analyses.id"), nullable=False)
-    
-    # Scoring et criticité (déplacé depuis Analysis)
-    total_score = Column(Float, nullable=False, default=0.0)  # 0-1
-    criticality = Column(String(20), nullable=False)  # CRITICAL, HIGH, MEDIUM, LOW
-    
-    # Impacts détaillés
-    affected_suppliers = Column(JSON, nullable=True)  # [{id, name, impact_level}]
-    affected_products = Column(JSON, nullable=True)   # [{id, name, nc_code, impact}]
-    affected_customs_flows = Column(JSON, nullable=True)  # [{origin, destination, volume}]
-    financial_impact = Column(JSON, nullable=True)  # {estimated_cost, currency, timeframe}
-    
-    # Recommandations
-    recommended_actions = Column(JSON, nullable=False)  # [{priority, action, deadline}]
-    risk_mitigation = Column(JSON, nullable=True)  # [{risk, strategy, resources}]
-    
-    # Métadonnées LLM
+
+    risk_main = Column(String(50), nullable=False)
+    impact_level = Column(String(20), nullable=False)
+    risk_details = Column(Text, nullable=True)
+    modality = Column(String(50), nullable=True)
+    deadline = Column(String(7), nullable=True)  # MM-YYYY
+    recommendation = Column(Text, nullable=True)
     llm_reasoning = Column(Text, nullable=True)
-    confidence_level = Column(String(20), nullable=True)  # HIGH, MEDIUM, LOW
-    
+
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    
+
     # Relations
     analysis = relationship("Analysis", back_populates="impact_assessments")
     alerts = relationship("Alert", back_populates="impact_assessment", cascade="all, delete-orphan")
-    
+
     def __repr__(self):
-        return f"<ImpactAssessment(id={self.id}, score={self.total_score:.2f}, criticality={self.criticality})>"
+        return f"<ImpactAssessment(id={self.id}, impact={self.impact_level}, risk={self.risk_main})>"
 
 
 class Alert(Base):
@@ -263,3 +251,34 @@ class CompanyProfile(Base):
     
     def __repr__(self):
         return f"<CompanyProfile(id={self.id}, name={self.company_name}, active={self.active})>"
+
+class CompanyProcess(Base):
+    """
+    Company data for impact analysis (Agent 2)
+
+    Attributes:
+        id: Identifiant unique
+        company_name: Nom de l'entreprise
+        processes: Processus de fabrication et operations (JSON)
+        transport_modes: Moyens de transport (JSON)
+        suppliers: Informations fournisseurs (JSON)
+        products: Produits et codes NC (JSON)
+        import_export_flows: Flux import/export (JSON)
+        notes: Notes libres
+    """
+    __tablename__ = "company_processes"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    company_name = Column(String(200), nullable=False)
+    processes = Column(JSON, nullable=True)
+    transport_modes = Column(JSON, nullable=True)
+    suppliers = Column(JSON, nullable=True)
+    products = Column(JSON, nullable=True)
+    import_export_flows = Column(JSON, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<CompanyProcess(id={self.id}, company={self.company_name})>"
+

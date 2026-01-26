@@ -1,45 +1,17 @@
 """
-Outil : Calcul du score et de la criticité
+Outil : Calcul du score (deprecie)
 
-TODO (Dev 4): Implémenter le scoring
-
-Formule du score (0-1) basée sur :
-- Volume impacté (fournisseurs, produits)
-- Impact financier estimé
-- Délai d'application de la réglementation
-- Complexité de mise en conformité
-
-Criticité :
-- CRITICAL: score >= 0.8
-- HIGH: score >= 0.6
-- MEDIUM: score >= 0.4
-- LOW: score < 0.4
+Ce projet ne conserve plus de score chiffre pour Agent 2.
+Le fichier est conserve pour compatibilite et pourra etre supprime plus tard.
 """
 
 from langchain.tools import tool
 
 
 @tool
-def calculate_score(
-    affected_suppliers_count: int,
-    affected_products_count: int,
-    financial_impact: float,
-    deadline_days: int
-) -> dict:
-    """
-    TODO: Calculer le score d'impact et la criticité
-    
-    Args:
-        affected_suppliers_count: Nombre de fournisseurs impactés
-        affected_products_count: Nombre de produits impactés
-        financial_impact: Impact financier estimé (€)
-        deadline_days: Jours avant l'échéance réglementaire
-    
-    Returns:
-        Dict avec:
-        - total_score: float (0-1)
-        - criticality: str (CRITICAL/HIGH/MEDIUM/LOW)
-        - reasoning: str (explication du calcul)
-    """
-    # TODO: Implémenter la formule de scoring
-    raise NotImplementedError("Dev 4: Implémenter calculate_score")
+def calculate_score(*_args, **_kwargs) -> dict:
+    """Outil deprecie. Retourne un message d'indisponibilite."""
+    return {
+        "status": "deprecated",
+        "message": "Scoring retire: utiliser les metriques d'impact sans score chiffre."
+    }

@@ -7,8 +7,10 @@ Fonctionnalités :
 - Croiser document avec fournisseurs (data/suppliers/*.json)
 - Identifier produits impactés (codes NC)
 - Analyser flux douaniers concernés (data/customs_flows/*.json)
-- Estimer l'impact financier
-- Identifier les risques
+- Identifier le risque principal
+- Evaluer l'impact (faible/moyen/eleve)
+- Identifier les modalites et la deadline
+- Formuler une recommandation
 """
 
 from langchain.tools import tool
@@ -26,11 +28,12 @@ def analyze_impact(document_content: str, regulation_type: str, nc_codes: list) 
     
     Returns:
         Dict avec:
-        - affected_suppliers: [{id, name, impact_level}]
-        - affected_products: [{id, name, nc_code, impact}]
-        - affected_customs_flows: [{origin, destination, volume}]
-        - financial_impact: {estimated_cost, currency, timeframe}
-        - risks: [{risk, severity, mitigation}]
+        - risk_main: Risque principal (liste predefinie)
+        - impact_level: Impact (faible, moyen, eleve)
+        - risk_details: Details du risque
+        - modality: Modalite (liste predefinie)
+        - deadline: MM-YYYY
+        - recommendation: Recommandation (texte libre)
     """
     # TODO: Implémenter
     raise NotImplementedError("Dev 4: Implémenter analyze_impact")

@@ -8,7 +8,15 @@ Documentation: docs/DATABASE_SCHEMA.md
 from typing import List, Optional
 from datetime import datetime
 from sqlalchemy.orm import Session
-from src.storage.models import Document, Analysis, Alert, ExecutionLog, CompanyProfile, ImpactAssessment
+from src.storage.models import (
+    Document,
+    Analysis,
+    Alert,
+    ExecutionLog,
+    CompanyProfile,
+    CompanyProcess,
+    ImpactAssessment,
+)
 
 
 class DocumentRepository:
@@ -282,34 +290,34 @@ class ImpactAssessmentRepository:
             .filter(ImpactAssessment.analysis_id == analysis_id)\
             .first()
     
-    def list_by_criticality(self, criticality: str) -> List[ImpactAssessment]:
+    def list_by_impact_level(self, impact_level: str) -> List[ImpactAssessment]:
         """
-        Lister les analyses d'impact par criticité
-        
+        Lister les analyses d'impact par niveau d'impact
+
         Args:
-            criticality: CRITICAL, HIGH, MEDIUM, LOW
-        
+            impact_level: faible, moyen, eleve
+
         Returns:
             Liste d'analyses d'impact
         """
         return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.criticality == criticality)\
+            .filter(ImpactAssessment.impact_level == impact_level)\
             .order_by(ImpactAssessment.created_at.desc())\
             .all()
-    
-    def list_high_priority(self, min_score: float = 0.7) -> List[ImpactAssessment]:
+
+    def list_by_risk_main(self, risk_main: str) -> List[ImpactAssessment]:
         """
-        Lister les analyses d'impact haute priorité
-        
+        Lister les analyses d'impact par risque principal
+
         Args:
-            min_score: Score minimum (0-1)
-        
+            risk_main: Valeur du risque principal
+
         Returns:
             Liste d'analyses d'impact
         """
         return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.total_score >= min_score)\
-            .order_by(ImpactAssessment.total_score.desc())\
+            .filter(ImpactAssessment.risk_main == risk_main)\
+            .order_by(ImpactAssessment.created_at.desc())\
             .all()
 
 
@@ -523,3 +531,44 @@ class CompanyProfileRepository:
                     setattr(profile, key, value)
             profile.updated_at = datetime.utcnow()
             self.session.flush()
+
+class CompanyProcessRepository:
+    """Repository pour gerer les donnees entreprise (company_processes)"""
+
+    def __init__(self, session: Session):
+        self.session = session
+
+    def save(self, process: CompanyProcess) -> CompanyProcess:
+        """Sauvegarder un profil entreprise"""
+        self.session.add(process)
+        self.session.flush()
+        return process
+
+    def find_by_id(self, process_id: str) -> Optional[CompanyProcess]:
+        """Trouver un profil par ID"""
+        return self.session.query(CompanyProcess)\
+            .filter(CompanyProcess.id == process_id)\
+            .first()
+
+    def find_by_name(self, company_name: str) -> Optional[CompanyProcess]:
+        """Trouver un profil par nom d'entreprise"""
+        return self.session.query(CompanyProcess)\
+            .filter(CompanyProcess.company_name == company_name)\
+            .first()
+
+    def list_all(self) -> List[CompanyProcess]:
+        """Lister tous les profils"""
+        return self.session.query(CompanyProcess)\
+            .order_by(CompanyProcess.created_at.desc())\
+            .all()
+
+    def update(self, process_id: str, **kwargs) -> None:
+        """Mettre a jour un profil"""
+        process = self.find_by_id(process_id)
+        if process:
+            for key, value in kwargs.items():
+                if hasattr(process, key):
+                    setattr(process, key, value)
+            process.updated_at = datetime.utcnow()
+            self.session.flush()
+

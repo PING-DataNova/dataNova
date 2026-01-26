@@ -1,0 +1,27 @@
+{
+  "company_name": "Hutchinson",
+  "processes": {
+    "sites": ["FR", "ES"],
+    "activities": ["rubber_molding", "sealing_systems"]
+  },
+  "transport_modes": {
+    "modes": ["route", "rail"],
+    "share_percent": {
+      "route": 70,
+      "rail": 30
+    }
+  },
+  "suppliers": [
+    {"name": "Supplier A", "country": "CN", "category": "raw_materials"},
+    {"name": "Supplier B", "country": "DE", "category": "components"}
+  ],
+  "products": [
+    {"name": "Seal", "nc_code": "4016"},
+    {"name": "Hose", "nc_code": "4009"}
+  ],
+  "import_export_flows": [
+    {"origin": "CN", "destination": "FR", "volume": 1200},
+    {"origin": "DE", "destination": "FR", "volume": 800}
+  ],
+  "notes": "Profil de test Hutchinson"
+}

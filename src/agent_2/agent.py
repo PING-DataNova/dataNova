@@ -44,7 +44,9 @@ class Agent2:
         """
         task = (
             "Recupere les analyses depuis la base de donnees "
-            f"avec validation_status='{validation_status}' et limite {limit}."
+            f"avec validation_status='{validation_status}' et limite {limit}. "
+            "Charge les donnees entreprise, genere les metriques d'impact "
+            "et sauvegarde chaque resultat."
         )
         return self.agent.invoke({"messages": [{"role": "user", "content": task}]})
 
@@ -52,7 +54,11 @@ class Agent2:
         """
         Recupere une analyse precise par ID.
         """
-        task = f"Recupere l'analyse avec analysis_id='{analysis_id}'."
+        task = (
+            f"Recupere l'analyse avec analysis_id='{analysis_id}'. "
+            "Charge les donnees entreprise, genere les metriques d'impact "
+            "et sauvegarde le resultat."
+        )
         return self.agent.invoke({"messages": [{"role": "user", "content": task}]})
 
 

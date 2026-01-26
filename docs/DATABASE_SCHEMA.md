@@ -45,7 +45,7 @@
                              ▼
 ┌─────────────────────────────────────────────────────────────────────┐
 │              AGENT 2 - Impact & Recommandations                     │
-│  Scoring (0-1) + Criticité (CRITICAL/HIGH/MEDIUM/LOW)             │
+│  Metriques d'impact (sans score chiffre)é (CRITICAL/HIGH/MEDIUM/LOW)             │
 │  Impact fournisseurs + Coûts + Plan d'action                       │
 └────────────────────────────┬────────────────────────────────────────┘
                              │
@@ -119,17 +119,15 @@
 
 ### Agent 2 - Analyse d'impact
 
-**Mission** : Analyse détaillée + scoring + recommandations
+**Mission** : Analyse detaillee et metriques d'impact (sans score chiffre)
 
 **Input** : Analyses avec `validation_status = "approved"`
 
-**Tables modifiées** :
-- `impact_assessments` (écriture)
-  - `total_score` (0-1)
-  - `criticality` (CRITICAL/HIGH/MEDIUM/LOW)
-  - `affected_suppliers`, `affected_products`
-  - `recommended_actions`
-- `alerts` (écriture)
+**Tables modifiees** :
+- `impact_assessments` (ecriture)
+  - `risk_main`, `impact_level`
+  - `risk_details`, `modality`, `deadline`, `recommendation`
+- `alerts` (ecriture)
 
 **Responsable** : Dev 4 (voir `/src/agent_2/README.md`)
 
@@ -253,6 +251,7 @@ Résultats d'analyse de pertinence par l'Agent 1B (analyse LLM unique).
 | **`validation_comment`** | **TEXT** | **NULL** | **Commentaire du juriste** |
 | **`validated_by`** | **VARCHAR(200)** | **NULL** | **Email du validateur** |
 | **`validated_at`** | **DATETIME** | **NULL** | **Date de validation UI** |
+| `regulation_type` | VARCHAR(50) | NULL | Type de reglementation (CBAM, EUDR, etc.) |
 | `created_at` | DATETIME | NOT NULL | Date de l'analyse |
 
 **Index** :
@@ -265,28 +264,19 @@ Résultats d'analyse de pertinence par l'Agent 1B (analyse LLM unique).
 - `approved` : Validé par juriste → envoyé à Agent 2
 - `rejected` : Rejeté par juriste
 
-**⚠️ Changement majeur** : Le scoring (`total_score`) et la criticité (`criticality`) ont été **déplacés** vers la table `impact_assessments` (Agent 2).OT NULL | Niveau 3 : score sémantique LLM (0.0 à 1.0) |
 | `llm_reasoning` | TEXT | NULL | Explication du LLM (pourquoi pertinent/non pertinent) |
-| `total_score` | FLOAT | NOT NULL | Score final pondéré (0.0 à 1.0) |
-| `criticality` | VARCHAR(20) | NOT NULL | Criticité: `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` |
 | `relevant` | BOOLEAN | NOT NULL | Document pertinent pour l'entreprise ? |
 | `created_at` | DATETIME | NOT NULL | Date de l'analyse |
 
 **Index** :
 - `idx_analyses_document` sur `document_id` (jointure avec documents)
 - `idx_analyses_relevant` sur `relevant` (filtrer documents pertinents)
-- `idx_analyses_criticality` sur `criticality` (trier par criticité)
 
 **Formule score total** :
 ```
-total_score = (keyword_score * 0.3) + (nc_code_score * 0.3) + (llm_score * 0.4)
 ```
 
 **Mapping criticité** :
-- `total_score >= 0.8` → CRITICAL
-- `total_score >= 0.6` → HIGH
-- `total_score >= 0.4` → MEDIUM
-- `total_score < 0.4` → LOW
 
 **Exemple** :
 ```json
@@ -319,72 +309,34 @@ total_score = (keyword_score * 0.3) + (nc_code_score * 0.3) + (llm_score * 0.4)
 
 ---
 
-### 3️⃣ **impact_assessments**
+### 3 **impact_assessments**
 
-**🆕 NOUVEAU** - Analyses d'impact détaillées par Agent 2 (après validation UI).
+Analyses d'impact detaillees par Agent 2 (apres validation UI).
 
 | Colonne | Type | Contraintes | Description |
 |---------|------|-------------|-------------|
 | `id` | UUID | PRIMARY KEY | Identifiant unique |
-| `analysis_id` | UUID | FOREIGN KEY → analyses.id | Analyse validée source |
-| **`total_score`** | **FLOAT** | **NOT NULL** | **Score d'impact (0.0 à 1.0)** |
-| **`criticality`** | **VARCHAR(20)** | **NOT NULL** | **`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`** |
-| `affected_suppliers` | JSON | NULL | Fournisseurs impactés `[{id, name, impact_level}]` |
-| `affected_products` | JSON | NULL | Produits impactés `[{id, name, nc_code}]` |
-| `affected_customs_flows` | JSON | NULL | Flux douaniers `[{origin, destination, volume}]` |
-| `financial_impact` | JSON | NULL | Estimation financière `{cost, currency, timeframe}` |
-| `recommended_actions` | JSON | NOT NULL | Plan d'action `[{priority, action, deadline}]` |
-| `risk_mitigation` | JSON | NULL | Stratégies d'atténuation `[{risk, strategy}]` |
-| `llm_reasoning` | TEXT | NULL | Explication détaillée Agent 2 |
-| `confidence_level` | VARCHAR(20) | NULL | `HIGH`, `MEDIUM`, `LOW` |
-| `created_at` | DATETIME | NOT NULL | Date de création |
-
-**Index** :
-- `idx_impact_analysis` sur `analysis_id` (jointure avec analyses)
-- `idx_impact_criticality` sur `criticality` (trier par criticité)
-- `idx_impact_score` sur `total_score` (trier par score)
-
-**Formule score** (Agent 2) :
-```
-total_score = (
-    0.3 * supplier_impact_ratio +
-    0.3 * product_impact_ratio +
-    0.2 * financial_impact_normalized +
-    0.2 * urgency_score
-)
-```
-
-**Mapping criticité** :
-- `total_score >= 0.8` → CRITICAL
-- `total_score >= 0.6` → HIGH
-- `total_score >= 0.4` → MEDIUM
-- `total_score < 0.4` → LOW
+| `analysis_id` | UUID | FOREIGN KEY -> analyses.id | Analyse validee source |
+| `risk_main` | VARCHAR(50) | NOT NULL | Risque principal (liste predefinie) |
+| `impact_level` | VARCHAR(20) | NOT NULL | `faible`, `moyen`, `eleve` |
+| `risk_details` | TEXT | NULL | Details du risque |
+| `modality` | VARCHAR(50) | NULL | Modalite (liste predefinie) |
+| `deadline` | VARCHAR(7) | NULL | Deadline au format `MM-YYYY` |
+| `recommendation` | TEXT | NULL | Recommandation (texte libre) |
+| `llm_reasoning` | TEXT | NULL | Explication detaillee Agent 2 |
+| `created_at` | DATETIME | NOT NULL | Date de creation |
 
 **Exemple** :
 ```json
 {
   "id": "770a1122-g4bd-63f6-c938-668877662222",
   "analysis_id": "660f9511-f3ac-52e5-b827-557766551111",
-  "total_score": 0.85,
-  "criticality": "CRITICAL",
-  "affected_suppliers": [
-    {"id": "sup_1", "name": "Shanghai Steel Co", "impact_level": "HIGH"}
-  ],
-  "affected_products": [
-    {"id": "prod_123", "name": "Steel Rods", "nc_code": "7206"}
-  ],
-  "financial_impact": {
-    "estimated_cost": 150000,
-    "currency": "EUR",
-    "timeframe": "12 months"
-  },
-  "recommended_actions": [
-    {
-      "priority": 1,
-      "action": "Contact suppliers for CBAM emissions data",
-      "deadline": "2026-02-01"
-    }
-  ]
+  "risk_main": "fiscal",
+  "impact_level": "eleve",
+  "risk_details": "Taxes carbone sur imports acier",
+  "modality": "certificat",
+  "deadline": "12-2025",
+  "recommendation": "Prioriser transport bas-carbone et preparer les certificats CO2."
 }
 ```
 
@@ -415,8 +367,6 @@ Alertes enrichies générées par Agent 2 et statut d'envoi.
 {
   "document_title": "Regulation 2023/956",
   "regulation_type": "CBAM",
-  "criticality": "CRITICAL",
-  "total_score": 0.85,
   "summary": "5 fournisseurs chinois impactés par CBAM - 150K€ estimés",
   "affected_suppliers": 5,
   "affected_products": 12,
@@ -516,7 +466,39 @@ Profils entreprise pour le filtrage personnalisé (Agent 1B).
 
 ---
 
-## 🔗 Relations
+
+
+### 6 **company_processes**
+
+Donnees entreprise pour l'analyse d'impact (Agent 2).
+
+| Colonne | Type | Contraintes | Description |
+|---------|------|-------------|-------------|
+| `id` | UUID | PRIMARY KEY | Identifiant unique |
+| `company_name` | VARCHAR(200) | NOT NULL | Nom de l'entreprise |
+| `processes` | JSON | NULL | Processus de fabrication et operations |
+| `transport_modes` | JSON | NULL | Moyens de transport |
+| `suppliers` | JSON | NULL | Informations fournisseurs |
+| `products` | JSON | NULL | Produits et codes NC |
+| `import_export_flows` | JSON | NULL | Flux import/export |
+| `notes` | TEXT | NULL | Notes libres |
+| `created_at` | DATETIME | NOT NULL | Date de creation |
+| `updated_at` | DATETIME | NOT NULL | Date de mise a jour |
+
+**Exemple** :
+```json
+{
+  "company_name": "Hutchinson",
+  "processes": {"sites": ["FR", "ES"], "focus": "rubber"},
+  "transport_modes": {"modes": ["route", "rail"], "share": {"route": 70, "rail": 30}},
+  "suppliers": [{"name": "Supplier A", "country": "CN"}],
+  "products": [{"name": "Seal", "nc_code": "4016"}],
+  "import_export_flows": [{"origin": "CN", "destination": "FR", "volume": 1200}],
+  "notes": "Profil de test"
+}
+```
+
+## Relations
 
 ```sql
 -- documents → analyses (1:N)
@@ -559,7 +541,7 @@ FOREIGN KEY (impact_assessment_id) REFERENCES impact_assessments(id) ON DELETE C
      - UPDATE documents SET workflow_status="rejected_validation"
 
 4. Agent 2 analyse impact (analyses avec validation_status="approved")
-   → INSERT impact_assessments (total_score, criticality)
+   → INSERT impact_assessments (risk_main, impact_level, risk_details, modality, deadline, recommendation)
    → INSERT alerts (impact_assessment_id, status="pending")
 
 5. Envoi notifications

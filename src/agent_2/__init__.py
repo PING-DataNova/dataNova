@@ -2,18 +2,16 @@
 Agent 2 - Analyse d'impact et recommandations
 
 Agent responsable de :
-- Analyse d'impact détaillée des réglementations validées
-- Calcul du score et de la criticité
-- Croisement avec fournisseurs, produits, flux douaniers
-- Génération de recommandations et plans d'action
-- Création d'alertes enrichies
+- Analyse d'impact des lois validees
+- Matching avec donnees entreprise
+- Generation des metriques d'impact
+- Creation des ImpactAssessment
 
 Workflow :
-1. Récupère les analyses avec validation_status="approved"
-2. Calcule total_score et criticality
-3. Analyse les impacts (fournisseurs, produits, coûts)
-4. Génère les recommandations
-5. Crée ImpactAssessment et Alert
+1. Recupere les analyses avec validation_status="approved"
+2. Charge les donnees company_processes
+3. Produit risk_main, impact_level, risk_details, modality, deadline, recommendation
+4. Cree ImpactAssessment
 
 Responsable : Dev 4
 """

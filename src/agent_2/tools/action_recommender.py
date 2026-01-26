@@ -1,14 +1,7 @@
 """
-Outil : Génération de recommandations et plans d'action
+Outil : Generation de recommandations
 
-TODO (Dev 4): Implémenter la génération de recommandations
-
-Génère des recommandations basées sur :
-- Type de réglementation
-- Impacts identifiés
-- Délais réglementaires
-- Ressources disponibles
-- Best practices
+TODO (Dev 4): Implementer la generation de recommandations
 """
 
 from langchain.tools import tool
@@ -17,25 +10,24 @@ from langchain.tools import tool
 @tool
 def generate_recommendations(
     regulation_type: str,
-    impacts: dict,
-    criticality: str,
-    deadline: str
+    impact_level: str,
+    risk_main: str,
+    deadline: str,
+    company_context: dict
 ) -> dict:
     """
-    TODO: Générer des recommandations et un plan d'action
-    
+    TODO: Generer des recommandations pour l'entreprise.
+
     Args:
-        regulation_type: Type de réglementation
-        impacts: Impacts détaillés (fournisseurs, produits, etc.)
-        criticality: Niveau de criticité
-        deadline: Date limite de conformité
-    
+        regulation_type: Type de reglementation
+        impact_level: Impact (faible/moyen/eleve)
+        risk_main: Risque principal
+        deadline: Date limite (MM-YYYY)
+        company_context: Contexte entreprise (processes, transport, fournisseurs, etc.)
+
     Returns:
         Dict avec:
-        - recommended_actions: [{priority, action, deadline, resources}]
-        - risk_mitigation: [{risk, strategy, resources}]
-        - estimated_effort: {man_days, cost}
-        - timeline: [{phase, duration, deliverables}]
+        - recommendation: Texte libre
     """
-    # TODO: Implémenter la génération de recommandations
-    raise NotImplementedError("Dev 4: Implémenter generate_recommendations")
+    # TODO: Implementer la generation de recommandations
+    raise NotImplementedError("Dev 4: Implementer generate_recommendations")
