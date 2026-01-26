@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BarChart, FileText, TrendingUp, AlertTriangle, Calendar, Download, Bell, CheckCircle, User, Mail, Building, Shield } from 'lucide-react';
 import './DecisionDashboard.css';
+import { impactsService, ImpactAssessment } from '../services/impactsService';
 
 interface DashboardStats {
   totalRegulations: number;
@@ -12,14 +13,32 @@ interface DashboardStats {
 
 export const DecisionDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<'dashboard' | 'profile'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'overview' | 'impacts' | 'recommendations'>('overview');
+  const [impacts, setImpacts] = useState<ImpactAssessment[]>([]);
+  const [loading, setLoading] = useState(true);
   
   const stats: DashboardStats = {
-    totalRegulations: 123,
+    totalRegulations: impacts.length,
     progressPercentage: 78,
     validatedPercentage: 22,
-    highRisks: 15,
-    criticalDeadlines: 7
+    highRisks: impacts.filter(i => i.impact_level === 'eleve').length,
+    criticalDeadlines: impacts.length
   };
+
+  useEffect(() => {
+    const fetchImpacts = async () => {
+      try {
+        const response = await impactsService.getImpacts({ limit: 100 });
+        setImpacts(response.impacts);
+        setLoading(false);
+      } catch (error) {
+        console.error('Erreur lors de la récupération des impacts:', error);
+        setLoading(false);
+      }
+    };
+    
+    fetchImpacts();
+  }, []);
 
   const handleExportPDF = () => {
     // Logique d'export PDF
@@ -93,8 +112,33 @@ export const DecisionDashboard: React.FC = () => {
         {activeView === 'dashboard' ? (
           // Dashboard Content
           <div className="decision-content">
-          <section className="decision-indicators-section">
-            <h2>Indicateurs clés</h2>
+          {/* Tabs Navigation */}
+          <div className="dashboard-tabs">
+            <button 
+              className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => setActiveTab('overview')}
+            >
+              📊 Vue d'ensemble
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'impacts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('impacts')}
+            >
+              ⚠️ Impacts ({impacts.length})
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'recommendations' ? 'active' : ''}`}
+              onClick={() => setActiveTab('recommendations')}
+            >
+              💡 Recommandations ({impacts.length})
+            </button>
+          </div>
+
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <>
+              <section className="decision-indicators-section">
+                <h2>Indicateurs clés</h2>
             
             <div className="decision-indicators-grid">
               <div className="decision-indicator-card">
@@ -135,8 +179,8 @@ export const DecisionDashboard: React.FC = () => {
             </div>
           </section>
 
-          {/* Visualizations */}
-          <section className="decision-visualizations-section">
+              {/* Visualizations */}
+              <section className="decision-visualizations-section">
             <h2>Visualisations</h2>
             
             <div className="decision-charts-grid">
@@ -157,6 +201,81 @@ export const DecisionDashboard: React.FC = () => {
               </div>
             </div>
           </section>
+            </>
+          )}
+
+          {/* Impacts Tab */}
+          {activeTab === 'impacts' && (
+            <section className="decision-impacts-section">
+              <h2>⚠️ Analyse des Impacts (Agent 2)</h2>
+              
+              {loading ? (
+                <div style={{textAlign: 'center', padding: '40px'}}>Chargement des impacts...</div>
+              ) : impacts.length === 0 ? (
+                <div style={{textAlign: 'center', padding: '40px'}}>Aucun impact trouvé</div>
+              ) : (
+                <div className="impacts-grid">
+                  {impacts.map((impact) => (
+                    <div key={impact.id} className={`impact-card impact-${impact.impact_level}`}>
+                      <div className="impact-header">
+                        <h3>{impact.regulation_title}</h3>
+                        <span className={`impact-badge ${impact.impact_level}`}>
+                          {impact.impact_level === 'eleve' ? '🔴 Élevé' : impact.impact_level === 'moyen' ? '🟠 Moyen' : '🟢 Faible'}
+                        </span>
+                      </div>
+                      <div className="impact-details">
+                        <p><strong>Type de risque:</strong> {impact.risk_main}</p>
+                        <p><strong>Modalité:</strong> {impact.modality}</p>
+                        <p><strong>Deadline:</strong> {impact.deadline}</p>
+                      </div>
+                      {impact.llm_reasoning && (
+                        <div className="impact-reasoning">
+                          <strong>📋 Analyse détaillée:</strong>
+                          <p>{impact.llm_reasoning}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Recommendations Tab */}
+          {activeTab === 'recommendations' && (
+            <section className="decision-recommendations-section">
+              <h2>💡 Recommandations Stratégiques (Agent 2)</h2>
+              
+              {loading ? (
+                <div style={{textAlign: 'center', padding: '40px'}}>Chargement des recommandations...</div>
+              ) : impacts.length === 0 ? (
+                <div style={{textAlign: 'center', padding: '40px'}}>Aucune recommandation trouvée</div>
+              ) : (
+                <div className="recommendations-grid">
+                  {impacts.map((impact, index) => (
+                    <div key={impact.id} className={`recommendation-card recommendation-${impact.impact_level}`}>
+                      <div className="recommendation-number">#{index + 1}</div>
+                      <div className="recommendation-header">
+                        <h3>{impact.regulation_title}</h3>
+                        <span className={`priority-badge ${impact.impact_level}`}>
+                          {impact.impact_level === 'eleve' ? 'PRIORITAIRE' : impact.impact_level === 'moyen' ? 'IMPORTANT' : 'À SURVEILLER'}
+                        </span>
+                      </div>
+                      <div className="recommendation-meta">
+                        <span className="meta-item">📅 {impact.deadline}</span>
+                        <span className="meta-item">⚠️ {impact.risk_main}</span>
+                        <span className="meta-item">📋 {impact.modality}</span>
+                      </div>
+                      <div className="recommendation-content">
+                        <strong>💡 Action recommandée :</strong>
+                        <p>{impact.recommendation}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
         ) : (
           // Profile Content

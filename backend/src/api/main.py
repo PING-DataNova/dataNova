@@ -5,7 +5,7 @@ Point d'entrée de l'API FastAPI
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import analyses
+from src.api.routes import analyses, impacts
 
 # Créer l'application FastAPI
 app = FastAPI(
@@ -20,6 +20,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",  # Alternative port
+        "http://localhost:3001",  # Alternative port 2
         "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
@@ -29,6 +30,7 @@ app.add_middleware(
 
 # Enregistrer les routes
 app.include_router(analyses.router, prefix="/api")
+app.include_router(impacts.router, prefix="/api")
 
 
 @app.get("/")
