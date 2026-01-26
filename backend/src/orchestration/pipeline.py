@@ -159,7 +159,7 @@ def run_pipeline(
                     
                     # Mettre à jour le workflow_status
                     doc.workflow_status = "analyzed"
-                    doc.analyzed_at = analysis.created_at
+                    doc.analyzed_at = analysis.analysis_timestamp
                     session.commit()
                     
                     logger.info(
@@ -220,7 +220,7 @@ def run_pipeline(
         }
 
 
-def load_company_profile(company_name: str = "Hutchinson SA") -> dict:
+def load_company_profile(company_name: str = "HUTCHINSON") -> dict:
     """
     Charge le profil de l'entreprise depuis la base de données.
     

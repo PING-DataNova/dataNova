@@ -1,39 +1,73 @@
 version: '3.8'
 
 services:
-  # PostgreSQL (optionnel - si vous choisissez PostgreSQL au lieu de SQLite)
+  # PostgreSQL Database (Production-ready)
   postgres:
     image: postgres:16-alpine
     container_name: datanova_postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: datanova
-      POSTGRES_PASSWORD: datanova_password
-      POSTGRES_DB: datanova
+      POSTGRES_USER: ${POSTGRES_USER:-datanova}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-datanova_password}
+      POSTGRES_DB: ${POSTGRES_DB:-datanova}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_postgres.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - datanova_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U datanova"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Application Agent 1
+  # Application Agent 1 (Backend)
   agent:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: datanova_agent1
+    restart: unless-stopped
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql://datanova:datanova_password@postgres:5432/datanova
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     networks:
       - datanova_network
-    # Uncomment pour lancer en mode daemon
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # Mode scheduler (production)
     # command: python -m src.main
+
+  # Adminer - Database UI (Development only)
+  adminer:
+    image: adminer:latest
+    container_name: datanova_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - datanova_network
+    depends_on:
+      - postgres
+    profiles:
+      - dev
 
 volumes:
   postgres_data:
+    driver: local
 
 networks:
   datanova_network:
