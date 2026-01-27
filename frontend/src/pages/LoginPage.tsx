@@ -27,8 +27,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         password,
       });
 
-      // Connexion réussie
-      onLogin(response.user.role, response.user);
+      // Connexion réussie (mock)
+      onLogin(response.role, response);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de connexion. Veuillez réessayer.');

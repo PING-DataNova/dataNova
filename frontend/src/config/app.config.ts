@@ -4,16 +4,11 @@
 
 export const config = {
   // Mode de l'application: 'mock' ou 'api'
-  mode: (import.meta.env.VITE_MODE || 'mock') as 'mock' | 'api',
-  
+  mode: 'mock' as 'mock' | 'api', // <--- Forcé en mock pour démo locale
   // URL de l'API backend
   apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000',
-  
-  // Est-ce qu'on utilise le mode mock ?
-  isMockMode: () => config.mode === 'mock',
-  
-  // Est-ce qu'on utilise l'API réelle ?
-  isApiMode: () => config.mode === 'api',
+  isMockMode: () => true,
+  isApiMode: () => false,
 };
 
 // Log de la configuration au démarrage
