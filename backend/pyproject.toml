@@ -3,7 +3,6 @@ name = "datanova-agent1"
 version = "0.1.0"
 description = "Agent IA de veille réglementaire automatisée - Projet PING"
 authors = [{name = "PING-DataNova Team"}]
-readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # LangChain & LLM

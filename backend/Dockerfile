@@ -28,6 +28,9 @@ FROM python:3.13-slim
 # Create non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
+# Install curl for healthcheck
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy only runtime dependencies from builder
@@ -38,6 +41,8 @@ COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY config/ ./config/
 COPY data/company_profiles/ ./data/company_profiles/
+COPY data/company_process/ ./data/company_process/
+COPY data/sources_config.json ./data/sources_config.json
 
 # Create necessary directories with proper permissions
 RUN mkdir -p data logs data/documents \
@@ -48,15 +53,15 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-# Health check
+# Health check pour FastAPI
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)"
+    CMD curl -f http://localhost:8000/docs || exit 1
 
 # Switch to non-root user
 USER appuser
 
-# Expose port (if needed for API later)
+# Expose port
 EXPOSE 8000
 
-# Run application
-CMD ["python", "-m", "src.main", "--run-once"]
+# Run FastAPI application with uvicorn
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

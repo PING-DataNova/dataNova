@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # Database
     database_url: str = Field(
         default="sqlite:///./data/datanova.db",
-        description="URL de connexion Çÿ la base de donnÇ¸es",
+        description="URL de connexion à la base de donnÇ¸es",
     )
 
     # Email
