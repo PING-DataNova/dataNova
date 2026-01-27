@@ -43,7 +43,12 @@ def load_test_company_profiles():
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
 
-            company_name = data.get("company_name") or data.get("name", "Unknown")
+            # Extraire company_name depuis différentes structures possibles
+            company_name = None
+            if "company" in data:
+                company_name = data["company"].get("company_name")
+            if not company_name:
+                company_name = data.get("company_name") or data.get("name", "Unknown")
 
             existing = repo.find_by_name(company_name)
             if existing:
@@ -133,19 +138,28 @@ def load_test_company_processes():
 
 def main():
     """Point d'entree principal"""
+    import sys
+    auto_mode = "--auto" in sys.argv
+    
     print("=" * 60)
     print("Initialisation de la base de donnees")
     print("=" * 60)
 
     init_db()
 
-    load_test = input("\nCharger les profils entreprise de test ? (o/n): ")
-    if load_test.lower() in ['o', 'y', 'oui', 'yes']:
+    if auto_mode:
+        # Mode automatique (conteneur Docker)
         load_test_company_profiles()
-
-    load_processes = input("\nCharger les donnees entreprise (company_processes) ? (o/n): ")
-    if load_processes.lower() in ['o', 'y', 'oui', 'yes']:
         load_test_company_processes()
+    else:
+        # Mode interactif (dev local)
+        load_test = input("\nCharger les profils entreprise de test ? (o/n): ")
+        if load_test.lower() in ['o', 'y', 'oui', 'yes']:
+            load_test_company_profiles()
+
+        load_processes = input("\nCharger les donnees entreprise (company_processes) ? (o/n): ")
+        if load_processes.lower() in ['o', 'y', 'oui', 'yes']:
+            load_test_company_processes()
 
     print("=" * 60)
     print("Initialisation terminee avec succes!")

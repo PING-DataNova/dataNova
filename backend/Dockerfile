@@ -63,5 +63,5 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Run FastAPI application with uvicorn
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Init DB puis lancer l'API
+CMD python scripts/init_db.py --auto && uvicorn src.api.main:app --host 0.0.0.0 --port 8000
