@@ -1,0 +1,116 @@
+# =============================================================================
+# TERRAFORM VARIABLES - FICHIER DE CONFIGURATION
+# =============================================================================
+# ⚠️  IMPORTANT : Ce fichier contient des valeurs SENSIBLES (API keys, emails)
+# 
+# INSTRUCTIONS :
+# 1. Copier ce fichier : cp terraform.tfvars.example terraform.tfvars
+# 2. Remplir les valeurs ci-dessous avec tes vraies données
+# 3. Ne JAMAIS committer terraform.tfvars dans Git (déjà dans .gitignore)
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# CONFIGURATION DU PROJET
+# -----------------------------------------------------------------------------
+
+project_name = "datanova"
+environment  = "dev"
+location     = "westeurope"  # Europe de l'Ouest (Amsterdam)
+
+# Tags personnalisés (optionnel)
+tags = {
+  Project     = "DataNova"
+  Team        = "Hutchinson"
+  ManagedBy   = "Terraform"
+  Environment = "dev"
+  CostCenter  = "IT"
+}
+
+# -----------------------------------------------------------------------------
+# ACCÈS ÉQUIPE - 6 MEMBRES
+# -----------------------------------------------------------------------------
+# ⚠️  Utilise les emails Azure AD / Microsoft 365 de ton organisation
+# Format : prenom.nom@hutchinson.com ou @groupe-esigelec.org
+
+team_members_emails = [
+  "nora.dossou-gbete@groupe-esigelec.org",
+  # "marc.junior@hutchinson.com",
+  # "membre3@hutchinson.com",
+  # "membre4@hutchinson.com",
+  # "membre5@hutchinson.com",
+  # "membre6@hutchinson.com",
+]
+
+team_role = "Contributor"  # Contributor = gestion des ressources sans gérer les accès
+                           # Autres options : "Owner" (tout) ou "Reader" (lecture seule)
+
+# -----------------------------------------------------------------------------
+# API KEYS - SECRETS SENSIBLES
+# -----------------------------------------------------------------------------
+# ⚠️  Ces clés seront stockées dans Azure Key Vault (chiffré)
+
+# Clé API Anthropic Claude (Agent 1B)
+# Format : sk-ant-xxxxxxxxxxxxxxxxxxxxx
+# Obtenir sur : https://console.anthropic.com/settings/keys
+anthropic_api_key = "sk-ant-YOUR_ANTHROPIC_API_KEY_HERE"
+
+# Clé API Google Gemini (Agent 2)
+# Obtenir sur : https://makersuite.google.com/app/apikey
+google_api_key = "YOUR_GOOGLE_API_KEY_HERE"
+
+# -----------------------------------------------------------------------------
+# CONFIGURATION POSTGRESQL
+# -----------------------------------------------------------------------------
+
+postgres_admin_username = "pgadmin"
+postgres_version        = "16"
+postgres_sku_name       = "B_Standard_B1ms"  # Burstable 1 vCore, 2GB (~25€/mois)
+                                             # Pour prod : "GP_Standard_D2s_v3" (2 vCores, 8GB)
+postgres_storage_mb     = 32768              # 32 GB
+
+backup_retention_days           = 7     # Jours de rétention des backups
+enable_public_network_access    = true  # true = accès depuis Internet (plus simple)
+                                        # false = VNet only (plus sécurisé pour prod)
+
+# -----------------------------------------------------------------------------
+# CONFIGURATION BACKEND (CONTAINER APP)
+# -----------------------------------------------------------------------------
+
+backend_cpu         = 0.5   # vCores (0.25, 0.5, 1, 2)
+backend_memory      = "1Gi" # Mémoire (0.5Gi, 1Gi, 2Gi, 4Gi)
+backend_min_replicas = 1    # Minimum d'instances (coût constant)
+backend_max_replicas = 3    # Maximum d'instances (autoscaling)
+
+enable_container_app_logs = true  # Logs détaillés dans Log Analytics
+
+# -----------------------------------------------------------------------------
+# CONFIGURATION FRONTEND
+# -----------------------------------------------------------------------------
+
+frontend_location = "westeurope"  # Static Web Apps disponibles dans certaines régions
+                                  # Autres options : "eastus2", "centralus", "westus2"
+
+# -----------------------------------------------------------------------------
+# EXEMPLES DE CONFIGURATION POUR DIFFÉRENTS ENVIRONNEMENTS
+# -----------------------------------------------------------------------------
+
+# ┌─────────────────────────────────────────────────────────────────────┐
+# │ ENVIRONNEMENT DE DÉVELOPPEMENT (DEV) - Par défaut                   │
+# ├─────────────────────────────────────────────────────────────────────┤
+# │ environment  = "dev"                                                │
+# │ postgres_sku = "B_Standard_B1ms"  # 25€/mois                        │
+# │ backend_cpu  = 0.5                # Petit                           │
+# │ Coût total   : ~50-70€/mois                                         │
+# └─────────────────────────────────────────────────────────────────────┘
+
+# ┌─────────────────────────────────────────────────────────────────────┐
+# │ ENVIRONNEMENT DE PRODUCTION (PROD)                                  │
+# ├─────────────────────────────────────────────────────────────────────┤
+# │ environment  = "prod"                                               │
+# │ postgres_sku = "GP_Standard_D2s_v3"  # 200€/mois                    │
+# │ backend_cpu  = 1                     # Plus puissant                │
+# │ backend_min_replicas = 2             # Haute disponibilité          │
+# │ enable_public_network_access = false # VNet privé                   │
+# │ geo_redundant_backup = true          # Backups géo-redondants       │
+# │ Coût total   : ~250-300€/mois                                       │
+# └─────────────────────────────────────────────────────────────────────┘

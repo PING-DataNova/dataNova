@@ -1,0 +1,48 @@
+# =============================================================================
+# TERRAFORM .GITIGNORE
+# =============================================================================
+# Fichiers à ne JAMAIS committer dans Git (contiennent des secrets)
+# =============================================================================
+
+# Fichier de configuration avec les secrets
+terraform.tfvars
+*.tfvars
+!terraform.tfvars.example
+
+# State files - contiennent des secrets en clair
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Dossier de plugins et modules Terraform
+.terraform/
+.terraform.lock.hcl
+
+# Fichiers de sauvegarde
+*.backup
+*.bak
+
+# Fichiers de l'éditeur
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Fichiers de plans Terraform
+*.tfplan
+*.tfplan.*
+
+# Fichiers générés par Terraform CLI
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Fichiers de configuration locale
+.terraformrc
+terraform.rc

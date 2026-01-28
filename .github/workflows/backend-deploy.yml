@@ -1,0 +1,50 @@
+name: Backend - Build & Deploy to Azure
+
+on:
+  push:
+    branches: [ main, agent1a1b_agent2_frontend_marc ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-deploy.yml'
+  workflow_dispatch:  # Permet déclenchement manuel
+
+env:
+  AZURE_RESOURCE_GROUP: datanova-dev-rg
+  CONTAINER_APP_NAME: datanova-dev-backend
+  ACR_NAME: datanovadevacr
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔐 Login to ACR
+      run: |
+        echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ env.ACR_NAME }}.azurecr.io \
+          --username ${{ secrets.ACR_USERNAME }} \
+          --password-stdin
+
+    - name:  Build Docker image
+      working-directory: ./backend
+      run: |
+        docker build \
+          --platform linux/amd64 \
+          -t ${{ env.ACR_NAME }}.azurecr.io/datanova-backend:${{ github.sha }} \
+          -t ${{ env.ACR_NAME }}.azurecr.io/datanova-backend:latest \
+          .
+
+    - name: 🚀 Push to ACR
+      run: |
+        docker push ${{ env.ACR_NAME }}.azurecr.io/datanova-backend:${{ github.sha }}
+        docker push ${{ env.ACR_NAME }}.azurecr.io/datanova-backend:latest
+
+    - name: ✅ Build complete - Manual restart needed
+      run: |
+        echo "✅ Image pushed to ACR successfully!"
+        echo "📦 Image: ${{ env.ACR_NAME }}.azurecr.io/datanova-backend:latest"
+        echo ""
+        echo "🔄 Pour déployer, exécute cette commande :"
+        echo "az containerapp update --name ${{ env.CONTAINER_APP_NAME }} --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --image ${{ env.ACR_NAME }}.azurecr.io/datanova-backend:latest"

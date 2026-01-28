@@ -26,6 +26,9 @@ app.add_middleware(
         "http://localhost:3000",  # Alternative port
         "http://localhost:3001",  # Alternative port 2
         "http://127.0.0.1:5173",
+        # URLs Azure Static Web Apps (production)
+        "https://zealous-sea-0d27cce03.westeurope.1.azurestaticapps.net",
+        "https://zealous-sea-0d27cce03-preview.westeurope.1.azurestaticapps.net",
     ],
     allow_credentials=True,
     allow_methods=["*"],
