@@ -34,9 +34,22 @@ az containerapp update \
   --image "$IMAGE" \
   --output table
 
+# Force le redémarrage pour charger la nouvelle image
 echo ""
-echo "✅ Déploiement terminé !"
-echo "🌐 Backend URL: https://datanova-dev-backend.happyforest-90d4db38.francecentral.azurecontainerapps.io"
+echo "🔄 Redémarrage forcé du container..."
+REVISION=$(az containerapp revision list \
+  --name "$CONTAINER_APP" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query "[0].name" -o tsv)
+
+az containerapp revision restart \
+  --name "$CONTAINER_APP" \
+  --resource-group "$RESOURCE_GROUP" \
+  --revision "$REVISION"
+
 echo ""
-echo "📊 Pour voir les logs :"
+echo "Déploiement terminé !"
+echo "Backend URL: https://datanova-dev-backend.happyforest-90d4db38.francecentral.azurecontainerapps.io"
+echo ""
+echo "Pour voir les logs :"
 echo "az containerapp logs show --name $CONTAINER_APP --resource-group $RESOURCE_GROUP --follow"
