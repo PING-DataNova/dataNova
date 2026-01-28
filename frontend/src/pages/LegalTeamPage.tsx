@@ -7,6 +7,7 @@ import { Sidebar } from '../components/Sidebar/Sidebar';
 import { AdvancedFilters, FilterOptions } from '../components/AdvancedFilters/AdvancedFilters';
 import { useRegulations, useRegulationActions } from '../hooks/useRegulations';
 import { downloadValidatedRegulationsJSON, copyValidatedRegulationsJSON } from '../utils/exportData';
+import { authService } from '../services/auth.service';
 import './LegalTeamPage.css';
 
 export const LegalTeamPage: React.FC = () => {
@@ -234,7 +235,8 @@ export const LegalTeamPage: React.FC = () => {
               className="disconnect-btn"
               onClick={() => {
                 if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
-                  alert('Déconnexion réussie');
+                  authService.logout();
+                  window.location.reload();
                 }
               }}
             >

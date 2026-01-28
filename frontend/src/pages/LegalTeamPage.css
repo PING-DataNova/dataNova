@@ -194,16 +194,6 @@
 .disconnect-btn:active {
   transform: translateY(-1px) scale(1.02);
 }
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
-}
-
-.disconnect-btn:hover {
-  background: #d11d69;
-}
 
 .export-btn,
 .copy-btn,

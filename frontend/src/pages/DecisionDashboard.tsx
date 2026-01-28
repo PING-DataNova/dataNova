@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, FileText, TrendingUp, AlertTriangle, Calendar, Download, Bell, CheckCircle, User, Mail, Building, Shield } from 'lucide-react';
 import './DecisionDashboard.css';
 import { impactsService, ImpactAssessment } from '../services/impactsService';
+import { authService } from '../services/auth.service';
 
 interface DashboardStats {
   totalRegulations: number;
@@ -47,6 +48,7 @@ export const DecisionDashboard: React.FC = () => {
 
   const handleLogout = () => {
     if (confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+      authService.logout();
       window.location.reload();
     }
   };

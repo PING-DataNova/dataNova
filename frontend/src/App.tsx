@@ -4,10 +4,23 @@ import { RegisterPage } from './pages/RegisterPage';
 import { LegalTeamPage } from './pages/LegalTeamPage';
 import { DecisionDashboard } from './pages/DecisionDashboard';
 import { User } from './types';
+import { authService } from './services/auth.service';
 import './App.css';
 
 function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    // Restaurer l'utilisateur depuis localStorage au démarrage
+    const savedUser = authService.getUser();
+    if (savedUser && authService.isAuthenticated()) {
+      return {
+        id: savedUser.id,
+        name: savedUser.name,
+        role: savedUser.role as 'juridique' | 'decisive',
+        avatar: undefined
+      };
+    }
+    return null;
+  });
   const [showRegister, setShowRegister] = useState(false);
 
   const handleLogin = (userType: 'juridique' | 'decisive', userData: any) => {
