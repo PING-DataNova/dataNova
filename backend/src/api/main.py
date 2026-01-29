@@ -25,11 +25,11 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
         "http://127.0.0.1:5173",
-        "https://zealous-sea-0d27cce03.1.azurestaticapps.net",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_origin_regex=r"https://.*\.azurestaticapps\.net",  # Accepte tous les Static Web Apps
 )
 
 # Enregistrer les routes
