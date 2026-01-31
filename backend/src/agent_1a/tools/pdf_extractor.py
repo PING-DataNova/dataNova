@@ -22,6 +22,7 @@ import json
 import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 import pdfplumber
 import structlog
@@ -38,6 +39,18 @@ class NCCode(BaseModel):
     confidence: float = 1.0
 
 
+class DocumentInfo(BaseModel):
+    """Informations extraites d'un document EUR-Lex"""
+    document_number: Optional[str] = None       # Ex: "2024/3210"
+    celex_number: Optional[str] = None          # Ex: "32024R3210"
+    document_type: Optional[str] = None         # REGULATION, DIRECTIVE, DECISION
+    document_subtype: Optional[str] = None      # IMPLEMENTING, DELEGATED, None
+    issuing_body: Optional[str] = None          # COMMISSION, PARLIAMENT_COUNCIL
+    publication_date: Optional[datetime] = None # Date de publication JO
+    publication_series: Optional[str] = None    # L (Legislation) ou C (Communications)
+    full_title: Optional[str] = None            # Titre complet du document
+
+
 class ExtractedContent(BaseModel):
     """Modèle pour le contenu extrait d'un PDF"""
     file_path: str
@@ -48,12 +61,17 @@ class ExtractedContent(BaseModel):
     page_count: int
     status: str
     error: Optional[str] = None
+    publication_date: Optional[datetime] = None  # Date de publication au Journal Officiel
+    document_title: Optional[str] = None  # Titre du document (ex: "REGULATION (EU) 2024/3210")
+    document_number: Optional[str] = None  # Numéro du document (ex: "2024/3210")
+    document_info: Optional[DocumentInfo] = None  # Infos détaillées du document
 
 
 async def extract_pdf_content(
     file_path: str,
     extract_tables: bool = True,
-    extract_nc_codes: bool = True
+    extract_nc_codes: bool = True,
+    max_file_size_mb: float = 3.0
 ) -> ExtractedContent:
     """
     Extrait le contenu d'un fichier PDF.
@@ -62,6 +80,7 @@ async def extract_pdf_content(
         file_path: Chemin vers le fichier PDF
         extract_tables: Extraire les tableaux
         extract_nc_codes: Détecter les codes NC
+        max_file_size_mb: Taille maximale du fichier en MB (défaut: 3MB)
     
     Returns:
         ExtractedContent: Contenu extrait avec métadonnées
@@ -81,6 +100,21 @@ async def extract_pdf_content(
                 page_count=0,
                 status="error",
                 error=f"File not found: {file_path}"
+            )
+        
+        # Vérifier la taille du fichier
+        file_size_mb = path.stat().st_size / (1024 * 1024)
+        if file_size_mb > max_file_size_mb:
+            logger.warning("pdf_too_large", file_path=file_path, size_mb=file_size_mb, max_mb=max_file_size_mb)
+            return ExtractedContent(
+                file_path=file_path,
+                text=f"[PDF trop volumineux pour extraction: {file_size_mb:.1f}MB > {max_file_size_mb}MB]",
+                nc_codes=[],
+                tables=[],
+                metadata={"file_size_mb": file_size_mb, "skipped": True},
+                page_count=0,
+                status="skipped",
+                error=f"PDF too large: {file_size_mb:.1f}MB > {max_file_size_mb}MB"
             )
         
         text_content = []
@@ -131,13 +165,44 @@ async def extract_pdf_content(
             "nc_codes_found": len(nc_codes)
         }
         
+        # Extraire toutes les infos du document depuis les premières pages
+        document_info = None
+        publication_date = None
+        document_title = None
+        document_number = None
+        
+        if text_content:
+            first_pages_text = "".join(text_content[:3])  # Analyser les 2-3 premières pages
+            
+            # Extraire les infos détaillées
+            document_info = _extract_document_info(first_pages_text)
+            
+            # Remplir les champs pour compatibilité
+            publication_date = document_info.publication_date
+            document_title = document_info.full_title
+            document_number = document_info.document_number
+            
+            # Enrichir les métadonnées avec les infos extraites
+            metadata["publication_date"] = publication_date.isoformat() if publication_date else None
+            metadata["document_title"] = document_title
+            metadata["document_number"] = document_number
+            metadata["celex_number"] = document_info.celex_number
+            metadata["document_type"] = document_info.document_type
+            metadata["document_subtype"] = document_info.document_subtype
+            metadata["issuing_body"] = document_info.issuing_body
+            metadata["publication_series"] = document_info.publication_series
+        
         logger.info(
             "pdf_extraction_completed",
             file_path=file_path,
             pages=page_count,
             text_length=len(full_text),
             nc_codes=len(nc_codes),
-            tables=len(tables)
+            tables=len(tables),
+            publication_date=publication_date.isoformat() if publication_date else None,
+            document_number=document_number,
+            document_type=document_info.document_type if document_info else None,
+            celex_number=document_info.celex_number if document_info else None
         )
         
         return ExtractedContent(
@@ -147,7 +212,11 @@ async def extract_pdf_content(
             tables=tables,
             metadata=metadata,
             page_count=page_count,
-            status="success"
+            status="success",
+            publication_date=publication_date,
+            document_title=document_title,
+            document_number=document_number,
+            document_info=document_info
         )
         
     except Exception as e:
@@ -163,6 +232,193 @@ async def extract_pdf_content(
             error=f"Extraction error: {str(e)}"
         )
 
+
+def _extract_publication_date(text: str) -> Optional[datetime]:
+    """
+    Extrait la date de publication depuis le texte d'un document EUR-Lex.
+    
+    La date de publication apparaît généralement en haut à droite sous forme:
+    - "30.12.2024" (format DD.MM.YYYY)
+    - "30/12/2024" (format DD/MM/YYYY)
+    
+    Elle peut aussi apparaître dans le header "Official Journal of the European Union L series"
+    
+    Args:
+        text: Texte des premières pages du PDF
+        
+    Returns:
+        datetime ou None si non trouvée
+    """
+    # Pattern pour date format DD.MM.YYYY ou DD/MM/YYYY (en début de ligne ou après espace)
+    # On cherche spécifiquement le format utilisé dans l'en-tête du Journal Officiel
+    patterns = [
+        # Format: "L series 2024/3210 30.12.2024" ou "L 228/94 EN ... 15.9.2023"
+        r'L\s+(?:series\s+)?\d{1,4}[/\s]\d+\s+(\d{1,2}\.\d{1,2}\.\d{4})',
+        # Format: date seule DD.MM.YYYY (au moins 2 chiffres pour jour et mois)
+        r'(?:^|\s)(\d{1,2}\.\d{1,2}\.\d{4})(?:\s|$)',
+        # Format: DD/MM/YYYY
+        r'(?:^|\s)(\d{1,2}/\d{1,2}/\d{4})(?:\s|$)',
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text, re.MULTILINE)
+        if matches:
+            date_str = matches[0]
+            # Essayer de parser la date
+            for fmt in ['%d.%m.%Y', '%d/%m/%Y']:
+                try:
+                    return datetime.strptime(date_str, fmt)
+                except ValueError:
+                    continue
+    
+    return None
+
+
+def _extract_document_title(text: str) -> Optional[str]:
+    """
+    Extrait le titre du document EUR-Lex.
+    
+    Exemples:
+    - "COMMISSION IMPLEMENTING REGULATION (EU) 2024/3210"
+    - "REGULATION (EU) 2023/956 OF THE EUROPEAN PARLIAMENT AND OF THE COUNCIL"
+    - "DIRECTIVE (EU) 2022/2464"
+    
+    Args:
+        text: Texte des premières pages du PDF
+        
+    Returns:
+        str ou None si non trouvé
+    """
+    # Pattern pour les différents types de documents EU
+    patterns = [
+        # Règlement d'implémentation de la Commission
+        r'(COMMISSION\s+IMPLEMENTING\s+REGULATION\s*\(EU\)\s*\d{4}/\d+)',
+        # Règlement délégué de la Commission
+        r'(COMMISSION\s+DELEGATED\s+REGULATION\s*\(EU\)\s*\d{4}/\d+)',
+        # Règlement du Parlement et du Conseil
+        r'(REGULATION\s*\(EU\)\s*\d{4}/\d+\s+OF\s+THE\s+EUROPEAN\s+PARLIAMENT\s+AND\s+OF\s+THE\s+COUNCIL)',
+        # Règlement simple
+        r'(REGULATION\s*\(EU\)\s*\d{4}/\d+)',
+        # Directive
+        r'(DIRECTIVE\s*\(EU\)\s*\d{4}/\d+)',
+        # Décision
+        r'(DECISION\s*\(EU\)\s*\d{4}/\d+)',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    
+    return None
+
+
+def _extract_document_number(text: str) -> Optional[str]:
+    """
+    Extrait le numéro du document EUR-Lex (ex: "2024/3210").
+    
+    Args:
+        text: Texte des premières pages du PDF
+        
+    Returns:
+        str ou None si non trouvé
+    """
+    # Pattern pour numéro de document: YYYY/NNNN
+    patterns = [
+        # Dans le header "L series 2024/3210"
+        r'L\s+series\s+(\d{4}/\d+)',
+        # Dans le titre "(EU) 2024/3210"
+        r'\(EU\)\s*(\d{4}/\d+)',
+        # Format générique
+        r'(?:^|\s)(\d{4}/\d{3,5})(?:\s|$)',
+    ]
+    
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            return match.group(1)
+    
+    return None
+
+
+def _extract_document_info(text: str) -> DocumentInfo:
+    """
+    Extrait toutes les informations détaillées d'un document EUR-Lex.
+    
+    Args:
+        text: Texte des premières pages du PDF
+        
+    Returns:
+        DocumentInfo: Objet contenant toutes les infos extraites
+    """
+    info = DocumentInfo()
+    
+    # 1. Extraire la date de publication
+    info.publication_date = _extract_publication_date(text)
+    
+    # 2. Extraire le numéro de document (2024/3210)
+    info.document_number = _extract_document_number(text)
+    
+    # 3. Extraire le type et sous-type de document
+    # Patterns pour identifier le type de document
+    if re.search(r'IMPLEMENTING\s+REGULATION', text, re.IGNORECASE):
+        info.document_type = "REGULATION"
+        info.document_subtype = "IMPLEMENTING"
+        info.issuing_body = "COMMISSION"
+    elif re.search(r'DELEGATED\s+REGULATION', text, re.IGNORECASE):
+        info.document_type = "REGULATION"
+        info.document_subtype = "DELEGATED"
+        info.issuing_body = "COMMISSION"
+    elif re.search(r'REGULATION.*EUROPEAN\s+PARLIAMENT\s+AND.*COUNCIL', text, re.IGNORECASE):
+        info.document_type = "REGULATION"
+        info.document_subtype = None
+        info.issuing_body = "PARLIAMENT_COUNCIL"
+    elif re.search(r'COMMISSION\s+REGULATION', text, re.IGNORECASE):
+        info.document_type = "REGULATION"
+        info.document_subtype = None
+        info.issuing_body = "COMMISSION"
+    elif re.search(r'DIRECTIVE.*EUROPEAN\s+PARLIAMENT', text, re.IGNORECASE):
+        info.document_type = "DIRECTIVE"
+        info.document_subtype = None
+        info.issuing_body = "PARLIAMENT_COUNCIL"
+    elif re.search(r'COMMISSION\s+DIRECTIVE', text, re.IGNORECASE):
+        info.document_type = "DIRECTIVE"
+        info.document_subtype = None
+        info.issuing_body = "COMMISSION"
+    elif re.search(r'DECISION', text, re.IGNORECASE):
+        info.document_type = "DECISION"
+        info.document_subtype = None
+        # Déterminer l'émetteur pour les décisions
+        if re.search(r'COMMISSION\s+DECISION', text, re.IGNORECASE):
+            info.issuing_body = "COMMISSION"
+        else:
+            info.issuing_body = "PARLIAMENT_COUNCIL"
+    
+    # 4. Extraire la série de publication (L ou C)
+    series_match = re.search(r'Official\s+Journal.*?(L|C)\s+series', text, re.IGNORECASE)
+    if series_match:
+        info.publication_series = series_match.group(1).upper()
+    else:
+        # Fallback: chercher "L 228/94" ou similaire
+        series_match2 = re.search(r'\b(L|C)\s+\d{1,4}[/\s]', text)
+        if series_match2:
+            info.publication_series = series_match2.group(1).upper()
+    
+    # 5. Générer le numéro CELEX à partir du numéro de document
+    if info.document_number and info.document_type:
+        # Format CELEX: 3 (secteur législation) + année + lettre type + numéro
+        year, num = info.document_number.split('/')
+        type_letter = {
+            "REGULATION": "R",
+            "DIRECTIVE": "L",
+            "DECISION": "D"
+        }.get(info.document_type, "X")
+        info.celex_number = f"3{year}{type_letter}{num.zfill(4)}"
+    
+    # 6. Extraire le titre complet
+    info.full_title = _extract_document_title(text)
+    
+    return info
 
 def _extract_nc_codes(text: str, page_num: int) -> List[NCCode]:
     """

@@ -10,12 +10,11 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from src.storage.models import (
     Document,
-    Analysis,
     Alert,
     ExecutionLog,
     CompanyProfile,
-    CompanyProcess,
-    ImpactAssessment,
+    PertinenceCheck,
+    RiskAnalysis,
 )
 
 
@@ -92,15 +91,20 @@ class DocumentRepository:
             hash_sha256: Hash SHA-256 du contenu
             title: Titre du document
             content: Contenu textuel extrait
-            nc_codes: Liste des codes NC trouvés
-            regulation_type: Type de réglementation
+            nc_codes: Liste des codes NC trouvés (stocké dans extra_metadata)
+            regulation_type: Type de réglementation (stocké dans event_subtype)
             publication_date: Date de publication
-            document_metadata: Métadonnées additionnelles
+            document_metadata: Métadonnées additionnelles (stocké dans extra_metadata)
         
         Returns:
             Tuple (document, status) où status est "new", "modified" ou "unchanged"
         """
         existing = self.find_by_url(source_url)
+        
+        # Fusionner nc_codes dans les métadonnées
+        metadata = document_metadata or {}
+        if nc_codes:
+            metadata["nc_codes"] = nc_codes
         
         if existing:
             # Document existant - vérifier si modifié
@@ -108,8 +112,7 @@ class DocumentRepository:
                 existing.status = "modified"
                 existing.content = content
                 existing.hash_sha256 = hash_sha256
-                existing.nc_codes = nc_codes
-                existing.document_metadata = document_metadata
+                existing.extra_metadata = metadata
                 existing.last_checked = datetime.utcnow()
                 self.session.flush()
                 return (existing, "modified")
@@ -125,12 +128,11 @@ class DocumentRepository:
                 hash_sha256=hash_sha256,
                 title=title,
                 content=content,
-                nc_codes=nc_codes,
-                regulation_type=regulation_type,
+                event_type="reglementaire",
+                event_subtype=regulation_type,
                 publication_date=publication_date,
-                document_metadata=document_metadata,
+                extra_metadata=metadata,
                 status="new",
-                workflow_status="raw",
                 first_seen=datetime.utcnow(),
                 last_checked=datetime.utcnow()
             )
@@ -165,7 +167,7 @@ class DocumentRepository:
             Liste de documents
         """
         return self.session.query(Document)\
-            .filter(Document.regulation_type == regulation_type)\
+            .filter(Document.event_subtype == regulation_type)\
             .order_by(Document.publication_date.desc())\
             .all()
     
@@ -199,21 +201,45 @@ class DocumentRepository:
         
         return {status: count for status, count in results}
     
-    def find_by_workflow_status(self, workflow_status: str) -> List[Document]:
+    def find_by_status(self, status: str) -> List[Document]:
         """
-        Trouver les documents par workflow_status
+        Trouver les documents par status
         
         Args:
-            workflow_status: raw, analyzed, rejected_analysis, validated, rejected_validation
+            status: new, modified, unchanged
         
         Returns:
             Liste de documents
         """
         return self.session.query(Document)\
-            .filter(Document.workflow_status == workflow_status)\
+            .filter(Document.status == status)\
             .order_by(Document.created_at.desc())\
             .all()
     
+    # Alias pour compatibilité
+    def find_by_workflow_status(self, workflow_status: str) -> List[Document]:
+        """Alias vers find_by_status pour compatibilité"""
+        return self.find_by_status(workflow_status)
+    
+    def update_document_status(
+        self,
+        document_id: str,
+        status: str
+    ) -> None:
+        """
+        Mettre à jour le status d'un document
+        
+        Args:
+            document_id: ID du document
+            status: Nouveau statut (new, modified, unchanged)
+        """
+        document = self.find_by_id(document_id)
+        if document:
+            document.status = status
+            document.updated_at = datetime.utcnow()
+            self.session.flush()
+    
+    # Alias pour compatibilité
     def update_workflow_status(
         self,
         document_id: str,
@@ -222,45 +248,27 @@ class DocumentRepository:
         validated_at: Optional[datetime] = None,
         validated_by: Optional[str] = None
     ) -> None:
-        """
-        Mettre à jour le workflow_status d'un document
-        
-        Args:
-            document_id: ID du document
-            workflow_status: Nouveau statut workflow
-            analyzed_at: Date d'analyse (optionnel)
-            validated_at: Date de validation (optionnel)
-            validated_by: Email du validateur (optionnel)
-        """
-        document = self.find_by_id(document_id)
-        if document:
-            document.workflow_status = workflow_status
-            if analyzed_at:
-                document.analyzed_at = analyzed_at
-            if validated_at:
-                document.validated_at = validated_at
-            if validated_by:
-                document.validated_by = validated_by
-            self.session.flush()
+        """Alias vers update_document_status pour compatibilité"""
+        self.update_document_status(document_id, workflow_status)
 
 
-class AnalysisRepository:
-    """Repository pour gérer les analyses de pertinence"""
+class PertinenceCheckRepository:
+    """Repository pour gérer les analyses de pertinence (Agent 1B)"""
     
     def __init__(self, session: Session):
         self.session = session
     
-    def save(self, analysis: Analysis) -> Analysis:
-        """Sauvegarder une analyse"""
-        self.session.add(analysis)
+    def save(self, check: PertinenceCheck) -> PertinenceCheck:
+        """Sauvegarder une analyse de pertinence"""
+        self.session.add(check)
         self.session.flush()
-        return analysis
+        return check
     
-    def find_by_id(self, analysis_id: str) -> Optional[Analysis]:
+    def find_by_id(self, check_id: str) -> Optional[PertinenceCheck]:
         """Trouver une analyse par ID"""
-        return self.session.query(Analysis).filter(Analysis.id == analysis_id).first()
+        return self.session.query(PertinenceCheck).filter(PertinenceCheck.id == check_id).first()
     
-    def find_by_document_id(self, document_id: str) -> Optional[Analysis]:
+    def find_by_document_id(self, document_id: str) -> Optional[PertinenceCheck]:
         """
         Trouver l'analyse d'un document spécifique
         
@@ -268,136 +276,82 @@ class AnalysisRepository:
             document_id: ID du document
         
         Returns:
-            Analyse ou None
+            PertinenceCheck ou None
         """
-        return self.session.query(Analysis)\
-            .filter(Analysis.document_id == document_id)\
-            .order_by(Analysis.created_at.desc())\
+        return self.session.query(PertinenceCheck)\
+            .filter(PertinenceCheck.document_id == document_id)\
             .first()
     
-    def list_relevant_analyses(self, validation_status: str = "approved") -> List[Analysis]:
+    def list_by_decision(self, decision: str) -> List[PertinenceCheck]:
         """
-        Lister les analyses par validation_status
+        Lister les analyses par décision
         
         Args:
-            validation_status: pending, approved, rejected (défaut: approved)
+            decision: OUI, NON, PARTIELLEMENT
         
         Returns:
-            Liste d'analyses
+            Liste de PertinenceCheck
         """
-        return self.session.query(Analysis)\
-            .filter(Analysis.validation_status == validation_status)\
-            .order_by(Analysis.created_at.desc())\
+        return self.session.query(PertinenceCheck)\
+            .filter(PertinenceCheck.decision == decision)\
+            .order_by(PertinenceCheck.created_at.desc())\
             .all()
-    
-    def find_by_validation_status(self, validation_status: str) -> List[Analysis]:
-        """
-        Trouver les analyses par validation_status
-        
-        Args:
-            validation_status: pending, approved, rejected
-        
-        Returns:
-            Liste d'analyses
-        """
-        return self.session.query(Analysis)\
-            .filter(Analysis.validation_status == validation_status)\
-            .order_by(Analysis.created_at.desc())\
-            .all()
-    
-    def update_validation(
-        self,
-        analysis_id: str,
-        approved: bool,
-        comment: str,
-        validated_by: str
-    ) -> None:
-        """
-        Mettre à jour la validation d'une analyse
-        
-        Args:
-            analysis_id: ID de l'analyse
-            approved: True si approuvé, False si rejeté
-            comment: Commentaire du juriste
-            validated_by: Email du validateur
-        """
-        analysis = self.find_by_id(analysis_id)
-        if analysis:
-            analysis.validation_status = "approved" if approved else "rejected"
-            analysis.validation_comment = comment
-            analysis.validated_by = validated_by
-            analysis.validated_at = datetime.utcnow()
-            
-            # Mettre à jour le document aussi
-            if analysis.document:
-                analysis.document.workflow_status = "validated" if approved else "rejected_validation"
-                analysis.document.validated_at = datetime.utcnow()
-                analysis.document.validated_by = validated_by
-            
-            self.session.flush()
 
 
-class ImpactAssessmentRepository:
-    """Repository pour gérer les analyses d'impact (Agent 2)"""
+# Alias pour compatibilité
+AnalysisRepository = PertinenceCheckRepository
+
+
+class RiskAnalysisRepository:
+    """Repository pour gérer les analyses de risque (Agent 2)"""
     
     def __init__(self, session: Session):
         self.session = session
     
-    def save(self, impact: ImpactAssessment) -> ImpactAssessment:
-        """Sauvegarder une analyse d'impact"""
-        self.session.add(impact)
+    def save(self, risk: RiskAnalysis) -> RiskAnalysis:
+        """Sauvegarder une analyse de risque"""
+        self.session.add(risk)
         self.session.flush()
-        return impact
+        return risk
     
-    def find_by_id(self, impact_id: str) -> Optional[ImpactAssessment]:
-        """Trouver une analyse d'impact par ID"""
-        return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.id == impact_id)\
+    def find_by_id(self, risk_id: str) -> Optional[RiskAnalysis]:
+        """Trouver une analyse de risque par ID"""
+        return self.session.query(RiskAnalysis)\
+            .filter(RiskAnalysis.id == risk_id)\
             .first()
     
-    def find_by_analysis_id(self, analysis_id: str) -> Optional[ImpactAssessment]:
+    def find_by_document_id(self, document_id: str) -> Optional[RiskAnalysis]:
         """
-        Trouver l'analyse d'impact pour une analyse donnée
+        Trouver l'analyse de risque pour un document donné
         
         Args:
-            analysis_id: ID de l'analyse
+            document_id: ID du document
         
         Returns:
-            ImpactAssessment ou None
+            RiskAnalysis ou None
         """
-        return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.analysis_id == analysis_id)\
+        return self.session.query(RiskAnalysis)\
+            .filter(RiskAnalysis.document_id == document_id)\
             .first()
     
-    def list_by_impact_level(self, impact_level: str) -> List[ImpactAssessment]:
+    def list_by_risk_level(self, risk_level: str) -> List[RiskAnalysis]:
         """
-        Lister les analyses d'impact par niveau d'impact
+        Lister les analyses par niveau de risque
 
         Args:
-            impact_level: faible, moyen, eleve
+            risk_level: Faible, Moyen, Fort, Critique
 
         Returns:
-            Liste d'analyses d'impact
+            Liste d'analyses de risque
         """
-        return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.impact_level == impact_level)\
-            .order_by(ImpactAssessment.created_at.desc())\
+        return self.session.query(RiskAnalysis)\
+            .filter(RiskAnalysis.risk_level == risk_level)\
+            .order_by(RiskAnalysis.created_at.desc())\
             .all()
 
-    def list_by_risk_main(self, risk_main: str) -> List[ImpactAssessment]:
-        """
-        Lister les analyses d'impact par risque principal
 
-        Args:
-            risk_main: Valeur du risque principal
-
-        Returns:
-            Liste d'analyses d'impact
-        """
-        return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.risk_main == risk_main)\
-            .order_by(ImpactAssessment.created_at.desc())\
-            .all()
+# Alias pour compatibilité
+ImpactAssessmentRepository = RiskAnalysisRepository
 
 
 class AlertRepository:
@@ -416,18 +370,18 @@ class AlertRepository:
         """Trouver une alerte par ID"""
         return self.session.query(Alert).filter(Alert.id == alert_id).first()
     
-    def find_by_impact_assessment_id(self, impact_assessment_id: str) -> List[Alert]:
+    def find_by_risk_analysis_id(self, risk_analysis_id: str) -> List[Alert]:
         """
-        Trouver les alertes pour un impact assessment donné
+        Trouver les alertes pour une analyse de risque donnée
         
         Args:
-            impact_assessment_id: ID de l'impact assessment
+            risk_analysis_id: ID de l'analyse de risque
         
         Returns:
             Liste d'alertes
         """
         return self.session.query(Alert)\
-            .filter(Alert.impact_assessment_id == impact_assessment_id)\
+            .filter(Alert.risk_analysis_id == risk_analysis_id)\
             .order_by(Alert.created_at.desc())\
             .all()
     

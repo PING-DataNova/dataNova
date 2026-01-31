@@ -1,21 +1,197 @@
 # src/agent_1a/tools/scraper.py
 
-import scrapy
-from scrapy.crawler import CrawlerProcess
-import asyncio
+import requests
+from lxml import etree
 from typing import List, Dict, Optional
 from datetime import datetime
-import re
-from urllib.parse import quote
 from pydantic import BaseModel
-import json
-import tempfile
-import subprocess
-import sys
-
+import os
+from pathlib import Path
+from dotenv import load_dotenv
 import structlog
+import re
 
 logger = structlog.get_logger()
+
+# Charger le .env depuis le dossier agent_1a
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(env_path)
+
+EURLEX_API_USERNAME = os.getenv("EURLEX_API_USERNAME")
+EURLEX_API_PASSWORD = os.getenv("EURLEX_API_PASSWORD")
+EURLEX_SOAP_URL = os.getenv("EURLEX_SOAP_URL", "https://eur-lex.europa.eu/EURLexWebService")
+EURLEX_API_RATE_LIMIT = int(os.getenv("EURLEX_API_RATE_LIMIT", "500"))
+
+# ========================================
+# LISTE DES RÉGLEMENTATIONS EUROPÉENNES
+# Chaque réglementation a son mot-clé de recherche EUR-Lex
+# ========================================
+
+REGULATIONS_CONFIG = {
+    # === Environnement & Climat ===
+    "CBAM": {
+        "name": "Carbon Border Adjustment Mechanism",
+        "search_keywords": ["CBAM", "carbon border adjustment"],
+        "description": "Taxe carbone aux frontières sur imports (acier, aluminium, ciment, électricité, engrais, hydrogène)"
+    },
+    "EU_ETS": {
+        "name": "EU Emissions Trading System",
+        "search_keywords": ["emission trading", "ETS", "allowances trading"],
+        "description": "Système d'échange de quotas d'émission de CO2"
+    },
+    "F_GAS": {
+        "name": "F-Gas Regulation",
+        "search_keywords": ["fluorinated greenhouse gases", "F-gas"],
+        "description": "Réduction des gaz fluorés à effet de serre"
+    },
+    "RED": {
+        "name": "Renewable Energy Directive",
+        "search_keywords": ["renewable energy directive"],
+        "description": "Directive sur les énergies renouvelables"
+    },
+    "IED": {
+        "name": "Industrial Emissions Directive",
+        "search_keywords": ["industrial emissions directive"],
+        "description": "Directive sur les émissions industrielles"
+    },
+    
+    # === Économie circulaire & Déchets ===
+    "PACKAGING": {
+        "name": "Packaging and Packaging Waste Regulation",
+        "search_keywords": ["packaging waste"],
+        "description": "Emballages et déchets d'emballages"
+    },
+    "BATTERY": {
+        "name": "EU Battery Regulation",
+        "search_keywords": ["batteries and waste batteries"],
+        "description": "Batteries et déchets de batteries"
+    },
+    "WEEE": {
+        "name": "Waste Electrical and Electronic Equipment",
+        "search_keywords": ["waste electrical electronic equipment", "WEEE"],
+        "description": "Déchets d'équipements électriques et électroniques"
+    },
+    "ELV": {
+        "name": "End-of-Life Vehicles",
+        "search_keywords": ["end-of-life vehicles"],
+        "description": "Véhicules hors d'usage"
+    },
+    "ECODESIGN": {
+        "name": "Ecodesign for Sustainable Products",
+        "search_keywords": ["ecodesign sustainable products", "ecodesign requirements"],
+        "description": "Écoconception des produits durables"
+    },
+    "WASTE_FRAMEWORK": {
+        "name": "Waste Framework Directive",
+        "search_keywords": ["waste framework directive"],
+        "description": "Directive cadre sur les déchets"
+    },
+    
+    # === Substances chimiques ===
+    "REACH": {
+        "name": "Registration, Evaluation, Authorisation of Chemicals",
+        "search_keywords": ["REACH", "registration evaluation authorisation chemicals"],
+        "description": "Enregistrement et autorisation des substances chimiques"
+    },
+    "CLP": {
+        "name": "Classification, Labelling and Packaging",
+        "search_keywords": ["classification labelling packaging substances"],
+        "description": "Classification et étiquetage des substances dangereuses"
+    },
+    "ROHS": {
+        "name": "Restriction of Hazardous Substances",
+        "search_keywords": ["restriction hazardous substances electrical", "RoHS"],
+        "description": "Restriction des substances dangereuses dans équipements électroniques"
+    },
+    "POP": {
+        "name": "Persistent Organic Pollutants",
+        "search_keywords": ["persistent organic pollutants"],
+        "description": "Polluants organiques persistants"
+    },
+    "SEVESO": {
+        "name": "Seveso III Directive",
+        "search_keywords": ["major-accident hazards", "Seveso"],
+        "description": "Prévention des accidents majeurs"
+    },
+    
+    # === Reporting & Finance durable ===
+    "CSRD": {
+        "name": "Corporate Sustainability Reporting Directive",
+        "search_keywords": ["corporate sustainability reporting"],
+        "description": "Reporting extra-financier des entreprises"
+    },
+    "SFDR": {
+        "name": "Sustainable Finance Disclosure Regulation",
+        "search_keywords": ["sustainability-related disclosures financial"],
+        "description": "Transparence des produits financiers durables"
+    },
+    "TAXONOMY": {
+        "name": "EU Taxonomy Regulation",
+        "search_keywords": ["taxonomy sustainable investment", "environmentally sustainable economic"],
+        "description": "Classification des activités économiques durables"
+    },
+    "CSDDD": {
+        "name": "Corporate Sustainability Due Diligence Directive",
+        "search_keywords": ["corporate sustainability due diligence"],
+        "description": "Devoir de vigilance des entreprises"
+    },
+    
+    # === Biodiversité & Ressources naturelles ===
+    "EUDR": {
+        "name": "EU Deforestation Regulation",
+        "search_keywords": ["deforestation-free", "deforestation regulation"],
+        "description": "Lutte contre la déforestation importée"
+    },
+    "WATER_FRAMEWORK": {
+        "name": "Water Framework Directive",
+        "search_keywords": ["water policy framework"],
+        "description": "Protection des eaux"
+    },
+    "NATURE_RESTORATION": {
+        "name": "Nature Restoration Law",
+        "search_keywords": ["nature restoration"],
+        "description": "Restauration de la nature"
+    },
+    
+    # === Transport & Mobilité ===
+    "CO2_VEHICLES": {
+        "name": "CO2 Emission Standards for Vehicles",
+        "search_keywords": ["CO2 emission standards passenger cars", "CO2 emission performance"],
+        "description": "Normes d'émissions CO2 véhicules"
+    },
+    "EURO_EMISSIONS": {
+        "name": "Euro Emission Standards",
+        "search_keywords": ["Euro 6", "Euro 7", "type-approval motor vehicles emissions"],
+        "description": "Normes Euro polluants véhicules"
+    },
+    "AFIR": {
+        "name": "Alternative Fuels Infrastructure Regulation",
+        "search_keywords": ["alternative fuels infrastructure"],
+        "description": "Infrastructure de recharge/ravitaillement"
+    },
+}
+
+# Liste des codes de réglementation (pour compatibilité)
+KNOWN_REGULATIONS = list(REGULATIONS_CONFIG.keys()) + ["OTHER"]
+
+
+def get_all_regulations() -> List[str]:
+    """Retourne la liste de toutes les réglementations disponibles."""
+    return list(REGULATIONS_CONFIG.keys())
+
+
+def get_regulation_info(regulation_code: str) -> Optional[Dict]:
+    """Retourne les informations d'une réglementation."""
+    return REGULATIONS_CONFIG.get(regulation_code)
+
+
+def get_search_keywords_for_regulation(regulation_code: str) -> List[str]:
+    """Retourne les mots-clés de recherche pour une réglementation."""
+    config = REGULATIONS_CONFIG.get(regulation_code)
+    if config:
+        return config["search_keywords"]
+    return []
+
 
 # ========================================
 # MODÈLES PYDANTIC
@@ -37,276 +213,514 @@ class EurlexDocument(BaseModel):
 class SearchResult(BaseModel):
     """Modèle pour le résultat de recherche"""
     status: str
-    total_found: int
+    total_found: int  # Nombre de documents retournés
+    total_available: int = 0  # Nombre total de documents disponibles sur EUR-Lex
     documents: List[EurlexDocument]
     error: Optional[str] = None
 
 # ========================================
-# SPIDER SCRAPY
+# CLIENT API EUR-LEX
 # ========================================
 
-class EurlexSpider(scrapy.Spider):
-    """Spider Scrapy pour EUR-Lex"""
-    name = 'eurlex'
+def _build_soap_request(expert_query: str, page: int = 1, page_size: int = 10) -> str:
+    """
+    Construit une requête SOAP pour l'API EUR-Lex
     
-    def __init__(self, keyword: str, max_results: int = 10, output_file: str = None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.keyword = keyword
-        self.max_results = max_results
-        self.output_file = output_file
-        self.results = []
+    Args:
+        expert_query: Requête en syntaxe expert (ex: "TI~CBAM", "DN=32023R0956")
+        page: Numéro de page (commence à 1)
+        page_size: Nombre de résultats par page
         
-    def start_requests(self):
-        url = f"https://eur-lex.europa.eu/search.html?text={quote(self.keyword)}&type=quick&lang=en"
-        yield scrapy.Request(url, callback=self.parse)
+    Returns:
+        str: Requête SOAP au format XML
+    """
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
+               xmlns:sear="http://eur-lex.europa.eu/search">
+   <soap:Header>
+      <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+         <wsse:UsernameToken>
+            <wsse:Username>{EURLEX_API_USERNAME}</wsse:Username>
+            <wsse:Password>{EURLEX_API_PASSWORD}</wsse:Password>
+         </wsse:UsernameToken>
+      </wsse:Security>
+   </soap:Header>
+   <soap:Body>
+      <sear:searchRequest>
+         <sear:expertQuery>{expert_query}</sear:expertQuery>
+         <sear:page>{page}</sear:page>
+         <sear:pageSize>{page_size}</sear:pageSize>
+         <sear:searchLanguage>en</sear:searchLanguage>
+      </sear:searchRequest>
+   </soap:Body>
+</soap:Envelope>"""
+
+
+def _extract_celex_from_reference(reference: str) -> Optional[str]:
+    """
+    Extrait le numéro CELEX depuis une référence EUR-Lex.
     
-    def parse(self, response):
-        # Extraire les résultats
-        result_links = response.css('a[id^="cellar_"]')
+    Les références peuvent être sous forme:
+    - eng_cellar:xxx -> pas de CELEX direct
+    - CELEX:32023R0956 -> CELEX = 32023R0956
+    - cellar:xxx -> pas de CELEX direct
+    
+    Args:
+        reference: Référence du document
         
-        for i, link in enumerate(result_links):
-            if i >= self.max_results:
+    Returns:
+        str ou None: Numéro CELEX si trouvé
+    """
+    import re
+    
+    if not reference:
+        return None
+    
+    # Chercher un pattern CELEX dans la référence
+    # Format: année (4 chiffres) + lettre type + numéro
+    celex_pattern = r'(3\d{4}[RLDEACB]\d{4})'
+    match = re.search(celex_pattern, reference)
+    if match:
+        return match.group(1)
+    
+    return None
+
+
+def _extract_date_from_celex(celex: str) -> Optional[datetime]:
+    """
+    Extrait une date approximative depuis le numéro CELEX.
+    
+    Le CELEX contient l'année : 32023R0956 -> année 2023
+    
+    Args:
+        celex: Numéro CELEX (ex: 32023R0956)
+        
+    Returns:
+        datetime ou None: Date approximative (1er janvier de l'année)
+    """
+    if not celex or len(celex) < 5:
+        return None
+    
+    try:
+        # Le format CELEX est: 3YYYYTNNNN où YYYY est l'année
+        year_str = celex[1:5]  # Extraire les 4 chiffres après le "3"
+        year = int(year_str)
+        
+        if 1950 <= year <= 2100:  # Validation de l'année
+            return datetime(year, 1, 1)
+    except (ValueError, IndexError):
+        pass
+    
+    return None
+
+
+def _extract_date_from_content(content: str) -> Optional[datetime]:
+    """
+    Tente d'extraire une date depuis le contenu/titre du document.
+    
+    Cherche des patterns comme:
+    - "of 10 May 2023"
+    - "2023/956"
+    - "(EU) 2023/956"
+    
+    Args:
+        content: Contenu ou titre du document
+        
+    Returns:
+        datetime ou None
+    """
+    import re
+    
+    if not content:
+        return None
+    
+    # Pattern 1: "of DD Month YYYY" ou "DD Month YYYY"
+    months = {
+        'january': 1, 'february': 2, 'march': 3, 'april': 4,
+        'may': 5, 'june': 6, 'july': 7, 'august': 8,
+        'september': 9, 'october': 10, 'november': 11, 'december': 12
+    }
+    
+    pattern1 = r'(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{4})'
+    match = re.search(pattern1, content.lower())
+    if match:
+        try:
+            day = int(match.group(1))
+            month = months[match.group(2)]
+            year = int(match.group(3))
+            return datetime(year, month, day)
+        except (ValueError, KeyError):
+            pass
+    
+    # Pattern 2: Numéro de règlement "YYYY/NNNN" -> extraire l'année
+    pattern2 = r'\b(20\d{2})/\d+'
+    match = re.search(pattern2, content)
+    if match:
+        try:
+            year = int(match.group(1))
+            return datetime(year, 1, 1)
+        except ValueError:
+            pass
+    
+    return None
+
+
+def _build_pdf_url_from_cellar(cellar_id: str) -> str:
+    """
+    Construit l'URL PDF à partir d'un identifiant cellar.
+    
+    Args:
+        cellar_id: Identifiant cellar (ex: 062f76c4-5e06-11ea-b735-01aa75ed71a1)
+        
+    Returns:
+        str: URL PDF valide
+    """
+    # Nettoyer l'ID cellar
+    clean_id = cellar_id.replace('eng_cellar:', '').replace('_en', '').replace('cellar:', '')
+    
+    # L'URL correcte utilise juste l'UUID sans préfixe
+    return f"https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELLAR:{clean_id}"
+
+
+def _parse_soap_response(response_xml: str, keyword: str) -> tuple[List[Dict], int]:
+    """
+    Parse la réponse SOAP et extrait les documents
+    
+    Args:
+        response_xml: Réponse XML de l'API
+        keyword: Mot-clé de recherche (pour les métadonnées)
+        
+    Returns:
+        tuple: (Liste des documents extraits, Nombre total disponible sur EUR-Lex)
+    """
+    try:
+        # Parser le XML
+        root = etree.fromstring(response_xml.encode('utf-8'))
+        
+        # Namespaces - le contenu est dans le namespace par défaut de EUR-Lex
+        namespaces = {
+            'soap': 'http://www.w3.org/2003/05/soap-envelope',
+            'sear': 'http://eur-lex.europa.eu/search'
+        }
+        
+        # Extraire le nombre total de résultats disponibles
+        total_available = 0
+        for field_name in ['numHits', 'totalHits', 'totalhits', 'total', 'count']:
+            elem = root.find(f'.//sear:{field_name}', namespaces)
+            if elem is not None and elem.text:
+                total_available = int(elem.text)
+                logger.info("total_hits_found", field=field_name, value=total_available)
                 break
-                
-            title = link.css('::text').get()
-            url = link.css('::attr(href)').get()
+        
+        # Si toujours 0, essayer de chercher sans namespace
+        if total_available == 0:
+            match = re.search(r'<[^>]*(?:numHits|totalhits)[^>]*>(\d+)<', response_xml, re.IGNORECASE)
+            if match:
+                total_available = int(match.group(1))
+                logger.info("total_hits_found_regex", value=total_available)
+        
+        # Extraire les documents
+        documents = []
+        result_elements = root.findall('.//sear:result', namespaces)
+        
+        for result in result_elements:
+            # Convertir l'élément result en string pour le parsing regex
+            result_xml = etree.tostring(result, encoding='unicode')
             
-            if not title or not url:
+            # Extraire les champs de base
+            reference = result.findtext('sear:reference', default='', namespaces=namespaces)
+            rank = result.findtext('sear:rank', default='0', namespaces=namespaces)
+            
+            # Extraire le titre depuis EXPRESSION_TITLE/VALUE dans ce résultat spécifique
+            title = None
+            title_match = re.search(r'<EXPRESSION_TITLE>\s*<LANG>en</LANG>\s*<VALUE>([^<]+)</VALUE>', result_xml)
+            if title_match:
+                title = title_match.group(1).strip()
+            
+            # Si pas trouvé avec LANG=en, chercher n'importe quel VALUE
+            if not title:
+                title_match = re.search(r'<EXPRESSION_TITLE>.*?<VALUE>([^<]+)</VALUE>', result_xml, re.DOTALL)
+                if title_match:
+                    title = title_match.group(1).strip()
+            
+            if not title:
+                title = f"Document {reference}"
+            
+            # Extraire le CELEX depuis ID_CELEX/VALUE dans ce résultat
+            celex = None
+            celex_match = re.search(r'<ID_CELEX>\s*<VALUE>([^<]+)</VALUE>', result_xml)
+            if celex_match:
+                celex = celex_match.group(1).strip()
+                # Nettoyer le CELEX (enlever la date de consolidation si présente)
+                if '-' in celex:
+                    celex = celex.split('-')[0]
+            
+            # Extraire la date depuis le titre (ex: "of 10 May 2023")
+            publication_date = None
+            if title:
+                publication_date = _extract_date_from_content(title)
+            
+            # Si pas trouvé, extraire depuis WORK_DATE_DOCUMENT
+            if not publication_date:
+                date_match = re.search(r'<WORK_DATE_DOCUMENT>.*?<VALUE>([^<]+)</VALUE>', result_xml, re.DOTALL)
+                if date_match:
+                    try:
+                        publication_date = datetime.strptime(date_match.group(1).strip(), '%Y-%m-%d')
+                    except ValueError:
+                        pass
+            
+            # Si toujours pas de date, extraire depuis le CELEX
+            if not publication_date and celex:
+                publication_date = _extract_date_from_celex(celex)
+            
+            # Extraire les liens PDF et HTML
+            html_url = None
+            pdf_url = None
+            
+            # Chercher les liens avec regex dans ce résultat
+            pdf_match = re.search(r'<document_link[^>]*type="pdf"[^>]*>([^<]+)</document_link>', result_xml)
+            if pdf_match:
+                pdf_url = pdf_match.group(1)
+            
+            html_match = re.search(r'<document_link[^>]*type="html"[^>]*>([^<]+)</document_link>', result_xml)
+            if html_match:
+                html_url = html_match.group(1)
+            
+            # Si pas de PDF trouvé, construire l'URL depuis cellar
+            if not pdf_url and 'cellar' in reference.lower():
+                pdf_url = _build_pdf_url_from_cellar(reference)
+            
+            if not html_url:
+                if celex:
+                    html_url = f"https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:{celex}"
+                else:
+                    html_url = f"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=cellar:{reference}"
+            
+            # Skip les documents sans PDF
+            if not pdf_url:
+                logger.warning("document_without_pdf", reference=reference)
                 continue
             
-            # Extraire CELEX
-            celex = self._extract_celex(url)
+            # Déterminer le type de document
+            document_type = _extract_type_from_celex(celex) if celex else 'OTHER'
             
-            # Construire résultat
-            result = {
+            # Construire le document
+            doc = {
                 'celex_number': celex,
-                'title': title.strip(),
-                'url': response.urljoin(url),
-                'pdf_url': f"https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:{celex}" if celex else None,
-                'document_type': self._extract_type(title),
+                'title': title,
+                'url': html_url,
+                'pdf_url': pdf_url,
+                'document_type': document_type,
                 'source': 'eurlex',
-                'keyword': self.keyword,
-                'publication_date': None,
+                'keyword': keyword,
+                'publication_date': publication_date,
                 'status': 'ACTIVE_LAW',
                 'metadata': {
-                    'scraped_at': datetime.now().isoformat()
+                    'reference': reference,
+                    'rank': int(rank),
+                    'scraped_at': datetime.now().isoformat(),
+                    'api_version': 'soap_v2'
                 }
             }
             
-            self.results.append(result)
-            yield result
-    
-    def _extract_celex(self, url):
-        if 'CELEX:' in url:
-            match = re.search(r'CELEX:([A-Z0-9]+)', url)
-            if match:
-                return match.group(1)
+            documents.append(doc)
+        
+        return documents, total_available
+        
+    except Exception as e:
+        logger.error("soap_parsing_failed", error=str(e))
+        return [], 0
+
+
+def _extract_celex_from_link(link: str) -> Optional[str]:
+    """Extrait le numéro CELEX depuis un lien EUR-Lex"""
+    if not link:
         return None
     
-    def _extract_type(self, title):
-        if 'Regulation' in title:
-            return 'REGULATION'
-        elif 'Directive' in title:
-            return 'DIRECTIVE'
-        elif 'Decision' in title:
-            return 'DECISION'
+    if 'CELEX:' in link:
+        import re
+        match = re.search(r'CELEX:([A-Z0-9]+)', link)
+        if match:
+            return match.group(1)
+    
+    return None
+
+
+def _extract_type_from_celex(celex: Optional[str]) -> str:
+    """Extrait le type de document depuis le numéro CELEX"""
+    if not celex or len(celex) < 6:
         return 'OTHER'
     
-    def closed(self, reason):
-        """Appelé quand le spider se ferme - sauvegarder les résultats"""
-        if self.output_file:
-            with open(self.output_file, 'w') as f:
-                json.dump(self.results, f)
+    type_char = celex[5] if len(celex) > 5 else ''
+    
+    type_mapping = {
+        'R': 'REGULATION',
+        'L': 'DIRECTIVE',
+        'D': 'DECISION',
+        'E': 'DECISION',
+        'A': 'AGREEMENT',
+        'B': 'BUDGET',
+        'C': 'CONSOLIDATED',
+    }
+    
+    return type_mapping.get(type_char, 'OTHER')
+
 
 # ========================================
 # FONCTION PRINCIPALE (API publique)
 # ========================================
 
-async def search_eurlex(keyword: str, max_results: int = 10) -> SearchResult:
+# Documents CBAM connus avec leur numéro CELEX (fallback si recherche dynamique échoue)
+CBAM_KNOWN_DOCUMENTS = {
+    "CBAM": [
+        "32023R0956",   # Règlement CBAM principal
+        "32023R1773",   # Règlement d'implémentation CBAM
+        "32023R2318",   # Règlement délégué CBAM
+    ],
+    "EUDR": [
+        "32023R1115",   # Règlement déforestation
+    ],
+    "CSRD": [
+        "32022L2464",   # Directive CSRD
+    ]
+}
+
+# Sous-domaines EUR-Lex par défaut pour la recherche
+DEFAULT_SUBDOMAINS = ["LEGISLATION", "CONSLEG", "PREP_ACT"]
+
+async def search_eurlex(
+    keyword: str, 
+    max_results: int = 10, 
+    subdomains: list = None,
+    use_known_celex: bool = False,
+    consolidated_only: bool = False
+) -> SearchResult:
     """
-    Rechercher des documents EUR-Lex
+    Rechercher des documents EUR-Lex via l'API officielle
     
     Args:
         keyword: Mot-clé de recherche (ex: "CBAM", "EUDR", "CSRD")
         max_results: Nombre maximum de résultats à retourner
+        subdomains: Liste des sous-domaines à rechercher (LEGISLATION, CONSLEG, PREP_ACT, etc.)
+                   Par défaut: ["LEGISLATION", "CONSLEG", "PREP_ACT"]
+        use_known_celex: Si True, utilise les CELEX connus au lieu de la recherche dynamique
+        consolidated_only: Si True, récupère uniquement les textes consolidés (Collection = CONSLEG)
+                          Les textes consolidés regroupent le texte original + toutes ses modifications
         
     Returns:
         SearchResult: Objet contenant le statut et la liste des documents
     """
-    logger.info("eurlex_search_started", keyword=keyword, max_results=max_results)
+    # Utiliser les sous-domaines par défaut si non spécifiés
+    if subdomains is None:
+        subdomains = DEFAULT_SUBDOMAINS
     
-    try:
-        results = await _run_scrapy_spider(keyword, max_results)
-        
-        # Convertir en objets Pydantic
-        documents = [EurlexDocument(**doc) for doc in results]
-        
-        logger.info("eurlex_search_completed", count=len(documents))
-        
-        return SearchResult(
-            status="success",
-            total_found=len(documents),
-            documents=documents
-        )
-        
-    except Exception as e:
-        logger.error("eurlex_search_failed", error=str(e))
+    logger.info("eurlex_api_search_started", keyword=keyword, max_results=max_results, subdomains=subdomains, consolidated_only=consolidated_only)
+    
+    # Vérifier les credentials
+    if not EURLEX_API_USERNAME or not EURLEX_API_PASSWORD:
+        error_msg = "EUR-Lex API credentials not found. Please set EURLEX_API_USERNAME and EURLEX_API_PASSWORD in .env"
+        logger.error("credentials_missing")
         return SearchResult(
             status="error",
             total_found=0,
             documents=[],
-            error=str(e)
+            error=error_msg
         )
-
-# ========================================
-# FONCTION INTERNE (exécution Scrapy)
-# ========================================
-
-async def _run_scrapy_spider(keyword: str, max_results: int) -> List[Dict]:
-    """
-    Exécuter le spider Scrapy dans un subprocess séparé
-    """
-    # Créer un fichier temporaire pour les résultats
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-        output_file = f.name
-    
-    # Créer un script Python temporaire pour exécuter le spider
-    spider_script = f"""
-import sys
-import scrapy
-from scrapy.crawler import CrawlerProcess
-from urllib.parse import quote
-import json
-import re
-from datetime import datetime
-
-class EurlexSpider(scrapy.Spider):
-    name = 'eurlex'
-    
-    def __init__(self, keyword, max_results, output_file, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.keyword = keyword
-        self.max_results = int(max_results)
-        self.output_file = output_file
-        self.results = []
-        
-    def start_requests(self):
-        url = f"https://eur-lex.europa.eu/search.html?text={{quote(self.keyword)}}&type=quick&lang=en"
-        yield scrapy.Request(url, callback=self.parse)
-    
-    def parse(self, response):
-        result_links = response.css('a[id^="cellar_"]')
-        
-        for i, link in enumerate(result_links):
-            if i >= self.max_results:
-                break
-                
-            title = link.css('::text').get()
-            url = link.css('::attr(href)').get()
-            
-            if not title or not url:
-                continue
-            
-            celex = self._extract_celex(url)
-            
-            result = {{
-                'celex_number': celex,
-                'title': title.strip(),
-                'url': response.urljoin(url),
-                'pdf_url': f"https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=CELEX:{{celex}}" if celex else None,
-                'document_type': self._extract_type(title),
-                'source': 'eurlex',
-                'keyword': self.keyword,
-                'publication_date': None,
-                'status': 'ACTIVE_LAW',
-                'metadata': {{
-                    'scraped_at': datetime.now().isoformat()
-                }}
-            }}
-            
-            self.results.append(result)
-            yield result
-    
-    def _extract_celex(self, url):
-        if 'CELEX:' in url:
-            match = re.search(r'CELEX:([A-Z0-9]+)', url)
-            if match:
-                return match.group(1)
-        return None
-    
-    def _extract_type(self, title):
-        if 'Regulation' in title:
-            return 'REGULATION'
-        elif 'Directive' in title:
-            return 'DIRECTIVE'
-        elif 'Decision' in title:
-            return 'DECISION'
-        return 'OTHER'
-    
-    def closed(self, reason):
-        with open(self.output_file, 'w') as f:
-            json.dump(self.results, f)
-
-if __name__ == '__main__':
-    keyword = sys.argv[1]
-    max_results = int(sys.argv[2])
-    output_file = sys.argv[3]
-    
-    process = CrawlerProcess(settings={{
-        'USER_AGENT': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'DOWNLOAD_DELAY': 3,
-        'RANDOMIZE_DOWNLOAD_DELAY': True,
-        'CONCURRENT_REQUESTS': 1,
-        'AUTOTHROTTLE_ENABLED': True,
-        'AUTOTHROTTLE_START_DELAY': 2,
-        'AUTOTHROTTLE_MAX_DELAY': 10,
-        'RETRY_TIMES': 3,
-        'LOG_LEVEL': 'ERROR',
-        'ROBOTSTXT_OBEY': False,
-        'COOKIES_ENABLED': True,
-        'DOWNLOADER_MIDDLEWARES': {{
-            'scrapy.downloadermiddlewares.useragent.UserAgentMiddleware': None,
-            'scrapy_user_agents.middlewares.RandomUserAgentMiddleware': 400,
-        }}
-    }})
-    
-    process.crawl(EurlexSpider, keyword=keyword, max_results=max_results, output_file=output_file)
-    process.start()
-"""
-    
-    # Sauvegarder le script
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
-        script_file = f.name
-        f.write(spider_script)
     
     try:
-        # Exécuter le script dans un subprocess
-        process = await asyncio.create_subprocess_exec(
-            sys.executable, script_file, keyword, str(max_results), output_file,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+        # Construire la requête expert
+        if use_known_celex:
+            # Utiliser les documents CELEX connus (fallback)
+            known_celex = CBAM_KNOWN_DOCUMENTS.get(keyword.upper(), [])
+            if known_celex:
+                celex_queries = " OR ".join([f"DN={celex}" for celex in known_celex[:max_results]])
+                expert_query = celex_queries
+            else:
+                # Construire le filtre de sous-domaines
+                subdom_filter = " OR ".join([f"DTS_SUBDOM={s}" for s in subdomains])
+                # Recherche plein texte (selon doc EUR-Lex: Text~keyword)
+                # Fallback sur TI~ si Text~ ne fonctionne pas
+                expert_query = f"Text~{keyword} AND ({subdom_filter})"
+        elif consolidated_only:
+            # Recherche uniquement les textes consolidés (Collection = CONSLEG)
+            # Les textes consolidés regroupent le texte original + toutes ses modifications
+            expert_query = f"Text~{keyword} AND Collection = CONSLEG"
+            logger.info("consolidated_search", query=expert_query)
+        else:
+            # Recherche dynamique : texte complet + filtre sous-domaines
+            subdom_filter = " OR ".join([f"DTS_SUBDOM={s}" for s in subdomains])
+            expert_query = f"Text~{keyword} AND ({subdom_filter})"
+        
+        logger.info("building_soap_request", expert_query=expert_query)
+        
+        # Construire la requête SOAP
+        soap_request = _build_soap_request(expert_query, page=1, page_size=max_results)
+        
+        # Envoyer la requête
+        logger.info("sending_soap_request", url=EURLEX_SOAP_URL)
+        
+        response = requests.post(
+            EURLEX_SOAP_URL,
+            data=soap_request,
+            headers={
+                'Content-Type': 'application/soap+xml; charset=utf-8',
+                'User-Agent': 'DataNova-Agent1A/1.0'
+            },
+            timeout=30
         )
         
-        stdout, stderr = await process.communicate()
+        response.raise_for_status()
         
-        if process.returncode != 0:
-            logger.error("spider_execution_failed", stderr=stderr.decode())
-            return []
+        logger.info("soap_response_received", status_code=response.status_code)
         
-        # Lire les résultats
-        try:
-            with open(output_file, 'r') as f:
-                results = json.load(f)
-            return results
-        except Exception as e:
-            logger.error("results_loading_failed", error=str(e))
-            return []
-            
-    finally:
-        # Nettoyer les fichiers temporaires
-        import os
-        try:
-            os.unlink(script_file)
-            os.unlink(output_file)
-        except:
-            pass
+        # Parser la réponse (retourne documents + nombre total disponible)
+        documents_data, total_available = _parse_soap_response(response.text, keyword)
+        
+        # Convertir en objets Pydantic
+        documents = [EurlexDocument(**doc) for doc in documents_data]
+        
+        logger.info(
+            "eurlex_api_search_completed", 
+            count=len(documents),
+            total_available=total_available
+        )
+        
+        return SearchResult(
+            status="success",
+            total_found=len(documents),
+            total_available=total_available,
+            documents=documents
+        )
+        
+    except requests.exceptions.Timeout:
+        error_msg = f"EUR-Lex API timeout after 30 seconds"
+        logger.error("api_timeout", error=error_msg)
+        return SearchResult(
+            status="error",
+            total_found=0,
+            total_available=0,
+            documents=[],
+            error=error_msg
+        )
+        
+    except requests.exceptions.HTTPError as e:
+        error_msg = f"EUR-Lex API HTTP error: {e.response.status_code}"
+        logger.error("api_http_error", status_code=e.response.status_code, error=str(e))
+        return SearchResult(
+            status="error",
+            total_found=0,
+            total_available=0,
+            documents=[],
+            error=error_msg
+        )
+        
+    except Exception as e:
+        error_msg = f"EUR-Lex API error: {str(e)}"
+        logger.error("eurlex_api_search_failed", error=str(e))
+        return SearchResult(
+            status="error",
+            total_found=0,
+            total_available=0,
+            documents=[],
+            error=error_msg
+        )

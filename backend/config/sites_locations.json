@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "description": "Localisations des sites Hutchinson et fournisseurs critiques pour la veille météo",
+    "last_updated": "2026-01-31",
+    "source": "Données fictives pour tests - coordonnées approximatives des villes"
+  },
+  
+  "hutchinson_sites": [
+    {
+      "site_id": "FR-PAR-DC1",
+      "name": "Paris HQ & Digital Center",
+      "city": "Paris",
+      "country": "FR",
+      "latitude": 48.8566,
+      "longitude": 2.3522,
+      "site_type": "hq",
+      "criticality": "high"
+    },
+    {
+      "site_id": "FR-LEH-MFG1",
+      "name": "Le Havre Sealing Plant",
+      "city": "Le Havre",
+      "country": "FR",
+      "latitude": 49.4944,
+      "longitude": 0.1079,
+      "site_type": "manufacturing",
+      "criticality": "critical"
+    },
+    {
+      "site_id": "PL-WRO-MFG2",
+      "name": "Wroclaw Anti-Vibration Plant",
+      "city": "Wroclaw",
+      "country": "PL",
+      "latitude": 51.1079,
+      "longitude": 17.0385,
+      "site_type": "manufacturing",
+      "criticality": "high"
+    },
+    {
+      "site_id": "DE-HAM-RDC1",
+      "name": "Hamburg R&D Center",
+      "city": "Hamburg",
+      "country": "DE",
+      "latitude": 53.5511,
+      "longitude": 9.9937,
+      "site_type": "rd",
+      "criticality": "normal"
+    },
+    {
+      "site_id": "US-MI-OPS1",
+      "name": "Michigan Fluid Systems Plant",
+      "city": "Grand Rapids",
+      "country": "US",
+      "latitude": 42.9634,
+      "longitude": -85.6681,
+      "site_type": "manufacturing",
+      "criticality": "high"
+    },
+    {
+      "site_id": "MX-QUE-MFG3",
+      "name": "Queretaro Hose Assembly Plant",
+      "city": "Querétaro",
+      "country": "MX",
+      "latitude": 20.5888,
+      "longitude": -100.3899,
+      "site_type": "manufacturing",
+      "criticality": "normal"
+    },
+    {
+      "site_id": "IN-PUN-MFG4",
+      "name": "Pune Industrial Seals Plant",
+      "city": "Pune",
+      "country": "IN",
+      "latitude": 18.5204,
+      "longitude": 73.8567,
+      "site_type": "manufacturing",
+      "criticality": "normal"
+    },
+    {
+      "site_id": "CN-SHA-MFG5",
+      "name": "Shanghai Auto Components",
+      "city": "Shanghai",
+      "country": "CN",
+      "latitude": 31.2304,
+      "longitude": 121.4737,
+      "site_type": "manufacturing",
+      "criticality": "high"
+    },
+    {
+      "site_id": "BR-SAO-MFG6",
+      "name": "São Paulo Assembly Plant",
+      "city": "São Paulo",
+      "country": "BR",
+      "latitude": -23.5505,
+      "longitude": -46.6333,
+      "site_type": "manufacturing",
+      "criticality": "normal"
+    },
+    {
+      "site_id": "ES-VAL-LOG1",
+      "name": "Valencia Distribution Hub",
+      "city": "Valencia",
+      "country": "ES",
+      "latitude": 39.4699,
+      "longitude": -0.3763,
+      "site_type": "warehouse",
+      "criticality": "high"
+    }
+  ],
+  
+  "suppliers": [
+    {
+      "site_id": "SUP-TH-BKK-001",
+      "name": "Thai Rubber Corp - Bangkok",
+      "city": "Bangkok",
+      "country": "TH",
+      "latitude": 13.7563,
+      "longitude": 100.5018,
+      "site_type": "supplier",
+      "criticality": "critical",
+      "materials": ["natural_rubber", "latex"]
+    },
+    {
+      "site_id": "SUP-MY-KL-001",
+      "name": "Malaysian Latex Industries",
+      "city": "Kuala Lumpur",
+      "country": "MY",
+      "latitude": 3.1390,
+      "longitude": 101.6869,
+      "site_type": "supplier",
+      "criticality": "critical",
+      "materials": ["natural_rubber", "latex"]
+    },
+    {
+      "site_id": "SUP-DE-LUD-001",
+      "name": "BASF Ludwigshafen - Chemicals",
+      "city": "Ludwigshafen",
+      "country": "DE",
+      "latitude": 49.4774,
+      "longitude": 8.4452,
+      "site_type": "supplier",
+      "criticality": "high",
+      "materials": ["synthetic_rubber", "additives"]
+    },
+    {
+      "site_id": "SUP-BE-ANT-001",
+      "name": "Antwerp Chemical Terminal",
+      "city": "Antwerp",
+      "country": "BE",
+      "latitude": 51.2194,
+      "longitude": 4.4025,
+      "site_type": "supplier",
+      "criticality": "high",
+      "materials": ["carbon_black", "chemicals"]
+    },
+    {
+      "site_id": "SUP-JP-TOK-001",
+      "name": "Tokyo Steel Components",
+      "city": "Tokyo",
+      "country": "JP",
+      "latitude": 35.6762,
+      "longitude": 139.6503,
+      "site_type": "supplier",
+      "criticality": "normal",
+      "materials": ["steel", "metal_components"]
+    },
+    {
+      "site_id": "SUP-CN-SHE-001",
+      "name": "Shenzhen Electronics Parts",
+      "city": "Shenzhen",
+      "country": "CN",
+      "latitude": 22.5431,
+      "longitude": 114.0579,
+      "site_type": "supplier",
+      "criticality": "normal",
+      "materials": ["electronics", "sensors"]
+    },
+    {
+      "site_id": "SUP-IT-MIL-001",
+      "name": "Milan Textile Reinforcements",
+      "city": "Milan",
+      "country": "IT",
+      "latitude": 45.4642,
+      "longitude": 9.1900,
+      "site_type": "supplier",
+      "criticality": "normal",
+      "materials": ["textile_reinforcement", "fabrics"]
+    },
+    {
+      "site_id": "SUP-US-HOU-001",
+      "name": "Houston Petrochemicals",
+      "city": "Houston",
+      "country": "US",
+      "latitude": 29.7604,
+      "longitude": -95.3698,
+      "site_type": "supplier",
+      "criticality": "high",
+      "materials": ["synthetic_rubber", "petroleum_products"]
+    }
+  ],
+  
+  "ports": [
+    {
+      "site_id": "PORT-FR-LEH",
+      "name": "Port du Havre",
+      "city": "Le Havre",
+      "country": "FR",
+      "latitude": 49.4944,
+      "longitude": 0.1079,
+      "site_type": "port",
+      "criticality": "critical"
+    },
+    {
+      "site_id": "PORT-BE-ANT",
+      "name": "Port d'Anvers",
+      "city": "Antwerp",
+      "country": "BE",
+      "latitude": 51.2607,
+      "longitude": 4.3953,
+      "site_type": "port",
+      "criticality": "critical"
+    },
+    {
+      "site_id": "PORT-NL-RTM",
+      "name": "Port de Rotterdam",
+      "city": "Rotterdam",
+      "country": "NL",
+      "latitude": 51.9225,
+      "longitude": 4.4792,
+      "site_type": "port",
+      "criticality": "critical"
+    },
+    {
+      "site_id": "PORT-CN-SHA",
+      "name": "Port de Shanghai",
+      "city": "Shanghai",
+      "country": "CN",
+      "latitude": 31.2304,
+      "longitude": 121.4737,
+      "site_type": "port",
+      "criticality": "high"
+    }
+  ]
+}
