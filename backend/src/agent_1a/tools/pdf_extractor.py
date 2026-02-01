@@ -71,7 +71,7 @@ async def extract_pdf_content(
     file_path: str,
     extract_tables: bool = True,
     extract_nc_codes: bool = True,
-    max_file_size_mb: float = 3.0
+    max_file_size_mb: float = 30.0
 ) -> ExtractedContent:
     """
     Extrait le contenu d'un fichier PDF.
@@ -80,7 +80,7 @@ async def extract_pdf_content(
         file_path: Chemin vers le fichier PDF
         extract_tables: Extraire les tableaux
         extract_nc_codes: Détecter les codes NC
-        max_file_size_mb: Taille maximale du fichier en MB (défaut: 3MB)
+        max_file_size_mb: Taille maximale du fichier en MB (défaut: 30MB)
     
     Returns:
         ExtractedContent: Contenu extrait avec métadonnées

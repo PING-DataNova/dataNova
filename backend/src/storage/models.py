@@ -303,6 +303,54 @@ class JudgeEvaluation(Base):
 
 
 # ============================================================================
+# ALERTES MÉTÉO (Agent 1A - Collecte Climatique)
+# ============================================================================
+
+class WeatherAlert(Base):
+    """
+    Alertes météorologiques collectées par Agent 1A.
+    Source: Open-Meteo API
+    Objectif: Anticiper les risques supply chain liés à la météo
+    """
+    __tablename__ = "weather_alerts"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    
+    # Localisation
+    site_id = Column(String(50), nullable=False)  # ID du site (ex: FR-LEH-MFG1)
+    site_name = Column(String(200), nullable=False)
+    city = Column(String(100), nullable=False)
+    country = Column(String(10), nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    site_type = Column(String(50), nullable=True)  # manufacturing, supplier, port, hq
+    site_criticality = Column(String(20), nullable=True)  # critical, high, normal, low
+    
+    # Alerte
+    alert_type = Column(String(50), nullable=False)  # snow, heavy_rain, extreme_heat, extreme_cold, strong_wind, storm
+    severity = Column(String(20), nullable=False)  # low, medium, high, critical
+    alert_date = Column(Date, nullable=False)  # Date de l'événement météo
+    
+    # Données météo
+    value = Column(Float, nullable=False)  # Valeur mesurée
+    threshold = Column(Float, nullable=False)  # Seuil dépassé
+    unit = Column(String(20), nullable=False)  # mm, cm, °C, km/h
+    
+    # Description
+    description = Column(Text, nullable=False)
+    supply_chain_risk = Column(Text, nullable=False)  # Risque supply chain associé
+    
+    # Prévisions complètes (optionnel)
+    forecast_data = Column(JSON, nullable=True)  # Données météo brutes sur 16 jours
+    
+    # Métadonnées
+    status = Column(String(20), nullable=False, default="new")  # new, acknowledged, resolved
+    fetched_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ============================================================================
 # ALERTES & NOTIFICATIONS
 # ============================================================================
 

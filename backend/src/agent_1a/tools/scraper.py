@@ -724,3 +724,229 @@ async def search_eurlex(
             documents=[],
             error=error_msg
         )
+
+
+# ========================================
+# NOUVELLE API : COLLECTE PAR DOMAINES (Option 3)
+# ========================================
+
+def load_eurlex_domains_config() -> Dict:
+    """
+    Charge la configuration des domaines EUR-Lex depuis le fichier JSON.
+    
+    Returns:
+        Dict: Configuration des domaines
+    """
+    config_path = Path(__file__).parent.parent.parent.parent / "config" / "eurlex_domains.json"
+    
+    try:
+        import json
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        logger.error("eurlex_domains_config_not_found", path=str(config_path))
+        return {}
+    except json.JSONDecodeError as e:
+        logger.error("eurlex_domains_config_invalid", error=str(e))
+        return {}
+
+
+def get_enabled_domains() -> List[str]:
+    """
+    Retourne la liste des codes de domaines activés.
+    
+    Returns:
+        List[str]: Liste des codes de domaines (ex: ["15", "13", "11"])
+    """
+    config = load_eurlex_domains_config()
+    domains = config.get("domains", {})
+    
+    enabled = []
+    for domain_key, domain_info in domains.items():
+        if domain_info.get("enabled", False):
+            enabled.append(domain_info.get("code"))
+    
+    return enabled
+
+
+def get_enabled_document_types() -> List[str]:
+    """
+    Retourne la liste des types de documents activés.
+    
+    Returns:
+        List[str]: Liste des codes de types (ex: ["R", "L", "D"])
+    """
+    config = load_eurlex_domains_config()
+    doc_types = config.get("document_types", {})
+    
+    enabled = set()
+    for type_key, type_info in doc_types.items():
+        if type_info.get("enabled", False):
+            enabled.add(type_info.get("code"))
+    
+    return list(enabled)
+
+
+def _build_domain_query(
+    domains: List[str] = None,
+    document_types: List[str] = None,
+    max_age_days: int = None,
+    collections: List[str] = None
+) -> str:
+    """
+    Construit une requête expert EUR-Lex basée sur les domaines.
+    
+    IMPORTANT: L'API SOAP EUR-Lex a des limitations sur les champs utilisables.
+    Les champs qui fonctionnent: Text~, DTS_SUBDOM, DN (CELEX)
+    
+    Stratégie: On utilise une recherche par collection (LEGISLATION/CONSLEG)
+    et on filtre côté application par date et type si nécessaire.
+    
+    Args:
+        domains: Liste des codes de domaines (non utilisé - filtrage côté app)
+        document_types: Liste des types de documents (non utilisé - filtrage côté app)
+        max_age_days: Âge maximum des documents en jours (non utilisé - filtrage côté app)
+        collections: Collections EUR-Lex (LEGISLATION, CONSLEG)
+        
+    Returns:
+        str: Requête expert EUR-Lex
+    """
+    # L'API EUR-Lex SOAP est limitée dans ses capacités de filtrage
+    # On utilise uniquement les filtres qui fonctionnent de manière fiable
+    
+    # Filtre par collection (seul filtre fiable sans mot-clé)
+    if collections:
+        coll_filter = " OR ".join([f"DTS_SUBDOM={c}" for c in collections])
+        return f"({coll_filter})"
+    else:
+        return "DTS_SUBDOM=LEGISLATION"
+
+
+async def search_eurlex_by_domain(
+    domains: List[str] = None,
+    document_types: List[str] = None,
+    max_age_days: int = 365,
+    max_results: int = 50,
+    collections: List[str] = None
+) -> SearchResult:
+    """
+    Recherche des documents EUR-Lex par domaines (sans filtre par mot-clé réglementation).
+    
+    Cette fonction implémente l'Option 3 du CDC :
+    - Filtrage par domaines pertinents pour l'industrie
+    - Filtrage par type de document (Règlements, Directives)
+    - Filtrage par date (documents récents)
+    
+    L'Agent 1A collecte TOUT ce qui correspond aux critères.
+    L'Agent 1B filtrera ensuite ce qui est pertinent pour Hutchinson.
+    
+    Args:
+        domains: Liste des codes de domaines EUR-Lex (ex: ["15", "13", "11"])
+                 Si None, utilise les domaines activés dans la config
+        document_types: Types de documents (ex: ["R", "L", "D"])
+                       Si None, utilise les types activés dans la config
+        max_age_days: Âge maximum des documents en jours (défaut: 365)
+        max_results: Nombre maximum de résultats (défaut: 50)
+        collections: Collections EUR-Lex (défaut: ["LEGISLATION", "CONSLEG"])
+        
+    Returns:
+        SearchResult: Résultats de la recherche
+    """
+    # Charger la config si paramètres non fournis
+    config = load_eurlex_domains_config()
+    
+    if domains is None:
+        domains = get_enabled_domains()
+    
+    if document_types is None:
+        document_types = get_enabled_document_types()
+    
+    if collections is None:
+        collections = config.get("collection_settings", {}).get("collections", ["LEGISLATION", "CONSLEG"])
+    
+    logger.info(
+        "eurlex_domain_search_started",
+        domains=domains,
+        document_types=document_types,
+        max_age_days=max_age_days,
+        max_results=max_results,
+        collections=collections
+    )
+    
+    # Vérifier les credentials
+    if not EURLEX_API_USERNAME or not EURLEX_API_PASSWORD:
+        error_msg = "EUR-Lex API credentials not found"
+        logger.error("credentials_missing")
+        return SearchResult(
+            status="error",
+            total_found=0,
+            documents=[],
+            error=error_msg
+        )
+    
+    try:
+        # Construire la requête par domaines
+        expert_query = _build_domain_query(
+            domains=domains,
+            document_types=document_types,
+            max_age_days=max_age_days,
+            collections=collections
+        )
+        
+        logger.info("domain_query_built", expert_query=expert_query)
+        
+        # Construire et envoyer la requête SOAP
+        soap_request = _build_soap_request(expert_query, page=1, page_size=max_results)
+        
+        response = requests.post(
+            EURLEX_SOAP_URL,
+            data=soap_request,
+            headers={
+                'Content-Type': 'application/soap+xml; charset=utf-8',
+                'User-Agent': 'DataNova-Agent1A/2.0'
+            },
+            timeout=60  # Timeout plus long pour les grandes recherches
+        )
+        
+        response.raise_for_status()
+        
+        # Parser la réponse (keyword="DOMAIN_SEARCH" pour identifier la source)
+        documents_data, total_available = _parse_soap_response(response.text, "DOMAIN_SEARCH")
+        
+        # Convertir en objets Pydantic
+        documents = [EurlexDocument(**doc) for doc in documents_data]
+        
+        logger.info(
+            "eurlex_domain_search_completed",
+            count=len(documents),
+            total_available=total_available
+        )
+        
+        return SearchResult(
+            status="success",
+            total_found=len(documents),
+            total_available=total_available,
+            documents=documents
+        )
+        
+    except requests.exceptions.Timeout:
+        error_msg = "EUR-Lex API timeout"
+        logger.error("api_timeout")
+        return SearchResult(
+            status="error",
+            total_found=0,
+            total_available=0,
+            documents=[],
+            error=error_msg
+        )
+        
+    except Exception as e:
+        error_msg = f"EUR-Lex API error: {str(e)}"
+        logger.error("eurlex_domain_search_failed", error=str(e))
+        return SearchResult(
+            status="error",
+            total_found=0,
+            total_available=0,
+            documents=[],
+            error=error_msg
+        )

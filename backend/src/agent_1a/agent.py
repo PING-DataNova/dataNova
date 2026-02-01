@@ -2,16 +2,19 @@
 Agent 1A - Pipeline EUR-Lex
 
 Collecte les documents réglementaires depuis EUR-Lex :
-- Lois et règlements (CBAM, EUDR, CSRD, etc.)
+- Approche par DOMAINES (Option 3 - CDC) : collecte générique sans filtrage métier
+- Approche par MOT-CLÉ (legacy) : recherche ciblée par réglementation
+
+L'Agent 1A collecte et stocke. L'Agent 1B filtre la pertinence.
 """
 
 import asyncio
 import structlog
-from typing import Dict, List
+from typing import Dict, List, Optional
 from datetime import datetime
 import hashlib
 
-from .tools.scraper import search_eurlex
+from .tools.scraper import search_eurlex, search_eurlex_by_domain, load_eurlex_domains_config
 from .tools.document_fetcher import fetch_document
 from .tools.pdf_extractor import extract_pdf_content
 
@@ -19,7 +22,323 @@ logger = structlog.get_logger()
 
 
 # ========================================
-# PIPELINE EUR-LEX UNIQUEMENT
+# NOUVEAU PIPELINE : COLLECTE PAR DOMAINES (Option 3 - CDC)
+# ========================================
+
+async def run_agent_1a_by_domain(
+    domains: List[str] = None,
+    document_types: List[str] = None,
+    max_age_days: int = 365,
+    max_documents: int = 50
+) -> Dict:
+    """
+    Pipeline Agent 1A : Collecte par DOMAINES (conforme CDC)
+    
+    Collecte TOUS les documents réglementaires correspondant aux critères,
+    sans filtrage par mot-clé de réglementation spécifique.
+    
+    C'est l'Agent 1B qui déterminera ensuite si chaque document est
+    pertinent pour Hutchinson.
+    
+    Args:
+        domains: Liste des codes de domaines EUR-Lex (ex: ["15", "13", "11"])
+                 Si None, utilise les domaines activés dans config/eurlex_domains.json
+        document_types: Types de documents (ex: ["R", "L", "D"] pour Règlements, Directives, Décisions)
+                       Si None, utilise les types activés dans la config
+        max_age_days: Âge maximum des documents en jours (défaut: 365 = 1 an)
+        max_documents: Nombre max de documents à récupérer (défaut: 50)
+        
+    Returns:
+        dict: Résultat avec statistiques et documents traités
+    """
+    logger.info(
+        "agent_1a_domain_started",
+        domains=domains,
+        document_types=document_types,
+        max_age_days=max_age_days,
+        max_documents=max_documents
+    )
+    
+    try:
+        from src.storage.database import get_session
+        from src.storage.repositories import DocumentRepository
+        
+        # ====================================================================
+        # ÉTAPE 1 : RECHERCHE EUR-LEX PAR DOMAINES
+        # ====================================================================
+        logger.info("step_1_domain_search")
+        
+        eurlex_results = await search_eurlex_by_domain(
+            domains=domains,
+            document_types=document_types,
+            max_age_days=max_age_days,
+            max_results=max_documents
+        )
+        
+        if eurlex_results.status != "success":
+            logger.error("domain_search_failed", error=eurlex_results.error)
+            return {
+                "status": "error",
+                "mode": "domain",
+                "error": eurlex_results.error
+            }
+        
+        total_found = len(eurlex_results.documents)
+        total_available = eurlex_results.total_available
+        
+        logger.info(
+            "step_1_completed",
+            documents_found=total_found,
+            total_available_on_eurlex=total_available
+        )
+        
+        # ====================================================================
+        # ÉTAPE 2 : VÉRIFIER LES DOCUMENTS EXISTANTS EN BDD
+        # ====================================================================
+        logger.info("step_2_checking_existing_documents")
+        
+        session = get_session()
+        repo = DocumentRepository(session)
+        
+        documents_to_process = []
+        documents_unchanged = []
+        
+        try:
+            for doc in eurlex_results.documents:
+                url = str(doc.pdf_url) if doc.pdf_url else str(doc.url)
+                existing_doc = repo.find_by_url(url)
+                
+                if existing_doc:
+                    documents_unchanged.append(doc)
+                    logger.debug("document_unchanged", celex=doc.celex_number)
+                    continue
+                
+                documents_to_process.append({
+                    'doc': doc,
+                    'url': url
+                })
+            
+            logger.info(
+                "step_2_completed",
+                to_process=len(documents_to_process),
+                unchanged=len(documents_unchanged)
+            )
+            
+        finally:
+            session.close()
+        
+        # ====================================================================
+        # ÉTAPE 3 : TÉLÉCHARGEMENT DES DOCUMENTS
+        # ====================================================================
+        logger.info("step_3_downloading", count=len(documents_to_process))
+        
+        downloaded_files = []
+        download_errors = []
+        
+        for item in documents_to_process:
+            try:
+                doc = item['doc']
+                url = item['url']
+                doc_id = doc.celex_number or doc.title[:50]
+                
+                logger.info("downloading_document", id=doc_id)
+                
+                fetch_result = await fetch_document(
+                    url, 
+                    output_dir="data/documents",
+                    skip_if_exists=False
+                )
+                
+                if not fetch_result.success:
+                    raise Exception(fetch_result.error or "Download failed")
+                
+                file_path = fetch_result.document.file_path
+                
+                downloaded_files.append({
+                    'doc': doc,
+                    'file_path': file_path,
+                    'url': url
+                })
+                
+                logger.info("document_downloaded", id=doc_id, path=file_path)
+                
+            except Exception as e:
+                logger.error("download_failed", id=doc_id, error=str(e))
+                download_errors.append({
+                    'doc': doc,
+                    'error': str(e)
+                })
+        
+        logger.info(
+            "step_3_completed",
+            downloaded=len(downloaded_files),
+            errors=len(download_errors)
+        )
+        
+        # ====================================================================
+        # ÉTAPE 4 : EXTRACTION DU CONTENU PDF
+        # ====================================================================
+        logger.info("step_4_extracting", count=len(downloaded_files))
+        
+        extracted_documents = []
+        extraction_errors = []
+        
+        for item in downloaded_files:
+            try:
+                doc = item['doc']
+                file_path = item['file_path']
+                doc_id = doc.celex_number or doc.title[:50]
+                
+                if not file_path.endswith('.pdf'):
+                    logger.info("skipping_non_pdf", id=doc_id)
+                    continue
+                
+                logger.info("extracting_content", id=doc_id)
+                
+                content = await extract_pdf_content(file_path)
+                
+                extracted_documents.append({
+                    'doc': doc,
+                    'file_path': file_path,
+                    'content': content,
+                    'url': item['url']
+                })
+                
+                logger.info(
+                    "content_extracted",
+                    id=doc_id,
+                    pages=content.page_count,
+                    nc_codes=len(content.nc_codes)
+                )
+                
+            except Exception as e:
+                logger.error("extraction_failed", id=doc_id, error=str(e))
+                extraction_errors.append({
+                    'doc': doc,
+                    'error': str(e)
+                })
+        
+        logger.info(
+            "step_4_completed",
+            extracted=len(extracted_documents),
+            errors=len(extraction_errors)
+        )
+        
+        # ====================================================================
+        # ÉTAPE 5 : SAUVEGARDE EN BASE DE DONNÉES
+        # ====================================================================
+        logger.info("step_5_saving_to_database", count=len(extracted_documents))
+        
+        session = get_session()
+        repo = DocumentRepository(session)
+        
+        saved_count = 0
+        save_errors = []
+        
+        try:
+            for item in extracted_documents:
+                try:
+                    doc = item['doc']
+                    content = item['content']
+                    file_path = item['file_path']
+                    url = item['url']
+                    
+                    # Calculer le hash du fichier
+                    with open(file_path, 'rb') as f:
+                        file_hash = hashlib.sha256(f.read()).hexdigest()
+                    
+                    # Préparer les métadonnées
+                    metadata = {
+                        'source': 'eurlex',
+                        'collection_mode': 'domain',  # Nouveau : indique le mode de collecte
+                        'celex_number': doc.celex_number,
+                        'document_type': doc.document_type,
+                        'pages': content.page_count,
+                        'tables': len(content.tables),
+                        'file_path': file_path,
+                        'nc_codes': [nc.code for nc in content.nc_codes]
+                    }
+                    
+                    # Ajouter les infos du document extrait si disponibles
+                    publication_date = None
+                    if content.document_info:
+                        doc_info = content.document_info
+                        metadata['document_number'] = doc_info.document_number
+                        metadata['document_subtype'] = doc_info.document_subtype
+                        metadata['issuing_body'] = doc_info.issuing_body
+                        metadata['publication_series'] = doc_info.publication_series
+                        publication_date = doc_info.publication_date
+                    
+                    if publication_date is None:
+                        publication_date = doc.publication_date
+                    
+                    # Sauvegarder avec regulation_type = "TO_CLASSIFY" (sera classé par Agent 1B)
+                    saved_doc, status = repo.upsert_document(
+                        source_url=url,
+                        hash_sha256=file_hash,
+                        title=doc.title,
+                        content=content.text,
+                        nc_codes=[nc.code for nc in content.nc_codes],
+                        regulation_type="TO_CLASSIFY",  # L'Agent 1B classifiera
+                        publication_date=publication_date,
+                        document_metadata=metadata
+                    )
+                    saved_count += 1
+                    
+                    logger.info("document_saved", title=doc.title[:50], status=status, doc_id=saved_doc.id)
+                    
+                except Exception as e:
+                    logger.error("save_failed", title=doc.title[:50], error=str(e))
+                    save_errors.append({
+                        'doc': doc,
+                        'error': str(e)
+                    })
+            
+            session.commit()
+            
+        except Exception as e:
+            session.rollback()
+            logger.error("database_transaction_failed", error=str(e))
+            raise
+        finally:
+            session.close()
+        
+        logger.info("step_5_completed", saved=saved_count, errors=len(save_errors))
+        
+        # ====================================================================
+        # RÉSULTAT FINAL
+        # ====================================================================
+        
+        result = {
+            "status": "success",
+            "mode": "domain",
+            "domains_searched": domains or "config_default",
+            "document_types": document_types or "config_default",
+            "max_age_days": max_age_days,
+            "total_available_on_eurlex": total_available,
+            "documents_found": total_found,
+            "documents_processed": saved_count,
+            "documents_unchanged": len(documents_unchanged),
+            "download_errors": len(download_errors),
+            "extraction_errors": len(extraction_errors),
+            "save_errors": len(save_errors)
+        }
+        
+        logger.info("agent_1a_domain_completed", result=result)
+        
+        return result
+        
+    except Exception as e:
+        logger.error("agent_1a_domain_failed", error=str(e))
+        return {
+            "status": "error",
+            "mode": "domain",
+            "error": str(e)
+        }
+
+
+# ========================================
+# PIPELINE LEGACY : PAR MOT-CLÉ (conservé pour compatibilité)
 # ========================================
 
 async def run_agent_1a(
@@ -29,7 +348,10 @@ async def run_agent_1a(
     consolidated_only: bool = False
 ) -> Dict:
     """
-    Pipeline Agent 1A : EUR-Lex uniquement
+    Pipeline Agent 1A : EUR-Lex par mot-clé (LEGACY)
+    
+    ⚠️ Cette fonction est conservée pour compatibilité.
+    Préférez run_agent_1a_by_domain() pour une collecte conforme au CDC.
     
     Collecte et traite les documents réglementaires depuis EUR-Lex.
     
@@ -48,6 +370,7 @@ async def run_agent_1a(
     
     logger.info(
         "agent_1a_started",
+
         keyword=keyword,
         max_documents=max_documents,
         subdomains=subdomains,
@@ -1071,3 +1394,643 @@ async def run_agent_1a_multi_sectors(
             "sectors": sectors,
             "error": str(e)
         }
+
+
+# ========================================
+# NOUVEAU PIPELINE : COLLECTE DEPUIS PROFIL ENTREPRISE (CDC CONFORME)
+# ========================================
+
+async def run_agent_1a_from_profile(
+    profile_path: str = None,
+    max_documents_per_keyword: int = 20,
+    max_total_documents: int = 100,
+    priority_threshold: int = 2,
+    min_publication_year: int = 2000,
+    save_to_db: bool = True
+) -> Dict:
+    """
+    Pipeline Agent 1A conforme au CDC : Collecte depuis le profil entreprise.
+    
+    Cette fonction :
+    1. Lit le profil JSON de l'entreprise (ex: Hutchinson_SA.json)
+    2. Extrait automatiquement les mots-clés pertinents :
+       - Codes NC/HS (nomenclature douanière)
+       - Matières premières
+       - Secteurs d'activité
+       - Pays fournisseurs
+    3. Recherche sur EUR-Lex avec ces mots-clés
+    4. Collecte les documents SANS filtrage par nom de réglementation
+    
+    L'Agent 1B déterminera ensuite quelles réglementations (CBAM, REACH, etc.)
+    sont pertinentes pour chaque document.
+    
+    Args:
+        profile_path: Chemin vers le fichier JSON du profil entreprise.
+                     Si None, utilise data/company_profiles/Hutchinson_SA.json
+        max_documents_per_keyword: Max documents à récupérer par mot-clé (défaut: 20)
+        max_total_documents: Max total de documents uniques (défaut: 100)
+        priority_threshold: Inclure mots-clés de priorité <= N (défaut: 2 = codes NC + matières)
+                           1 = codes NC uniquement
+                           2 = codes NC + matières + produits
+                           3 = + secteurs + pays
+        min_publication_year: Année minimale de publication (défaut: 2000)
+                             Les documents publiés avant cette date sont ignorés
+        save_to_db: Sauvegarder en base de données (défaut: True)
+        
+    Returns:
+        dict: Résultat avec statistiques et documents traités
+    """
+    from .tools.keyword_extractor import (
+        extract_keywords_from_profile,
+        get_eurlex_search_keywords,
+        get_default_profile_path
+    )
+    from .tools.scraper import search_eurlex
+    
+    logger.info(
+        "agent_1a_from_profile_started",
+        profile_path=profile_path,
+        max_per_keyword=max_documents_per_keyword,
+        max_total=max_total_documents,
+        priority=priority_threshold,
+        min_publication_year=min_publication_year
+    )
+    
+    # ====================================================================
+    # ÉTAPE 1 : EXTRACTION DES MOTS-CLÉS DU PROFIL
+    # ====================================================================
+    logger.info("step_1_extracting_keywords")
+    
+    if profile_path is None:
+        profile_path = get_default_profile_path()
+    
+    company_keywords = extract_keywords_from_profile(profile_path)
+    
+    if not company_keywords:
+        logger.error("profile_extraction_failed", path=profile_path)
+        return {
+            "status": "error",
+            "mode": "company_profile",
+            "error": f"Failed to extract keywords from profile: {profile_path}"
+        }
+    
+    # Obtenir les mots-clés prioritaires
+    search_keywords = get_eurlex_search_keywords(
+        company_keywords,
+        max_keywords=30,
+        priority_threshold=priority_threshold
+    )
+    
+    logger.info(
+        "step_1_completed",
+        company=company_keywords.company_name,
+        total_keywords_available=len(company_keywords.get_all_keywords()),
+        keywords_selected=len(search_keywords),
+        keywords=search_keywords[:10]  # Log les 10 premiers
+    )
+    
+    # ====================================================================
+    # ÉTAPE 2 : RECHERCHE EUR-LEX PAR MOT-CLÉ
+    # ====================================================================
+    logger.info("step_2_eurlex_search", keywords_count=len(search_keywords))
+    
+    all_documents = {}  # Clé = CELEX, pour dédoublonner
+    keyword_stats = {}
+    
+    for keyword in search_keywords:
+        try:
+            logger.info("searching_keyword", keyword=keyword)
+            
+            # Recherche EUR-Lex
+            result = await search_eurlex(
+                keyword=keyword,
+                max_results=max_documents_per_keyword,
+                consolidated_only=False
+            )
+            
+            if result.status == "success":
+                docs_found = len(result.documents)
+                keyword_stats[keyword] = {
+                    "found": docs_found,
+                    "total_available": result.total_available
+                }
+                
+                # Ajouter les documents (dédoublonnés par CELEX, en privilégiant les versions consolidées)
+                for doc in result.documents:
+                    celex = doc.celex_number or doc.title
+                    
+                    # Extraire le numéro de base (sans préfixe 0 ou 3)
+                    # Ex: "02017R0649" et "32017R0649" -> "2017R0649"
+                    base_celex = celex[1:] if celex and len(celex) > 1 and celex[0] in '03' else celex
+                    
+                    # Vérifier si c'est une version consolidée (préfixe 0)
+                    is_consolidated = celex.startswith('0') if celex else False
+                    
+                    if base_celex not in all_documents:
+                        # Nouveau document
+                        all_documents[base_celex] = {
+                            "doc": doc,
+                            "keywords": [keyword],
+                            "is_consolidated": is_consolidated,
+                            "original_celex": celex
+                        }
+                    else:
+                        # Document déjà vu - ajouter le keyword
+                        all_documents[base_celex]["keywords"].append(keyword)
+                        
+                        # Si la nouvelle version est consolidée et l'ancienne ne l'est pas, remplacer
+                        if is_consolidated and not all_documents[base_celex].get("is_consolidated", False):
+                            logger.info(
+                                "replacing_with_consolidated",
+                                old_celex=all_documents[base_celex].get("original_celex"),
+                                new_celex=celex
+                            )
+                            all_documents[base_celex]["doc"] = doc
+                            all_documents[base_celex]["is_consolidated"] = True
+                            all_documents[base_celex]["original_celex"] = celex
+                
+                logger.info(
+                    "keyword_completed",
+                    keyword=keyword,
+                    found=docs_found,
+                    total_unique_so_far=len(all_documents)
+                )
+            else:
+                keyword_stats[keyword] = {"error": result.error}
+                logger.warning("keyword_failed", keyword=keyword, error=result.error)
+            
+            # Arrêter si on a assez de documents
+            if len(all_documents) >= max_total_documents:
+                logger.info("max_documents_reached", count=len(all_documents))
+                break
+                
+        except Exception as e:
+            logger.error("keyword_search_error", keyword=keyword, error=str(e))
+            keyword_stats[keyword] = {"error": str(e)}
+    
+    logger.info(
+        "step_2_completed",
+        keywords_processed=len(keyword_stats),
+        unique_documents=len(all_documents)
+    )
+    
+    # ====================================================================
+    # ÉTAPE 2b : FILTRAGE PAR DATE DE PUBLICATION
+    # ====================================================================
+    # Ne garder que les documents publiés à partir de min_publication_year (paramètre)
+    
+    filtered_documents = {}
+    filtered_out_count = 0
+    
+    for base_celex, data in all_documents.items():
+        doc = data["doc"]
+        
+        # Vérifier la date de publication
+        if doc.publication_date:
+            try:
+                pub_year = doc.publication_date.year if hasattr(doc.publication_date, 'year') else int(str(doc.publication_date)[:4])
+                if pub_year < min_publication_year:
+                    logger.debug(
+                        "document_filtered_by_date",
+                        celex=data.get("original_celex", base_celex),
+                        publication_year=pub_year,
+                        min_year=min_publication_year
+                    )
+                    filtered_out_count += 1
+                    continue
+            except (ValueError, TypeError):
+                pass  # Si on ne peut pas parser la date, on garde le document
+        
+        filtered_documents[base_celex] = data
+    
+    logger.info(
+        "step_2b_date_filtering_completed",
+        before=len(all_documents),
+        after=len(filtered_documents),
+        filtered_out=filtered_out_count,
+        min_year=min_publication_year
+    )
+    
+    all_documents = filtered_documents
+    
+    # ====================================================================
+    # ÉTAPE 3 : TÉLÉCHARGEMENT DES DOCUMENTS
+    # ====================================================================
+    logger.info("step_3_downloading", count=len(all_documents))
+    
+    downloaded_files = []
+    download_errors = []
+    
+    for celex, data in list(all_documents.items())[:max_total_documents]:
+        doc = data["doc"]
+        keywords_matched = data["keywords"]
+        doc_id = celex[:30]
+        
+        try:
+            # Obtenir l'URL PDF
+            pdf_url = doc.pdf_url or (doc.html_url.replace('/HTML/', '/PDF/') if doc.html_url else None)
+            
+            if not pdf_url:
+                logger.warning("no_pdf_url", id=doc_id)
+                continue
+            
+            logger.info("downloading", id=doc_id)
+            
+            fetch_result = await fetch_document(pdf_url)
+            
+            # Extraire le chemin du fichier depuis le résultat
+            if fetch_result and fetch_result.success and fetch_result.document:
+                file_path = fetch_result.document.file_path
+                downloaded_files.append({
+                    "doc": doc,
+                    "file_path": file_path,
+                    "url": pdf_url,
+                    "keywords_matched": keywords_matched
+                })
+                logger.info("downloaded", id=doc_id, path=file_path)
+            else:
+                error_msg = fetch_result.error if fetch_result else "fetch_failed"
+                download_errors.append({"doc": doc, "error": error_msg})
+                
+        except Exception as e:
+            logger.error("download_error", id=doc_id, error=str(e))
+            download_errors.append({"doc": doc, "error": str(e)})
+    
+    logger.info(
+        "step_3_completed",
+        downloaded=len(downloaded_files),
+        errors=len(download_errors)
+    )
+    
+    # ====================================================================
+    # ÉTAPE 4 : EXTRACTION DU CONTENU PDF
+    # ====================================================================
+    logger.info("step_4_extracting", count=len(downloaded_files))
+    
+    extracted_documents = []
+    extraction_errors = []
+    
+    for item in downloaded_files:
+        doc = item["doc"]
+        file_path = item["file_path"]
+        doc_id = doc.celex_number or doc.title[:30]
+        
+        try:
+            if not file_path.endswith('.pdf'):
+                logger.info("skipping_non_pdf", id=doc_id)
+                continue
+            
+            content = await extract_pdf_content(file_path)
+            
+            extracted_documents.append({
+                "doc": doc,
+                "file_path": file_path,
+                "content": content,
+                "url": item["url"],
+                "keywords_matched": item["keywords_matched"]
+            })
+            
+            logger.info(
+                "extracted",
+                id=doc_id,
+                pages=content.page_count,
+                nc_codes=len(content.nc_codes)
+            )
+            
+        except Exception as e:
+            logger.error("extraction_error", id=doc_id, error=str(e))
+            extraction_errors.append({"doc": doc, "error": str(e)})
+    
+    logger.info(
+        "step_4_completed",
+        extracted=len(extracted_documents),
+        errors=len(extraction_errors)
+    )
+    
+    # ====================================================================
+    # ÉTAPE 5 : SAUVEGARDE EN BASE DE DONNÉES
+    # ====================================================================
+    saved_count = 0
+    save_errors = []
+    
+    if save_to_db and extracted_documents:
+        logger.info("step_5_saving", count=len(extracted_documents))
+        
+        try:
+            from src.storage.database import get_session
+            from src.storage.repositories import DocumentRepository
+            
+            session = get_session()
+            repo = DocumentRepository(session)
+            
+            for item in extracted_documents:
+                try:
+                    doc = item["doc"]
+                    content = item["content"]
+                    file_path = item["file_path"]
+                    keywords_matched = item["keywords_matched"]
+                    
+                    # Calculer hash du fichier
+                    with open(file_path, 'rb') as f:
+                        file_hash = hashlib.sha256(f.read()).hexdigest()
+                    
+                    # Métadonnées
+                    metadata = {
+                        "collection_mode": "company_profile",
+                        "company_name": company_keywords.company_name,
+                        "company_id": company_keywords.company_id,
+                        "celex_number": doc.celex_number,
+                        "document_type": doc.document_type or "UNKNOWN",
+                        "keywords_matched": keywords_matched,
+                        "priority_threshold": priority_threshold,
+                        "collected_at": datetime.now().isoformat(),
+                        "nc_codes_found": [nc.code for nc in content.nc_codes[:20]] if content.nc_codes else [],
+                        "page_count": content.page_count,
+                        "pdf_path": file_path,
+                        "source": doc.source,
+                        "status": doc.status
+                    }
+                    
+                    # Sauvegarder avec upsert_document
+                    saved_doc, status = repo.upsert_document(
+                        source_url=item["url"],
+                        hash_sha256=file_hash,
+                        title=doc.title,
+                        content=content.text[:50000] if content.text else "",
+                        nc_codes=[nc.code for nc in content.nc_codes[:100]] if content.nc_codes else [],
+                        regulation_type="TO_CLASSIFY",  # Agent 1B classifiera
+                        publication_date=doc.publication_date,
+                        document_metadata=metadata
+                    )
+                    
+                    saved_count += 1
+                    logger.info("saved", celex=doc.celex_number, id=saved_doc.id, status=status)
+                    
+                except Exception as e:
+                    logger.error("save_error", celex=doc.celex_number, error=str(e))
+                    save_errors.append({"doc": doc, "error": str(e)})
+            
+            session.commit()
+            
+        except Exception as e:
+            session.rollback()
+            logger.error("db_transaction_failed", error=str(e))
+        finally:
+            session.close()
+        
+        logger.info("step_5_completed", saved=saved_count, errors=len(save_errors))
+    else:
+        logger.info("step_5_skipped", reason="save_to_db=False or no documents")
+    
+    # ====================================================================
+    # RÉSULTAT FINAL
+    # ====================================================================
+    result = {
+        "status": "success",
+        "mode": "company_profile",
+        "company": {
+            "name": company_keywords.company_name,
+            "id": company_keywords.company_id,
+            "profile_path": profile_path
+        },
+        "keywords": {
+            "extracted_total": len(company_keywords.get_all_keywords()),
+            "used_for_search": len(search_keywords),
+            "priority_threshold": priority_threshold,
+            "list": search_keywords
+        },
+        "keyword_stats": keyword_stats,
+        "documents": {
+            "unique_found": len(all_documents),
+            "downloaded": len(downloaded_files),
+            "extracted": len(extracted_documents),
+            "saved": saved_count
+        },
+        "errors": {
+            "download": len(download_errors),
+            "extraction": len(extraction_errors),
+            "save": len(save_errors)
+        }
+    }
+    
+    logger.info("agent_1a_from_profile_completed", result=result)
+    
+    return result
+
+
+# ========================================
+# COLLECTE MÉTÉOROLOGIQUE (CDC CONFORME)
+# ========================================
+
+async def run_agent_1a_weather(
+    sites_config_path: str = None,
+    forecast_days: int = 16,
+    save_to_db: bool = True
+) -> Dict:
+    """
+    Pipeline Agent 1A - Collecte des alertes météorologiques.
+    
+    Cette fonction :
+    1. Charge les localisations des sites (usines, fournisseurs, ports)
+    2. Récupère les prévisions météo via Open-Meteo API (16 jours)
+    3. Détecte les alertes (neige, pluie, vent, températures extrêmes)
+    4. Sauvegarde les alertes en base de données
+    
+    Args:
+        sites_config_path: Chemin vers le fichier JSON des sites.
+                          Si None, utilise config/sites_locations.json
+        forecast_days: Nombre de jours de prévisions (max 16)
+        save_to_db: Sauvegarder en base de données (défaut: True)
+        
+    Returns:
+        dict: Résultat avec statistiques et alertes
+    """
+    import json
+    from pathlib import Path
+    from .tools.weather import (
+        Location,
+        fetch_weather_for_sites,
+        WeatherAlert as WeatherAlertModel
+    )
+    
+    logger.info(
+        "agent_1a_weather_started",
+        sites_config_path=sites_config_path,
+        forecast_days=forecast_days,
+        save_to_db=save_to_db
+    )
+    
+    # ====================================================================
+    # ÉTAPE 1 : CHARGEMENT DES SITES
+    # ====================================================================
+    logger.info("step_1_loading_sites")
+    
+    if sites_config_path is None:
+        sites_config_path = Path(__file__).parent.parent.parent / "config" / "sites_locations.json"
+    else:
+        sites_config_path = Path(sites_config_path)
+    
+    if not sites_config_path.exists():
+        logger.error("sites_config_not_found", path=str(sites_config_path))
+        return {
+            "status": "error",
+            "error": f"Sites config not found: {sites_config_path}"
+        }
+    
+    with open(sites_config_path, "r", encoding="utf-8") as f:
+        sites_data = json.load(f)
+    
+    locations = []
+    
+    # Sites Hutchinson
+    for site in sites_data.get("hutchinson_sites", []):
+        locations.append(Location(
+            site_id=site["site_id"],
+            name=site["name"],
+            city=site["city"],
+            country=site["country"],
+            latitude=site["latitude"],
+            longitude=site["longitude"],
+            site_type=site.get("site_type", "manufacturing"),
+            criticality=site.get("criticality", "normal"),
+        ))
+    
+    # Fournisseurs
+    for supplier in sites_data.get("suppliers", []):
+        locations.append(Location(
+            site_id=supplier["site_id"],
+            name=supplier["name"],
+            city=supplier["city"],
+            country=supplier["country"],
+            latitude=supplier["latitude"],
+            longitude=supplier["longitude"],
+            site_type="supplier",
+            criticality=supplier.get("criticality", "normal"),
+        ))
+    
+    # Ports
+    for port in sites_data.get("ports", []):
+        locations.append(Location(
+            site_id=port["site_id"],
+            name=port["name"],
+            city=port["city"],
+            country=port["country"],
+            latitude=port["latitude"],
+            longitude=port["longitude"],
+            site_type="port",
+            criticality=port.get("criticality", "high"),
+        ))
+    
+    logger.info("step_1_completed", sites_count=len(locations))
+    
+    # ====================================================================
+    # ÉTAPE 2 : RÉCUPÉRATION DES PRÉVISIONS MÉTÉO
+    # ====================================================================
+    logger.info("step_2_fetching_weather", sites_count=len(locations), forecast_days=forecast_days)
+    
+    forecasts, alerts = await fetch_weather_for_sites(locations, forecast_days=forecast_days)
+    
+    logger.info(
+        "step_2_completed",
+        forecasts_count=len(forecasts),
+        alerts_count=len(alerts)
+    )
+    
+    # ====================================================================
+    # ÉTAPE 3 : SAUVEGARDE EN BASE DE DONNÉES
+    # ====================================================================
+    saved_count = 0
+    save_errors = []
+    
+    if save_to_db and alerts:
+        logger.info("step_3_saving_alerts", count=len(alerts))
+        
+        from src.storage.database import SessionLocal
+        from src.storage.models import WeatherAlert as WeatherAlertDB
+        
+        db = SessionLocal()
+        
+        try:
+            for alert in alerts:
+                try:
+                    # Créer l'enregistrement en BDD
+                    db_alert = WeatherAlertDB(
+                        site_id=alert.location.site_id,
+                        site_name=alert.location.name,
+                        city=alert.location.city,
+                        country=alert.location.country,
+                        latitude=alert.location.latitude,
+                        longitude=alert.location.longitude,
+                        site_type=alert.location.site_type,
+                        site_criticality=alert.location.criticality,
+                        alert_type=alert.alert_type,
+                        severity=alert.severity,
+                        alert_date=alert.date,
+                        value=alert.value,
+                        threshold=alert.threshold,
+                        unit=alert.unit,
+                        description=alert.description,
+                        supply_chain_risk=alert.supply_chain_risk,
+                        status="new"
+                    )
+                    
+                    db.add(db_alert)
+                    db.commit()
+                    
+                    saved_count += 1
+                    logger.info(
+                        "alert_saved",
+                        site=alert.location.site_id,
+                        type=alert.alert_type,
+                        severity=alert.severity,
+                        date=str(alert.date)
+                    )
+                    
+                except Exception as e:
+                    db.rollback()
+                    logger.error("alert_save_error", site=alert.location.site_id, error=str(e))
+                    save_errors.append({"alert": alert, "error": str(e)})
+        
+        finally:
+            db.close()
+        
+        logger.info("step_3_completed", saved=saved_count, errors=len(save_errors))
+    else:
+        logger.info("step_3_skipped", reason="save_to_db=False or no alerts")
+    
+    # ====================================================================
+    # RÉSULTAT FINAL
+    # ====================================================================
+    
+    # Statistiques par sévérité
+    severity_stats = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    for alert in alerts:
+        severity_stats[alert.severity] += 1
+    
+    # Statistiques par type
+    type_stats = {}
+    for alert in alerts:
+        type_stats[alert.alert_type] = type_stats.get(alert.alert_type, 0) + 1
+    
+    result = {
+        "status": "success",
+        "mode": "weather_monitoring",
+        "sites": {
+            "total": len(locations),
+            "forecasts_fetched": len(forecasts)
+        },
+        "alerts": {
+            "total": len(alerts),
+            "saved": saved_count,
+            "by_severity": severity_stats,
+            "by_type": type_stats
+        },
+        "forecast_days": forecast_days,
+        "errors": {
+            "save": len(save_errors)
+        }
+    }
+    
+    logger.info("agent_1a_weather_completed", result=result)
+    
+    return result
