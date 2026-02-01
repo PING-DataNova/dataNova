@@ -10,6 +10,9 @@ L'Agent 1A collecte et stocke. L'Agent 1B filtre la pertinence.
 
 import asyncio
 import structlog
+import json
+import os
+import time
 from typing import Dict, List, Optional
 from datetime import datetime
 import hashlib
@@ -17,8 +20,509 @@ import hashlib
 from .tools.scraper import search_eurlex, search_eurlex_by_domain, load_eurlex_domains_config
 from .tools.document_fetcher import fetch_document
 from .tools.pdf_extractor import extract_pdf_content
+from .tools.weather import OpenMeteoClient, Location
 
 logger = structlog.get_logger()
+
+
+# ========================================
+# SCÉNARIO 1 : COLLECTE AUTOMATIQUE COMPLÈTE (conforme CDC)
+# ========================================
+
+async def run_agent_1a_full_collection(
+    company_profile_path: str = "data/company_profiles/Hutchinson_SA.json",
+    sites_config_path: str = "config/sites_locations.json",
+    min_publication_year: int = 2000,
+    max_documents_per_keyword: int = 10,
+    max_keywords: int = 0,  # 0 = tous les mots-clés
+    save_to_db: bool = True
+) -> Dict:
+    """
+    Scénario 1 : Collecte automatique complète pour l'entreprise.
+    
+    Cette fonction :
+    1. Lit le profil entreprise pour extraire les mots-clés pertinents
+    2. Recherche sur EUR-Lex avec ces mots-clés
+    3. Télécharge et extrait les PDFs
+    4. Collecte la météo pour tous les sites (usines, fournisseurs, ports)
+    5. Sauvegarde tout en BDD
+    
+    Args:
+        company_profile_path: Chemin vers le profil entreprise JSON
+        sites_config_path: Chemin vers la config des sites
+        min_publication_year: Année minimum de publication (défaut: 2000)
+        max_documents_per_keyword: Max documents par mot-clé (défaut: 10)
+        save_to_db: Sauvegarder en BDD (défaut: True)
+        
+    Returns:
+        dict: Résultat avec statistiques
+    """
+    start_time = time.time()
+    
+    logger.info(
+        "agent_1a_full_collection_started",
+        company_profile=company_profile_path,
+        sites_config=sites_config_path
+    )
+    
+    # ====================================================================
+    # ÉTAPE 1 : CHARGER LE PROFIL ENTREPRISE ET EXTRAIRE LES MOTS-CLÉS
+    # ====================================================================
+    logger.info("step_1_loading_company_profile")
+    
+    try:
+        with open(company_profile_path, 'r', encoding='utf-8') as f:
+            company_profile = json.load(f)
+    except FileNotFoundError:
+        logger.error("company_profile_not_found", path=company_profile_path)
+        return {"status": "error", "error": f"Profil non trouvé: {company_profile_path}"}
+    
+    # Extraire les mots-clés depuis le profil
+    keywords = _extract_keywords_from_profile(company_profile)
+    
+    # Limiter le nombre de mots-clés si demandé (pour les tests)
+    if max_keywords > 0:
+        keywords = keywords[:max_keywords]
+        logger.info("keywords_limited", max_keywords=max_keywords)
+    
+    logger.info("step_1_completed", keywords_extracted=len(keywords), keywords=keywords[:10])
+    
+    # ====================================================================
+    # ÉTAPE 2 : COLLECTE EUR-LEX PAR MOTS-CLÉS
+    # ====================================================================
+    logger.info("step_2_eurlex_collection", keywords_count=len(keywords))
+    
+    from src.storage.database import SessionLocal
+    from src.storage.models import Document
+    
+    all_documents = []
+    seen_celexes = set()
+    download_errors = 0
+    extraction_errors = 0
+    
+    for keyword in keywords:
+        try:
+            # Rechercher sur EUR-Lex
+            result = await search_eurlex(
+                keyword=keyword,
+                max_results=max_documents_per_keyword,
+                consolidated_only=True  # Préférence pour les textes consolidés (CELEX préfixe 0)
+            )
+            
+            docs = result.documents if hasattr(result, 'documents') else []
+            
+            for doc in docs:
+                celex = getattr(doc, 'celex_id', '') or getattr(doc, 'celex_number', '') or ''
+                
+                # Éviter les doublons
+                if celex and celex in seen_celexes:
+                    continue
+                seen_celexes.add(celex)
+                
+                # Vérifier l'année de publication
+                pub_date = getattr(doc, 'publication_date', None)
+                if pub_date:
+                    try:
+                        year = pub_date.year if hasattr(pub_date, 'year') else int(str(pub_date)[:4])
+                        if year < min_publication_year:
+                            continue
+                    except:
+                        pass
+                
+                all_documents.append({
+                    'eurlex_doc': doc,
+                    'matched_keyword': keyword,
+                    'celex': celex
+                })
+                
+        except Exception as e:
+            logger.warning("eurlex_search_error", keyword=keyword, error=str(e))
+    
+    logger.info("step_2_eurlex_completed", unique_documents=len(all_documents))
+    
+    # ====================================================================
+    # ÉTAPE 3 : TÉLÉCHARGER ET EXTRAIRE LES PDFs
+    # ====================================================================
+    logger.info("step_3_downloading_pdfs", count=len(all_documents))
+    
+    documents_saved = []
+    db = SessionLocal() if save_to_db else None
+    
+    try:
+        for doc_info in all_documents:
+            eurlex_doc = doc_info['eurlex_doc']
+            keyword = doc_info['matched_keyword']
+            celex = doc_info['celex']
+            
+            try:
+                pdf_url = getattr(eurlex_doc, 'pdf_url', None)
+                title = getattr(eurlex_doc, 'title', '') or ''
+                eurlex_url = getattr(eurlex_doc, 'eurlex_url', '') or getattr(eurlex_doc, 'url', '') or ''
+                doc_type = getattr(eurlex_doc, 'document_type', '') or ''
+                
+                content = ""
+                local_path = None
+                doc_hash = None
+                
+                # Télécharger le PDF si disponible
+                MAX_PDF_SIZE_MB = 10  # Ignorer les PDFs > 10MB pour éviter les timeouts
+                if pdf_url:
+                    try:
+                        fetch_result = await fetch_document(str(pdf_url), output_dir="data/documents")
+                        if fetch_result and fetch_result.success and fetch_result.document:
+                            local_path = fetch_result.document.file_path
+                            doc_hash = fetch_result.document.hash_sha256
+                            
+                            # Vérifier la taille du fichier
+                            file_size_mb = os.path.getsize(local_path) / (1024 * 1024)
+                            if file_size_mb > MAX_PDF_SIZE_MB:
+                                logger.warning("pdf_too_large_skipping", celex=celex, size_mb=round(file_size_mb, 2))
+                                # On garde quand même le doc mais sans extraction
+                            else:
+                                # Extraire le contenu
+                                extracted = await extract_pdf_content(local_path)
+                                if isinstance(extracted, dict):
+                                    content = extracted.get("text", "")[:50000]  # Limiter
+                    except Exception as e:
+                        download_errors += 1
+                        logger.warning("pdf_download_error", celex=celex, error=str(e))
+                
+                # Générer un hash si pas de PDF
+                if not doc_hash:
+                    source_url = str(pdf_url) if pdf_url else eurlex_url
+                    doc_hash = hashlib.sha256(source_url.encode()).hexdigest()
+                
+                # Sauvegarder en BDD
+                if save_to_db and db:
+                    # Vérifier si le document existe déjà
+                    existing = db.query(Document).filter(Document.hash_sha256 == doc_hash).first()
+                    if existing:
+                        continue
+                    
+                    new_doc = Document(
+                        title=title[:500],
+                        source_url=str(pdf_url) if pdf_url else eurlex_url[:1000],
+                        event_type="regulation",
+                        event_subtype=doc_type or "EUR-LEX",
+                        hash_sha256=doc_hash,
+                        content=content,
+                        summary=title,
+                        status="new",
+                        extra_metadata={
+                            "celex_id": celex,
+                            "matched_keyword": keyword,
+                            "local_path": local_path,
+                            "collection_mode": "automatic"
+                        }
+                    )
+                    
+                    db.add(new_doc)
+                    documents_saved.append({
+                        "celex": celex,
+                        "title": title[:80],
+                        "keyword": keyword
+                    })
+                    
+                    logger.info("document_saved", celex=celex, title=title[:50])
+                    
+            except Exception as e:
+                extraction_errors += 1
+                logger.warning("document_processing_error", celex=celex, error=str(e))
+        
+        if save_to_db and db:
+            db.commit()
+            
+    except Exception as e:
+        if db:
+            db.rollback()
+        logger.error("step_3_failed", error=str(e))
+    finally:
+        if db:
+            db.close()
+    
+    logger.info("step_3_completed", documents_saved=len(documents_saved))
+    
+    # ====================================================================
+    # ÉTAPE 4 : COLLECTE MÉTÉO POUR TOUS LES SITES
+    # ====================================================================
+    logger.info("step_4_weather_collection")
+    
+    weather_alerts = []
+    sites_processed = 0
+    
+    try:
+        with open(sites_config_path, 'r', encoding='utf-8') as f:
+            sites_config = json.load(f)
+    except FileNotFoundError:
+        logger.warning("sites_config_not_found", path=sites_config_path)
+        sites_config = {}
+    
+    # Collecter tous les sites (Hutchinson + fournisseurs + ports)
+    all_sites = []
+    
+    # Sites Hutchinson
+    hutchinson_sites = sites_config.get("hutchinson_sites", [])
+    all_sites.extend(hutchinson_sites)
+    
+    # Fournisseurs critiques
+    critical_suppliers = sites_config.get("critical_suppliers", [])
+    all_sites.extend(critical_suppliers)
+    
+    # Ports/hubs logistiques
+    logistics_hubs = sites_config.get("logistics_hubs", [])
+    all_sites.extend(logistics_hubs)
+    
+    logger.info("step_4_sites_loaded", 
+                hutchinson=len(hutchinson_sites),
+                suppliers=len(critical_suppliers),
+                hubs=len(logistics_hubs),
+                total=len(all_sites))
+    
+    # Collecter la météo pour chaque site
+    weather_client = OpenMeteoClient(forecast_days=16)
+    
+    db = SessionLocal() if save_to_db else None
+    
+    try:
+        for site in all_sites:
+            site_id = site.get("site_id", "unknown")
+            lat = site.get("latitude")
+            lon = site.get("longitude")
+            city = site.get("city", "")
+            country = site.get("country", "")
+            name = site.get("name", site_id)
+            
+            if lat is None or lon is None:
+                continue
+            
+            try:
+                # Créer l'objet Location requis par get_forecast
+                location = Location(
+                    site_id=site_id,
+                    name=name,
+                    city=city,
+                    country=country,
+                    latitude=lat,
+                    longitude=lon,
+                    site_type=site.get("type", "manufacturing"),
+                    criticality=site.get("criticality", "normal")
+                )
+                
+                # Récupérer les prévisions
+                forecast = await weather_client.get_forecast(location)
+                
+                if forecast:
+                    sites_processed += 1
+                    
+                    # Détecter les alertes (méthode de la classe)
+                    alerts = weather_client.detect_alerts(forecast)
+                    
+                    for alert in alerts:
+                        # alert est un objet WeatherAlert (Pydantic), pas un dict
+                        alert_data = {
+                            "site_id": site_id,
+                            "city": city,
+                            "alert_type": alert.alert_type,
+                            "severity": alert.severity,
+                            "date": str(alert.date),
+                            "value": alert.value,
+                            "threshold": alert.threshold,
+                            "message": alert.description
+                        }
+                        weather_alerts.append(alert_data)
+                        
+                        # Sauvegarder l'alerte en BDD
+                        if save_to_db and db:
+                            from src.storage.models import WeatherAlert as WeatherAlertModel
+                            weather_alert_db = WeatherAlertModel(
+                                site_id=site_id,
+                                site_name=name,
+                                city=city,
+                                country=country,
+                                latitude=lat,
+                                longitude=lon,
+                                site_type=site.get("type", "manufacturing"),
+                                site_criticality=site.get("criticality", "normal"),
+                                alert_type=alert.alert_type,
+                                severity=alert.severity,
+                                alert_date=alert.date,
+                                value=alert.value,
+                                threshold=alert.threshold,
+                                unit=alert.unit,
+                                description=alert.description,
+                                supply_chain_risk=alert.supply_chain_risk,
+                                forecast_data={},
+                                status="new"
+                            )
+                            db.add(weather_alert_db)
+                            
+            except Exception as e:
+                logger.warning("weather_fetch_error", site_id=site_id, error=str(e))
+        
+        if save_to_db and db:
+            db.commit()
+            
+    except Exception as e:
+        if db:
+            db.rollback()
+        logger.error("step_4_failed", error=str(e))
+    finally:
+        if db:
+            db.close()
+    
+    logger.info("step_4_completed", 
+                sites_processed=sites_processed,
+                alerts_detected=len(weather_alerts))
+    
+    # ====================================================================
+    # RÉSULTAT FINAL
+    # ====================================================================
+    processing_time_ms = int((time.time() - start_time) * 1000)
+    
+    result = {
+        "status": "success",
+        "mode": "full_collection",
+        "company_profile": os.path.basename(company_profile_path),
+        "eurlex": {
+            "keywords_used": keywords,
+            "documents_found": len(all_documents),
+            "documents_saved": len(documents_saved),
+            "download_errors": download_errors,
+            "extraction_errors": extraction_errors
+        },
+        "weather": {
+            "sites_monitored": len(all_sites),
+            "sites_processed": sites_processed,
+            "alerts_detected": len(weather_alerts)
+        },
+        "processing_time_ms": processing_time_ms
+    }
+    
+    logger.info(
+        "agent_1a_full_collection_completed",
+        documents_saved=len(documents_saved),
+        weather_alerts=len(weather_alerts),
+        processing_time_ms=processing_time_ms
+    )
+    
+    return result
+
+
+def _extract_keywords_from_profile(profile: Dict) -> List[str]:
+    """
+    Extrait les mots-clés pertinents pour EUR-Lex depuis le profil entreprise.
+    
+    Catégories extraites :
+    - Matériaux (caoutchouc, élastomères, acier, aluminium...)
+    - Codes NC/HS
+    - Secteurs d'activité
+    - Réglementations surveillées (CBAM, EUDR, CSRD...)
+    """
+    keywords = set()
+    
+    # 1. Secteurs et segments
+    company = profile.get("company", {})
+    industry = company.get("industry", {})
+    
+    sector = industry.get("sector", "")
+    if sector:
+        # Extraire les mots clés du secteur
+        for word in ["rubber", "elastomer", "materials", "sealing", "automotive"]:
+            if word.lower() in sector.lower():
+                keywords.add(word)
+    
+    segments = industry.get("segments", [])
+    for segment in segments:
+        # "Automotive sealing & NVH" -> "automotive sealing", "NVH"
+        keywords.add(segment.split("&")[0].strip().lower())
+    
+    # 2. Matériaux (supply chain)
+    supply_chain = profile.get("supply_chain", {})
+    
+    # Caoutchouc naturel
+    natural_rubber = supply_chain.get("natural_rubber", {})
+    if natural_rubber:
+        keywords.add("natural rubber")
+        keywords.add("rubber")
+        for supplier in natural_rubber.get("suppliers", []):
+            nc_code = supplier.get("nc_code", "")
+            if nc_code:
+                keywords.add(nc_code)
+    
+    # Caoutchouc synthétique
+    synthetic_rubber = supply_chain.get("synthetic_rubber", {})
+    if synthetic_rubber:
+        keywords.add("synthetic rubber")
+        keywords.add("EPDM")
+        keywords.add("SBR")
+        for supplier in synthetic_rubber.get("suppliers", []):
+            nc_code = supplier.get("nc_code", "")
+            if nc_code:
+                keywords.add(nc_code)
+    
+    # Métaux et additifs
+    metals = supply_chain.get("metals_and_additives", {})
+    for material in metals.get("critical_materials", []):
+        desc = material.get("description", "")
+        if desc:
+            keywords.add(desc.lower())
+        hs_code = material.get("hs_code", "")
+        if hs_code:
+            keywords.add(hs_code)
+    
+    # 3. Codes NC explicites
+    nc_codes = profile.get("nc_codes", {})
+    for item in nc_codes.get("imports", []):
+        code = item.get("code", "")
+        if code:
+            keywords.add(code)
+    
+    # 4. Réglementations surveillées
+    regulatory = profile.get("regulatory_intelligence", {})
+    
+    # CBAM
+    cbam = regulatory.get("cbam", {})
+    if cbam:
+        keywords.add("CBAM")
+        keywords.add("carbon border")
+    
+    # EUDR
+    eudr = regulatory.get("eudr", {})
+    if eudr:
+        keywords.add("EUDR")
+        keywords.add("deforestation")
+    
+    # CSRD
+    csrd = regulatory.get("csrd", {})
+    if csrd:
+        keywords.add("CSRD")
+        keywords.add("sustainability reporting")
+    
+    # Trade defense
+    trade_defense = regulatory.get("trade_defense_and_sanctions", {})
+    if trade_defense:
+        keywords.add("anti-dumping")
+        keywords.add("countervailing")
+    
+    # 5. Mots-clés génériques importants
+    keywords.add("automotive")
+    keywords.add("aerospace")
+    keywords.add("elastomer")
+    keywords.add("sealing")
+    keywords.add("emissions")
+    keywords.add("carbon")
+    
+    # Nettoyer et filtrer
+    clean_keywords = []
+    for kw in keywords:
+        kw = str(kw).strip()
+        if kw and len(kw) >= 2:  # Ignorer les trop courts
+            clean_keywords.append(kw)
+    
+    # Limiter et trier par pertinence (mots plus spécifiques d'abord)
+    clean_keywords = sorted(clean_keywords, key=len, reverse=True)[:25]
+    
+    return clean_keywords
 
 
 # ========================================
@@ -2032,5 +2536,400 @@ async def run_agent_1a_weather(
     }
     
     logger.info("agent_1a_weather_completed", result=result)
+    
+    return result
+
+
+# ========================================
+# ANALYSE PONCTUELLE FOURNISSEUR (Mode Supplier)
+# ========================================
+
+async def run_agent_1a_for_supplier(
+    supplier_info: Dict,
+    save_to_db: bool = True
+) -> Dict:
+    """
+    Analyse ponctuelle des risques pour un fournisseur spécifique.
+    
+    Cette fonction est appelée via l'API quand un utilisateur remplit
+    le formulaire "Analyse de risques fournisseur" dans l'interface.
+    
+    Elle collecte AUTOMATIQUEMENT les risques réglementaires ET météorologiques
+    pour donner une vue complète des risques liés à ce fournisseur.
+    
+    Args:
+        supplier_info: Informations du fournisseur
+            {
+                "name": "Thai Rubber Co.",
+                "country": "Thailand",
+                "city": "Bangkok",
+                "latitude": 13.7563,  # Optionnel, sera géocodé si absent
+                "longitude": 100.5018,  # Optionnel
+                "nc_codes": ["4001", "400121", "400122"],
+                "materials": ["Caoutchouc naturel", "Latex"],
+                "criticality": "Important",  # Critique, Important, Standard
+                "annual_volume": 2500000  # En euros, optionnel
+            }
+        save_to_db: Sauvegarder l'analyse en base de données
+        
+    Returns:
+        dict: Résultat complet de l'analyse
+            {
+                "id": "uuid",
+                "supplier_info": {...},
+                "regulatory_risks": [...],
+                "weather_risks": [...],
+                "risk_score": 6.5,
+                "risk_level": "Moyen",
+                "recommendations": [...],
+                "status": "completed"
+            }
+    """
+    import time
+    start_time = time.time()
+    
+    logger.info(
+        "agent_1a_supplier_started",
+        supplier_name=supplier_info.get("name"),
+        country=supplier_info.get("country"),
+        city=supplier_info.get("city")
+    )
+    
+    # Extraire les informations
+    supplier_name = supplier_info.get("name", "Unknown Supplier")
+    country = supplier_info.get("country", "")
+    city = supplier_info.get("city", "")
+    latitude = supplier_info.get("latitude")
+    longitude = supplier_info.get("longitude")
+    nc_codes = supplier_info.get("nc_codes", [])
+    materials = supplier_info.get("materials", [])
+    criticality = supplier_info.get("criticality", "Standard")
+    annual_volume = supplier_info.get("annual_volume")
+    
+    # Liste des IDs de documents sauvegardés (pour lier à supplier_analyses)
+    saved_document_ids = []
+    
+    # ====================================================================
+    # ÉTAPE 1 : COLLECTE DES RISQUES RÉGLEMENTAIRES (EUR-Lex)
+    # ====================================================================
+    logger.info("step_1_regulatory_search", keywords=materials + nc_codes)
+    
+    regulatory_risks = []
+    
+    try:
+        from .tools.scraper import search_eurlex
+        from .tools.document_fetcher import fetch_document
+        from .tools.pdf_extractor import extract_pdf_content
+        from src.storage.database import SessionLocal
+        from src.storage.models import Document
+        
+        seen_celexes = set()
+        documents_to_save = []
+        
+        # Rechercher sur EUR-Lex pour chaque matière principale
+        for keyword in materials[:3]:  # Limiter à 3 matières principales
+            try:
+                result = await search_eurlex(
+                    keyword=keyword,
+                    max_results=5,  # 5 par matière
+                    consolidated_only=True
+                )
+                
+                docs = result.documents if hasattr(result, 'documents') else []
+                
+                for doc in docs:
+                    celex = getattr(doc, 'celex_id', '') or getattr(doc, 'celex_number', '') or ''
+                    if celex and celex not in seen_celexes:
+                        seen_celexes.add(celex)
+                        title = getattr(doc, 'title', '') or ''
+                        pdf_url = getattr(doc, 'pdf_url', None)
+                        eurlex_url = getattr(doc, 'eurlex_url', '') or getattr(doc, 'url', '') or ''
+                        
+                        doc_info = {
+                            "celex_id": celex,
+                            "title": title,
+                            "publication_date": str(getattr(doc, 'publication_date', '')) if getattr(doc, 'publication_date', None) else None,
+                            "document_type": getattr(doc, 'document_type', ''),
+                            "source_url": eurlex_url,
+                            "pdf_url": str(pdf_url) if pdf_url else None,
+                            "matched_keyword": keyword,
+                            "relevance": "high" if any(m.lower() in title.lower() for m in materials) else "medium"
+                        }
+                        
+                        regulatory_risks.append(doc_info)
+                        documents_to_save.append((doc, doc_info))
+                        
+            except Exception as e:
+                logger.warning("regulatory_search_error", keyword=keyword, error=str(e))
+        
+        # Télécharger et sauvegarder les documents dans la table documents
+        logger.info("step_1b_saving_documents", count=len(documents_to_save))
+        
+        db = SessionLocal()
+        try:
+            for eurlex_doc, doc_info in documents_to_save[:10]:  # Limiter à 10 documents
+                try:
+                    pdf_url = doc_info.get("pdf_url")
+                    source_url = pdf_url or doc_info.get("source_url", "")
+                    
+                    # Télécharger le PDF si disponible
+                    content = ""
+                    local_path_str = None
+                    doc_hash = None
+                    
+                    if pdf_url:
+                        try:
+                            fetch_result = await fetch_document(pdf_url, output_dir="data/documents")
+                            if fetch_result and fetch_result.success and fetch_result.document:
+                                local_path_str = fetch_result.document.file_path
+                                doc_hash = fetch_result.document.hash_sha256
+                                # extract_pdf_content est async
+                                extracted = await extract_pdf_content(local_path_str)
+                                content = extracted.get("text", "")[:10000] if isinstance(extracted, dict) else ""
+                        except Exception as e:
+                            logger.warning("pdf_download_error", url=pdf_url, error=str(e))
+                    
+                    # Si pas de hash (pas de PDF), générer un hash à partir de l'URL
+                    if not doc_hash:
+                        import hashlib
+                        doc_hash = hashlib.sha256(source_url.encode()).hexdigest()
+                    
+                    # Créer l'entrée dans la table documents
+                    new_doc = Document(
+                        title=doc_info.get("title", "")[:500],
+                        source_url=source_url[:1000] if source_url else "",
+                        event_type="regulation",
+                        event_subtype=doc_info.get("document_type", "EUR-LEX"),
+                        publication_date=None,  # TODO: parser la date
+                        hash_sha256=doc_hash,  # Hash du fichier ou de l'URL
+                        content=content,
+                        summary=doc_info.get("title", ""),
+                        status="new",
+                        extra_metadata={
+                            "celex_id": doc_info.get("celex_id"),
+                            "matched_keyword": doc_info.get("matched_keyword"),
+                            "relevance": doc_info.get("relevance"),
+                            "supplier_analysis": supplier_name,
+                            "local_path": local_path_str  # String, pas objet
+                        }
+                    )
+                    
+                    db.add(new_doc)
+                    db.flush()  # Pour obtenir l'ID
+                    saved_document_ids.append(str(new_doc.id))
+                    
+                    # Mettre à jour doc_info avec l'ID
+                    doc_info["document_id"] = str(new_doc.id)
+                    
+                    logger.info("document_saved_for_supplier", 
+                               doc_id=new_doc.id, 
+                               title=doc_info.get("title", "")[:50])
+                    
+                except Exception as e:
+                    logger.warning("document_save_error", error=str(e))
+            
+            db.commit()
+            logger.info("step_1b_completed", documents_saved=len(saved_document_ids))
+            
+        except Exception as e:
+            db.rollback()
+            logger.error("step_1b_failed", error=str(e))
+        finally:
+            db.close()
+        
+        logger.info("step_1_completed", regulatory_risks_found=len(regulatory_risks))
+        
+    except Exception as e:
+        logger.error("step_1_failed", error=str(e))
+    
+    # ====================================================================
+    # ÉTAPE 2 : COLLECTE DES RISQUES MÉTÉOROLOGIQUES (Open-Meteo)
+    # ====================================================================
+    logger.info("step_2_weather_search", city=city, country=country)
+    
+    weather_risks = []
+    
+    try:
+        from .tools.weather import OpenMeteoClient, Location
+        
+        # Si pas de coordonnées, essayer de géocoder
+        if not latitude or not longitude:
+            # Utiliser des coordonnées connues pour les grandes villes
+            city_coords = {
+                "bangkok": (13.7563, 100.5018),
+                "shanghai": (31.2304, 121.4737),
+                "mumbai": (19.0760, 72.8777),
+                "mexico city": (19.4326, -99.1332),
+                "sao paulo": (-23.5505, -46.6333),
+                "paris": (48.8566, 2.3522),
+                "berlin": (52.5200, 13.4050),
+                "tokyo": (35.6762, 139.6503),
+                "seoul": (37.5665, 126.9780),
+                "singapore": (1.3521, 103.8198),
+            }
+            city_lower = city.lower() if city else ""
+            if city_lower in city_coords:
+                latitude, longitude = city_coords[city_lower]
+            else:
+                # Coordonnées par défaut basées sur le pays
+                country_coords = {
+                    "thailand": (13.7563, 100.5018),
+                    "china": (31.2304, 121.4737),
+                    "india": (19.0760, 72.8777),
+                    "mexico": (19.4326, -99.1332),
+                    "brazil": (-23.5505, -46.6333),
+                    "france": (48.8566, 2.3522),
+                    "germany": (52.5200, 13.4050),
+                    "japan": (35.6762, 139.6503),
+                    "vietnam": (10.8231, 106.6297),
+                    "indonesia": (-6.2088, 106.8456),
+                }
+                country_lower = country.lower() if country else ""
+                if country_lower in country_coords:
+                    latitude, longitude = country_coords[country_lower]
+        
+        if latitude and longitude:
+            # Créer la localisation
+            location = Location(
+                site_id=f"supplier-{supplier_name.replace(' ', '-')[:20]}",
+                name=supplier_name,  # Champ requis
+                city=city or "Unknown",
+                country=country[:2].upper() if country else "XX",
+                latitude=latitude,
+                longitude=longitude,
+                site_type="supplier",
+                criticality="high" if criticality == "Critique" else "normal"
+            )
+            
+            # Récupérer les prévisions météo (forecast_days est configuré dans le client)
+            client = OpenMeteoClient(forecast_days=16)
+            forecast = await client.get_forecast(location)
+            
+            if forecast:
+                # Analyser les alertes (detect_alerts prend un seul forecast)
+                alerts = client.detect_alerts(forecast)
+                
+                for alert in alerts:
+                    weather_risks.append({
+                        "alert_type": alert.alert_type,
+                        "severity": alert.severity,
+                        "date": str(alert.date),
+                        "value": alert.value,
+                        "threshold": alert.threshold,
+                        "unit": alert.unit,
+                        "description": alert.description,
+                        "supply_chain_risk": alert.supply_chain_risk
+                    })
+            
+            logger.info("step_2_completed", weather_alerts_found=len(weather_risks))
+        else:
+            logger.warning("step_2_skipped", reason="no_coordinates")
+            
+    except Exception as e:
+        logger.error("step_2_failed", error=str(e))
+    
+    # ====================================================================
+    # ÉTAPE 3 : SAUVEGARDE EN BASE DE DONNÉES (données brutes collectées)
+    # ====================================================================
+    # Note: Le scoring et l'analyse seront faits par l'Agent 1B
+    analysis_id = None
+    
+    if save_to_db:
+        logger.info("step_3_save_to_db")
+        
+        try:
+            from src.storage.database import SessionLocal
+            from src.storage.models import SupplierAnalysis
+            
+            db = SessionLocal()
+            try:
+                processing_time = int((time.time() - start_time) * 1000)
+                
+                analysis = SupplierAnalysis(
+                    supplier_name=supplier_name,
+                    country=country,
+                    city=city,
+                    latitude=latitude,
+                    longitude=longitude,
+                    nc_codes=nc_codes,
+                    materials=materials,
+                    criticality=criticality,
+                    annual_volume=annual_volume,
+                    regulatory_risks_count=len(regulatory_risks),
+                    regulatory_risks=regulatory_risks,
+                    weather_risks_count=len(weather_risks),
+                    weather_risks=weather_risks,
+                    # Pas de score - ce sera l'Agent 1B qui le calculera
+                    risk_score=None,
+                    risk_level="pending_analysis",  # En attente d'analyse par 1B
+                    recommendations=[],  # Sera rempli par 1B
+                    status="collected",  # Statut = collecté, pas encore analysé
+                    processing_time_ms=processing_time,
+                    # Liste des IDs de documents sauvegardés dans la table documents
+                    extra_metadata={
+                        "document_ids": saved_document_ids,
+                        "documents_saved_count": len(saved_document_ids)
+                    }
+                )
+                
+                db.add(analysis)
+                db.commit()
+                db.refresh(analysis)
+                analysis_id = analysis.id
+                
+                logger.info("step_3_completed", 
+                           analysis_id=analysis_id,
+                           documents_linked=len(saved_document_ids))
+                
+            finally:
+                db.close()
+                
+        except Exception as e:
+            logger.error("step_3_failed", error=str(e))
+    
+    # ====================================================================
+    # RÉSULTAT FINAL (données collectées uniquement)
+    # ====================================================================
+    
+    processing_time_ms = int((time.time() - start_time) * 1000)
+    
+    result = {
+        "analysis_id": str(analysis_id) if analysis_id else None,
+        "status": "collected",  # Collecté, prêt pour analyse par 1B
+        "supplier_info": {
+            "name": supplier_name,
+            "country": country,
+            "city": city,
+            "latitude": latitude,
+            "longitude": longitude,
+            "nc_codes": nc_codes,
+            "materials": materials,
+            "criticality": criticality,
+            "annual_volume": annual_volume
+        },
+        "collected_data": {
+            "regulatory": {
+                "count": len(regulatory_risks),
+                "items": regulatory_risks
+            },
+            "weather": {
+                "count": len(weather_risks),
+                "items": weather_risks
+            },
+            "document_ids": saved_document_ids,  # IDs des documents sauvegardés
+            "documents_saved_count": len(saved_document_ids)
+        },
+        "processing_time_ms": processing_time_ms,
+        "next_step": "Agent 1B analysis pending"  # Indique que 1B doit prendre le relais
+    }
+    
+    logger.info(
+        "agent_1a_supplier_collection_completed",
+        supplier=supplier_name,
+        regulatory_count=len(regulatory_risks),
+        weather_count=len(weather_risks),
+        processing_time_ms=processing_time_ms,
+        analysis_id=str(analysis_id) if analysis_id else None
+    )
     
     return result

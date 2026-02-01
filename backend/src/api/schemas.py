@@ -114,3 +114,106 @@ class DashboardStatsResponse(BaseModel):
     
     # Répartition par type de risque
     by_risk_type: dict  # {'fiscal': X, 'operationnel': Y, ...}
+
+
+# ========================================
+# Schémas pour Analyse Ponctuelle Fournisseur (Agent 1A - Mode Supplier)
+# ========================================
+
+class SupplierAnalysisRequest(BaseModel):
+    """
+    Requête d'analyse de risques pour un fournisseur.
+    Correspond au formulaire "Analyse de risques fournisseur" dans l'UI.
+    """
+    name: str  # Nom du fournisseur
+    country: str  # Pays (ex: "Thailand")
+    city: Optional[str] = None  # Ville (ex: "Bangkok")
+    latitude: Optional[float] = None  # Coordonnées GPS (optionnel)
+    longitude: Optional[float] = None
+    nc_codes: List[str] = []  # Codes NC douaniers (ex: ["4001", "400121"])
+    materials: List[str] = []  # Matières fournies (ex: ["Caoutchouc naturel", "Latex"])
+    criticality: str = "Standard"  # Critique, Important, Standard
+    annual_volume: Optional[float] = None  # Volume annuel en euros
+
+
+class RegulatoryRiskItem(BaseModel):
+    """Un risque réglementaire identifié"""
+    celex_id: str
+    title: str
+    publication_date: Optional[str] = None
+    document_type: Optional[str] = None
+    source_url: str
+    matched_keyword: str
+    relevance: str  # high, medium, low
+
+
+class WeatherRiskItem(BaseModel):
+    """Une alerte météo identifiée"""
+    alert_type: str  # snow, heavy_rain, extreme_heat, etc.
+    severity: str  # critical, high, medium, low
+    date: str
+    value: float
+    threshold: float
+    unit: str
+    description: str
+    supply_chain_risk: str
+
+
+class RecommendationItem(BaseModel):
+    """Une recommandation générée"""
+    type: str  # regulatory, weather, general
+    priority: str  # high, medium, low
+    action: str
+    details: str
+
+
+class SupplierInfoResponse(BaseModel):
+    """Informations du fournisseur analysé"""
+    name: str
+    country: str
+    city: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    nc_codes: List[str] = []
+    materials: List[str] = []
+    criticality: str
+    annual_volume: Optional[float] = None
+
+
+class RegulatoryRisksResponse(BaseModel):
+    """Risques réglementaires"""
+    count: int
+    items: List[RegulatoryRiskItem]
+
+
+class WeatherRisksResponse(BaseModel):
+    """Risques météorologiques"""
+    count: int
+    items: List[WeatherRiskItem]
+
+
+class SupplierAnalysisResponse(BaseModel):
+    """
+    Réponse complète de l'analyse de risques fournisseur.
+    Contient les risques réglementaires, météo, le score et les recommandations.
+    """
+    id: Optional[str] = None  # ID de l'analyse en BDD
+    status: str  # pending, completed, error
+    supplier_info: SupplierInfoResponse
+    regulatory_risks: RegulatoryRisksResponse
+    weather_risks: WeatherRisksResponse
+    risk_score: float  # Score global 0-10
+    risk_level: str  # Faible, Moyen, Fort, Critique
+    recommendations: List[RecommendationItem]
+    processing_time_ms: int
+    
+    class Config:
+        from_attributes = True
+
+
+class SupplierAnalysisListResponse(BaseModel):
+    """Liste des analyses fournisseurs (historique)"""
+    analyses: List[SupplierAnalysisResponse]
+    total: int
+    page: int
+    limit: int

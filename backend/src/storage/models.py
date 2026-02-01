@@ -536,3 +536,58 @@ class ExecutionLog(Base):
     extra_metadata = Column(JSON, nullable=True)
     
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+
+# ============================================================================
+# ANALYSES PONCTUELLES FOURNISSEURS (Agent 1A - Mode Supplier)
+# ============================================================================
+
+class SupplierAnalysis(Base):
+    """
+    Analyses ponctuelles de risques fournisseurs.
+    Stocke les résultats des analyses déclenchées manuellement par l'utilisateur
+    via l'interface "Analyse de risques fournisseur".
+    """
+    __tablename__ = "supplier_analyses"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    
+    # Informations fournisseur (saisies par l'utilisateur)
+    supplier_name = Column(String(200), nullable=False)
+    country = Column(String(100), nullable=False)
+    city = Column(String(100), nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    nc_codes = Column(JSON, nullable=True)  # ["4001", "400121", "400122"]
+    materials = Column(JSON, nullable=True)  # ["Caoutchouc naturel", "Latex"]
+    criticality = Column(String(20), nullable=False)  # Critique, Important, Standard
+    annual_volume = Column(Float, nullable=True)  # Volume annuel en euros
+    
+    # Résultats de l'analyse réglementaire
+    regulatory_risks_count = Column(Integer, default=0)
+    regulatory_risks = Column(JSON, nullable=True)  # Liste des documents EUR-Lex pertinents
+    
+    # Résultats de l'analyse météorologique
+    weather_risks_count = Column(Integer, default=0)
+    weather_risks = Column(JSON, nullable=True)  # Alertes météo sur 16 jours
+    
+    # Score et niveau de risque global
+    risk_score = Column(Float, nullable=True)  # Score global 0-10
+    risk_level = Column(String(20), nullable=True)  # Faible, Moyen, Fort, Critique
+    
+    # Recommandations générées
+    recommendations = Column(JSON, nullable=True)  # Liste de recommandations
+    
+    # Métadonnées
+    requested_by = Column(String, ForeignKey("users.id"), nullable=True)
+    status = Column(String(20), nullable=False, default="pending")  # pending, completed, error
+    error_message = Column(Text, nullable=True)
+    processing_time_ms = Column(Integer, nullable=True)
+    extra_metadata = Column(JSON, nullable=True)  # Données additionnelles (ex: document_ids)
+    
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relations
+    requested_by_user = relationship("User", foreign_keys=[requested_by])
+
