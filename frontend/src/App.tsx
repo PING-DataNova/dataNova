@@ -4,10 +4,11 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import AgentDashboard from './pages/AgentDashboard';
 import { User } from './types';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<'landing' | 'login' | 'register' | 'dashboard'>('landing');
+  const [currentPage, setCurrentPage] = useState<'landing' | 'login' | 'register' | 'dashboard' | 'agent'>('landing');
   const [user, setUser] = useState<User | null>(null);
 
   // Persistence logic (simulated)
@@ -41,7 +42,10 @@ const App: React.FC = () => {
       {currentPage === 'login' && <Login onNavigate={navigateTo} onLogin={handleLogin} />}
       {currentPage === 'register' && <Register onNavigate={navigateTo} />}
       {currentPage === 'dashboard' && user && (
-        <Dashboard user={user} onLogout={handleLogout} />
+        <Dashboard user={user} onLogout={handleLogout} onNavigate={navigateTo} />
+      )}
+      {currentPage === 'agent' && user && (
+        <AgentDashboard user={user} onNavigate={navigateTo} />
       )}
     </div>
   );

@@ -24,7 +24,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
+        "http://localhost:3001",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:3001",
         "https://zealous-sea-0d27cce03.1.azurestaticapps.net",
     ],
     allow_credentials=True,

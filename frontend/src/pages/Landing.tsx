@@ -17,12 +17,7 @@ const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
       {/* Header */}
       <nav className="relative z-20 p-8 flex justify-between items-center max-w-7xl mx-auto w-full">
         <div className="flex items-center space-x-3 group cursor-pointer" onClick={() => onNavigate('landing')}>
-          <div className="relative">
-            <div className="w-12 h-12 border border-lime-400/30 rounded-2xl rotate-45 group-hover:rotate-90 transition-transform duration-500"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-5 h-5 bg-lime-400 rounded-lg shadow-[0_0_15px_rgba(163,230,53,0.5)]"></div>
-            </div>
-          </div>
+          <img src="/hutchinson-logo.svg" alt="Hutchinson" className="w-12 h-12 object-contain" />
           <span className="font-black text-2xl tracking-[0.2em] text-white">HUTCHINSON</span>
         </div>
         
@@ -57,7 +52,7 @@ const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-lime-500"></span>
               </span>
-              <span>Propulsé par IA Générative</span>
+              <span>Propulsé par IA Agentique</span>
             </div>
             
             <h1 className="text-6xl md:text-8xl font-black leading-none tracking-tight">
@@ -67,7 +62,7 @@ const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
             </h1>
 
             <p className="text-slate-400 text-xl max-w-xl leading-relaxed font-medium">
-              Plateforme de vigilance stratégique pour anticiper les chocs réglementaires, climatiques et géopolitiques. Prenez des décisions éclairées grâce à nos insights prédictifs.
+              Plateforme de vigilance pour anticiper les risques réglementaires, climatiques et géopolitiques. Prenez des décisions éclairées grâce à nos insights prédictifs.
             </p>
 
             <div className="flex flex-wrap gap-6">
@@ -80,19 +75,6 @@ const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                 </span>
               </button>
-              <div className="flex items-center space-x-4">
-                <div className="flex -space-x-3">
-                  {[1,2,3].map(i => (
-                    <div key={i} className="w-10 h-10 rounded-full border-2 border-[#020617] bg-slate-800 flex items-center justify-center overflow-hidden">
-                      <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="User" />
-                    </div>
-                  ))}
-                </div>
-                <div className="text-sm">
-                  <p className="font-bold text-white">+500 experts</p>
-                  <p className="text-slate-500">déjà inscrits</p>
-                </div>
-              </div>
             </div>
           </div>
 

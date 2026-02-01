@@ -9,9 +9,10 @@ import { impactsService } from '../services/impactsService';
 interface DashboardProps {
   user: User;
   onLogout: () => void;
+  onNavigate: (page: 'landing' | 'login' | 'register' | 'dashboard' | 'agent') => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
+const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => {
   const [activeTab, setActiveTab] = useState<'Réglementations' | 'Climat' | 'Géopolitique'>('Réglementations');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showRealTimeToast, setShowRealTimeToast] = useState<string | null>(null);
@@ -119,10 +120,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
       {/* Modern Slim Sidebar */}
       <aside className="w-20 lg:w-72 bg-slate-950 text-slate-300 flex flex-col transition-all duration-300">
         <div className="p-6 flex justify-center lg:justify-start items-center space-x-3 mb-10">
-          <div className="w-10 h-10 bg-lime-400 rounded-xl flex-shrink-0 flex items-center justify-center">
-            <div className="w-4 h-4 bg-slate-950 rounded-sm"></div>
-          </div>
-          <span className="hidden lg:block font-black text-xl tracking-tighter text-white">VIGILANCE</span>
+          <img src="/hutchinson-logo.svg" alt="Hutchinson" className="w-10 h-10 flex-shrink-0 object-contain" />
+          <span className="hidden lg:block font-black text-xl tracking-tighter text-white">HUTCHINSON</span>
         </div>
 
         <nav className="flex-grow px-4 space-y-3">
@@ -186,6 +185,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout }) => {
                 <input type="text" placeholder="Rechercher un dossier..." className="bg-transparent text-sm font-medium outline-none w-48" />
              </div>
              <NotificationCenter notifications={notifications} />
+             <button
+               onClick={() => onNavigate('agent')}
+               className="px-8 py-3 rounded-full bg-lime-400 text-slate-950 font-black text-sm uppercase tracking-widest hover:bg-white hover:scale-105 transition-all shadow-[0_0_20px_rgba(163,230,53,0.3)]"
+             >
+               Lancer l'agent
+             </button>
           </div>
         </header>
 
