@@ -31,11 +31,11 @@ logger = structlog.get_logger()
 
 async def run_agent_1a_full_collection(
     company_profile_path: str = "data/company_profiles/Hutchinson_SA.json",
-    sites_config_path: str = "config/sites_locations.json",
     min_publication_year: int = 2000,
     max_documents_per_keyword: int = 10,
     max_keywords: int = 0,  # 0 = tous les mots-clés
-    save_to_db: bool = True
+    save_to_db: bool = True,
+    use_database: bool = True  # Lire les sites depuis la BDD
 ) -> Dict:
     """
     Scénario 1 : Collecte automatique complète pour l'entreprise.
@@ -44,15 +44,15 @@ async def run_agent_1a_full_collection(
     1. Lit le profil entreprise pour extraire les mots-clés pertinents
     2. Recherche sur EUR-Lex avec ces mots-clés
     3. Télécharge et extrait les PDFs
-    4. Collecte la météo pour tous les sites (usines, fournisseurs, ports)
+    4. Collecte la météo pour tous les sites depuis la BDD (hutchinson_sites + suppliers)
     5. Sauvegarde tout en BDD
     
     Args:
         company_profile_path: Chemin vers le profil entreprise JSON
-        sites_config_path: Chemin vers la config des sites
         min_publication_year: Année minimum de publication (défaut: 2000)
         max_documents_per_keyword: Max documents par mot-clé (défaut: 10)
         save_to_db: Sauvegarder en BDD (défaut: True)
+        use_database: Lire les sites depuis la BDD (défaut: True)
         
     Returns:
         dict: Résultat avec statistiques
@@ -62,7 +62,7 @@ async def run_agent_1a_full_collection(
     logger.info(
         "agent_1a_full_collection_started",
         company_profile=company_profile_path,
-        sites_config=sites_config_path
+        use_database=use_database
     )
     
     # ====================================================================
@@ -243,40 +243,78 @@ async def run_agent_1a_full_collection(
     logger.info("step_3_completed", documents_saved=len(documents_saved))
     
     # ====================================================================
-    # ÉTAPE 4 : COLLECTE MÉTÉO POUR TOUS LES SITES
+    # ÉTAPE 4 : COLLECTE MÉTÉO POUR TOUS LES SITES (DEPUIS LA BDD)
     # ====================================================================
     logger.info("step_4_weather_collection")
     
     weather_alerts = []
     sites_processed = 0
-    
-    try:
-        with open(sites_config_path, 'r', encoding='utf-8') as f:
-            sites_config = json.load(f)
-    except FileNotFoundError:
-        logger.warning("sites_config_not_found", path=sites_config_path)
-        sites_config = {}
-    
-    # Collecter tous les sites (Hutchinson + fournisseurs + ports)
     all_sites = []
     
-    # Sites Hutchinson
-    hutchinson_sites = sites_config.get("hutchinson_sites", [])
-    all_sites.extend(hutchinson_sites)
-    
-    # Fournisseurs critiques
-    critical_suppliers = sites_config.get("critical_suppliers", [])
-    all_sites.extend(critical_suppliers)
-    
-    # Ports/hubs logistiques
-    logistics_hubs = sites_config.get("logistics_hubs", [])
-    all_sites.extend(logistics_hubs)
-    
-    logger.info("step_4_sites_loaded", 
-                hutchinson=len(hutchinson_sites),
-                suppliers=len(critical_suppliers),
-                hubs=len(logistics_hubs),
-                total=len(all_sites))
+    if use_database:
+        # Charger les sites depuis la base de données
+        from src.storage.models import HutchinsonSite, Supplier
+        
+        db_sites = SessionLocal()
+        try:
+            # Sites Hutchinson
+            hutchinson_sites_db = db_sites.query(HutchinsonSite).filter(HutchinsonSite.active == True).all()
+            for site in hutchinson_sites_db:
+                all_sites.append({
+                    "site_id": site.id,
+                    "name": site.name,
+                    "city": site.city,
+                    "country": site.country,
+                    "latitude": site.latitude,
+                    "longitude": site.longitude,
+                    "type": "manufacturing",
+                    "criticality": site.strategic_importance or "normal"
+                })
+            
+            # Fournisseurs
+            suppliers_db = db_sites.query(Supplier).filter(Supplier.active == True).all()
+            for supplier in suppliers_db:
+                all_sites.append({
+                    "site_id": supplier.id,
+                    "name": supplier.name,
+                    "city": supplier.city,
+                    "country": supplier.country,
+                    "latitude": supplier.latitude,
+                    "longitude": supplier.longitude,
+                    "type": "supplier",
+                    "criticality": "normal"
+                })
+            
+            logger.info("step_4_sites_loaded_from_db", 
+                        hutchinson=len(hutchinson_sites_db),
+                        suppliers=len(suppliers_db),
+                        total=len(all_sites))
+        finally:
+            db_sites.close()
+    else:
+        # Fallback: charger depuis le fichier JSON (legacy)
+        sites_config_path = "config/sites_locations.json"
+        try:
+            with open(sites_config_path, 'r', encoding='utf-8') as f:
+                sites_config = json.load(f)
+        except FileNotFoundError:
+            logger.warning("sites_config_not_found", path=sites_config_path)
+            sites_config = {}
+        
+        # Sites Hutchinson
+        hutchinson_sites = sites_config.get("hutchinson_sites", [])
+        all_sites.extend(hutchinson_sites)
+        
+        # Fournisseurs critiques
+        critical_suppliers = sites_config.get("suppliers", [])
+        all_sites.extend(critical_suppliers)
+        
+        # Ports/hubs logistiques
+        logistics_hubs = sites_config.get("ports", [])
+        all_sites.extend(logistics_hubs)
+        
+        logger.info("step_4_sites_loaded_from_json", 
+                    total=len(all_sites))
     
     # Collecter la météo pour chaque site
     weather_client = OpenMeteoClient(forecast_days=16)

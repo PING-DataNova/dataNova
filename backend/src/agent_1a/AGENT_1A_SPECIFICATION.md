@@ -164,7 +164,7 @@ Réponse à l'UI avec les données collectées
 src/agent_1a/
 ├── __init__.py
 ├── agent.py                 # Fonctions principales
-│   ├── run_agent_1a()                    # Scénario 1 : collecte automatique
+│   ├── run_agent_1a_full_collection()    # Scénario 1 : collecte automatique
 │   └── run_agent_1a_for_supplier()       # Scénario 2 : analyse ponctuelle
 │
 ├── tools/

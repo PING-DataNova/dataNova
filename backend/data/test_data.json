@@ -1,0 +1,873 @@
+{
+  "hutchinson_sites": [
+    {
+      "id": "site_bangkok",
+      "name": "Bangkok Manufacturing Plant",
+      "code": "TH-BKK-01",
+      "country": "Thailand",
+      "region": "Bangkok Metropolitan Region",
+      "city": "Bangkok",
+      "address": "123 Industrial Road, Lat Krabang, Bangkok 10520",
+      "latitude": 13.7563,
+      "longitude": 100.5018,
+      "sectors": ["Automobile", "Aéronautique"],
+      "products": ["Joints d'étanchéité", "Tuyaux hydrauliques", "Composants automobiles", "Systèmes de refroidissement"],
+      "raw_materials": ["Caoutchouc naturel", "Polymères élastomères", "EPDM", "Silicone", "Latex"],
+      "certifications": ["ISO 9001", "ISO 14001", "IATF 16949", "ISO 45001"],
+      "employee_count": 850,
+      "annual_production_value": 45000000.0,
+      "strategic_importance": "fort",
+      "extra_metadata": {
+        "main_customers": ["Toyota Thailand", "Honda Thailand", "Airbus Helicopters"],
+        "production_capacity_units_per_year": 12000000,
+        "established_year": 1998,
+        "site_area_sqm": 25000
+      },
+      "active": true
+    },
+    {
+      "id": "site_paris",
+      "name": "Paris R&D Center",
+      "code": "FR-PAR-01",
+      "country": "France",
+      "region": "Île-de-France",
+      "city": "Paris",
+      "address": "45 Avenue des Champs-Élysées, Paris 75008",
+      "latitude": 48.8566,
+      "longitude": 2.3522,
+      "sectors": ["R&D", "Innovation", "Ingénierie"],
+      "products": ["Recherche & Développement", "Prototypes", "Études de faisabilité", "Tests matériaux"],
+      "raw_materials": ["Polymères techniques", "Composites avancés", "Matériaux intelligents", "Nanomatériaux"],
+      "certifications": ["ISO 9001", "ISO 14001", "ISO 17025"],
+      "employee_count": 320,
+      "annual_production_value": 15000000.0,
+      "strategic_importance": "critique",
+      "extra_metadata": {
+        "main_customers": ["Hutchinson Internal", "Airbus", "Safran", "Renault"],
+        "research_budget_eur": 8000000,
+        "established_year": 1985,
+        "patents_filed": 145
+      },
+      "active": true
+    },
+    {
+      "id": "site_munich",
+      "name": "Munich Production Facility",
+      "code": "DE-MUC-01",
+      "country": "Germany",
+      "region": "Bavaria",
+      "city": "Munich",
+      "address": "78 Industriestraße, Munich 80331",
+      "latitude": 48.1351,
+      "longitude": 11.5820,
+      "sectors": ["Automobile"],
+      "products": ["Pièces automobiles", "Systèmes de freinage", "Composants de suspension", "Joints de transmission"],
+      "raw_materials": ["Acier haute résistance", "Aluminium", "Polymères techniques", "Caoutchouc synthétique"],
+      "certifications": ["ISO 9001", "ISO 14001", "IATF 16949", "VDA 6.3"],
+      "employee_count": 1200,
+      "annual_production_value": 95000000.0,
+      "strategic_importance": "critique",
+      "extra_metadata": {
+        "main_customers": ["BMW", "Mercedes-Benz", "Audi", "Volkswagen"],
+        "production_capacity_units_per_year": 25000000,
+        "established_year": 1992,
+        "site_area_sqm": 45000
+      },
+      "active": true
+    },
+    {
+      "id": "site_warsaw",
+      "name": "Warsaw Assembly Plant",
+      "code": "PL-WAR-01",
+      "country": "Poland",
+      "region": "Masovian Voivodeship",
+      "city": "Warsaw",
+      "address": "56 Przemysłowa Street, Warsaw 00-450",
+      "latitude": 52.2297,
+      "longitude": 21.0122,
+      "sectors": ["Automobile", "Industriel"],
+      "products": ["Assemblage de composants", "Pièces mécaniques", "Sous-ensembles automobiles"],
+      "raw_materials": ["Composants mécaniques", "Roulements", "Engrenages", "Acier", "Plastiques techniques"],
+      "certifications": ["ISO 9001", "IATF 16949"],
+      "employee_count": 450,
+      "annual_production_value": 28000000.0,
+      "strategic_importance": "moyen",
+      "extra_metadata": {
+        "main_customers": ["Fiat Poland", "Volkswagen Poznań", "Opel"],
+        "production_capacity_units_per_year": 8000000,
+        "established_year": 2005,
+        "site_area_sqm": 18000
+      },
+      "active": true
+    },
+    {
+      "id": "site_shanghai",
+      "name": "Shanghai Manufacturing Hub",
+      "code": "CN-SHA-01",
+      "country": "China",
+      "region": "Shanghai",
+      "city": "Shanghai",
+      "address": "88 Pudong Avenue, Pudong New Area, Shanghai 200120",
+      "latitude": 31.2304,
+      "longitude": 121.4737,
+      "sectors": ["Automobile", "Électronique"],
+      "products": ["Composants électroniques", "Systèmes embarqués", "Capteurs automobiles", "Modules électroniques"],
+      "raw_materials": ["Composants électroniques", "Circuits imprimés", "Semi-conducteurs", "Plastiques techniques", "Cuivre"],
+      "certifications": ["ISO 9001", "ISO 14001", "IATF 16949", "ISO 13485"],
+      "employee_count": 980,
+      "annual_production_value": 72000000.0,
+      "strategic_importance": "fort",
+      "extra_metadata": {
+        "main_customers": ["SAIC Motor", "Geely", "BYD", "NIO"],
+        "production_capacity_units_per_year": 18000000,
+        "established_year": 2008,
+        "site_area_sqm": 35000
+      },
+      "active": true
+    },
+    {
+      "id": "site_mexico",
+      "name": "Monterrey Production Center",
+      "code": "MX-MTY-01",
+      "country": "Mexico",
+      "region": "Nuevo León",
+      "city": "Monterrey",
+      "address": "123 Avenida Industrial, Parque Industrial, Monterrey 64000",
+      "latitude": 25.6866,
+      "longitude": -100.3161,
+      "sectors": ["Automobile"],
+      "products": ["Pièces automobiles", "Assemblage", "Composants de châssis", "Systèmes d'échappement"],
+      "raw_materials": ["Acier", "Tôles", "Aluminium", "Caoutchouc", "Plastiques"],
+      "certifications": ["ISO 9001", "IATF 16949", "ISO 14001"],
+      "employee_count": 650,
+      "annual_production_value": 38000000.0,
+      "strategic_importance": "moyen",
+      "extra_metadata": {
+        "main_customers": ["General Motors", "Ford Mexico", "Nissan Mexicana"],
+        "production_capacity_units_per_year": 10000000,
+        "established_year": 2010,
+        "site_area_sqm": 28000
+      },
+      "active": true
+    },
+    {
+      "id": "site_toulouse",
+      "name": "Toulouse Aerospace Plant",
+      "code": "FR-TLS-01",
+      "country": "France",
+      "region": "Occitanie",
+      "city": "Toulouse",
+      "address": "12 Route de l'Aérospatiale, Blagnac, Toulouse 31700",
+      "latitude": 43.6047,
+      "longitude": 1.4442,
+      "sectors": ["Aéronautique", "Défense"],
+      "products": ["Composants aéronautiques", "Pièces structurelles", "Systèmes d'étanchéité aviation", "Trains d'atterrissage"],
+      "raw_materials": ["Titane", "Alliages de titane", "Composites carbone", "Aluminium aéronautique", "Superalliages"],
+      "certifications": ["ISO 9001", "AS9100", "EN 9100", "NADCAP"],
+      "employee_count": 780,
+      "annual_production_value": 125000000.0,
+      "strategic_importance": "critique",
+      "extra_metadata": {
+        "main_customers": ["Airbus", "Safran", "Dassault Aviation", "Thales"],
+        "production_capacity_units_per_year": 450000,
+        "established_year": 1988,
+        "site_area_sqm": 42000,
+        "security_clearance": "Confidentiel Défense"
+      },
+      "active": true
+    },
+    {
+      "id": "site_detroit",
+      "name": "Detroit Manufacturing Plant",
+      "code": "US-DET-01",
+      "country": "USA",
+      "region": "Michigan",
+      "city": "Detroit",
+      "address": "456 Motor City Boulevard, Detroit, MI 48201",
+      "latitude": 42.3314,
+      "longitude": -83.0458,
+      "sectors": ["Automobile"],
+      "products": ["Systèmes hydrauliques", "Composants automobiles", "Pompes hydrauliques", "Systèmes de direction assistée"],
+      "raw_materials": ["Huiles hydrauliques", "Fluides techniques", "Acier", "Aluminium", "Joints en caoutchouc"],
+      "certifications": ["ISO 9001", "IATF 16949", "ISO 14001", "OSHA"],
+      "employee_count": 920,
+      "annual_production_value": 68000000.0,
+      "strategic_importance": "fort",
+      "extra_metadata": {
+        "main_customers": ["General Motors", "Ford", "Stellantis", "Tesla"],
+        "production_capacity_units_per_year": 15000000,
+        "established_year": 1995,
+        "site_area_sqm": 38000
+      },
+      "active": true
+    }
+  ],
+  "suppliers": [
+    {
+      "id": "supplier_thai_rubber",
+      "name": "Thai Rubber Industries Co., Ltd.",
+      "code": "TH-RUB-001",
+      "country": "Thailand",
+      "region": "Bangkok Metropolitan Region",
+      "city": "Samut Prakan",
+      "address": "789 Sukhumvit Road, Samut Prakan 10270",
+      "latitude": 13.6500,
+      "longitude": 100.4900,
+      "sector": "Matières premières",
+      "products_supplied": ["Caoutchouc naturel", "Latex", "Polymères élastomères", "EPDM", "Silicone"],
+      "company_size": "ETI",
+      "certifications": ["ISO 9001", "ISO 14001", "REACH", "FSC"],
+      "financial_health_score": 0.75,
+      "extra_metadata": {
+        "founded_year": 1985,
+        "employee_count": 450,
+        "annual_revenue_usd": 35000000,
+        "main_products": "Caoutchouc naturel de plantation",
+        "plantation_area_hectares": 12000,
+        "sustainability_certifications": ["FSC", "Rainforest Alliance"]
+      },
+      "active": true
+    },
+    {
+      "id": "supplier_german_steel",
+      "name": "Deutsche Stahlwerke GmbH",
+      "code": "DE-STL-001",
+      "country": "Germany",
+      "region": "North Rhine-Westphalia",
+      "city": "Essen",
+      "address": "45 Stahlstraße, Essen 45127",
+      "latitude": 51.4556,
+      "longitude": 7.0116,
+      "sector": "Métallurgie",
+      "products_supplied": ["Acier haute résistance", "Alliages spéciaux", "Tôles laminées", "Acier inoxydable"],
+      "company_size": "Grand groupe",
+      "certifications": ["ISO 9001", "ISO 14001", "IATF 16949", "ISO 50001"],
+      "financial_health_score": 0.90,
+      "extra_metadata": {
+        "founded_year": 1952,
+        "employee_count": 3500,
+        "annual_revenue_eur": 850000000,
+        "production_capacity_tons_per_year": 2500000,
+        "carbon_neutral_target_year": 2035
+      },
+      "active": true
+    },
+    {
+      "id": "supplier_polish_components",
+      "name": "Polska Komponenty Sp. z o.o.",
+      "code": "PL-CMP-001",
+      "country": "Poland",
+      "region": "Masovian Voivodeship",
+      "city": "Warsaw",
+      "address": "34 Fabryczna Street, Warsaw 00-600",
+      "latitude": 52.2500,
+      "longitude": 21.0000,
+      "sector": "Composants mécaniques",
+      "products_supplied": ["Roulements", "Engrenages", "Composants mécaniques", "Pièces usinées", "Axes"],
+      "company_size": "PME",
+      "certifications": ["ISO 9001", "IATF 16949"],
+      "financial_health_score": 0.65,
+      "extra_metadata": {
+        "founded_year": 2003,
+        "employee_count": 180,
+        "annual_revenue_pln": 45000000,
+        "specialization": "Usinage de précision",
+        "main_equipment": "CNC 5 axes"
+      },
+      "active": true
+    },
+    {
+      "id": "supplier_chinese_electronics",
+      "name": "Shenzhen Electronics Manufacturing Ltd.",
+      "code": "CN-ELE-001",
+      "country": "China",
+      "region": "Guangdong",
+      "city": "Shenzhen",
+      "address": "88 Tech Park Road, Nanshan District, Shenzhen 518000",
+      "latitude": 22.5431,
+      "longitude": 114.0579,
+      "sector": "Électronique",
+      "products_supplied": ["Composants électroniques", "Circuits imprimés", "Capteurs", "Microcontrôleurs", "Connecteurs"],
+      "company_size": "Grand groupe",
+      "certifications": ["ISO 9001", "ISO 14001", "IATF 16949", "ISO 13485", "RoHS", "REACH"],
+      "financial_health_score": 0.85,
+      "extra_metadata": {
+        "founded_year": 1998,
+        "employee_count": 8500,
+        "annual_revenue_cny": 3200000000,
+        "r_and_d_centers": 3,
+        "patents_held": 287
+      },
+      "active": true
+    },
+    {
+      "id": "supplier_french_polymers",
+      "name": "Polymères de France SA",
+      "code": "FR-POL-001",
+      "country": "France",
+      "region": "Auvergne-Rhône-Alpes",
+      "city": "Lyon",
+      "address": "12 Rue de la Chimie, Lyon 69003",
+      "latitude": 45.7640,
+      "longitude": 4.8357,
+      "sector": "Chimie",
+      "products_supplied": ["Polymères techniques", "Résines", "Additifs", "Plastifiants", "Stabilisants"],
+      "company_size": "ETI",
+      "certifications": ["ISO 9001", "ISO 14001", "REACH", "ISO 45001"],
+      "financial_health_score": 0.80,
+      "extra_metadata": {
+        "founded_year": 1975,
+        "employee_count": 650,
+        "annual_revenue_eur": 120000000,
+        "r_and_d_budget_eur": 8000000,
+        "bio_based_products_percentage": 25
+      },
+      "active": true
+    },
+    {
+      "id": "supplier_mexican_steel",
+      "name": "Aceros Mexicanos SA de CV",
+      "code": "MX-STL-001",
+      "country": "Mexico",
+      "region": "Nuevo León",
+      "city": "Monterrey",
+      "address": "567 Avenida Metalúrgica, Monterrey 64500",
+      "latitude": 25.7000,
+      "longitude": -100.3000,
+      "sector": "Métallurgie",
+      "products_supplied": ["Acier", "Tôles", "Profilés métalliques", "Acier galvanisé"],
+      "company_size": "ETI",
+      "certifications": ["ISO 9001", "IATF 16949"],
+      "financial_health_score": 0.70,
+      "extra_metadata": {
+        "founded_year": 1990,
+        "employee_count": 1200,
+        "annual_revenue_mxn": 2500000000,
+        "production_capacity_tons_per_year": 800000
+      },
+      "active": true
+    },
+    {
+      "id": "supplier_us_hydraulics",
+      "name": "American Hydraulics Inc.",
+      "code": "US-HYD-001",
+      "country": "USA",
+      "region": "Michigan",
+      "city": "Detroit",
+      "address": "789 Industrial Parkway, Detroit, MI 48210",
+      "latitude": 42.3500,
+      "longitude": -83.1000,
+      "sector": "Hydraulique",
+      "products_supplied": ["Huiles hydrauliques", "Fluides techniques", "Lubrifiants", "Fluides de refroidissement"],
+      "company_size": "Grand groupe",
+      "certifications": ["ISO 9001", "ISO 14001", "API", "NSF"],
+      "financial_health_score": 0.88,
+      "extra_metadata": {
+        "founded_year": 1968,
+        "employee_count": 2800,
+        "annual_revenue_usd": 450000000,
+        "distribution_centers": 12,
+        "bio_fluids_range": true
+      },
+      "active": true
+    },
+    {
+      "id": "supplier_vietnam_rubber",
+      "name": "Vietnam Rubber Export Corporation",
+      "code": "VN-RUB-001",
+      "country": "Vietnam",
+      "region": "Ho Chi Minh City",
+      "city": "Ho Chi Minh City",
+      "address": "234 Nguyen Hue Boulevard, District 1, Ho Chi Minh City 700000",
+      "latitude": 10.7769,
+      "longitude": 106.7009,
+      "sector": "Matières premières",
+      "products_supplied": ["Caoutchouc naturel", "Latex", "Caoutchouc SVR", "Caoutchouc RSS"],
+      "company_size": "Grand groupe",
+      "certifications": ["ISO 9001", "ISO 14001", "FSC"],
+      "financial_health_score": 0.72,
+      "extra_metadata": {
+        "founded_year": 1975,
+        "employee_count": 5200,
+        "annual_revenue_usd": 280000000,
+        "plantation_area_hectares": 45000,
+        "export_percentage": 85
+      },
+      "active": true
+    },
+    {
+      "id": "supplier_ukrainian_titanium",
+      "name": "Ukrainian Titanium Works",
+      "code": "UA-TIT-001",
+      "country": "Ukraine",
+      "region": "Zaporizhzhia Oblast",
+      "city": "Zaporizhzhia",
+      "address": "12 Metalurhiv Avenue, Zaporizhzhia 69000",
+      "latitude": 47.8388,
+      "longitude": 35.1396,
+      "sector": "Métallurgie",
+      "products_supplied": ["Titane", "Alliages de titane", "Pièces forgées", "Titane Grade 5", "Titane Grade 23"],
+      "company_size": "Grand groupe",
+      "certifications": ["ISO 9001", "AS9100", "NADCAP"],
+      "financial_health_score": 0.45,
+      "extra_metadata": {
+        "founded_year": 1959,
+        "employee_count": 3800,
+        "annual_revenue_usd": 180000000,
+        "production_capacity_tons_per_year": 25000,
+        "global_market_share_percentage": 8,
+        "strategic_importance": "Critical for aerospace industry",
+        "geopolitical_risk": "High due to ongoing conflict"
+      },
+      "active": true
+    },
+    {
+      "id": "supplier_italian_composites",
+      "name": "Compositi Italiani SpA",
+      "code": "IT-CMP-001",
+      "country": "Italy",
+      "region": "Lombardy",
+      "city": "Milan",
+      "address": "56 Via Compositi, Milan 20100",
+      "latitude": 45.4642,
+      "longitude": 9.1900,
+      "sector": "Matériaux composites",
+      "products_supplied": ["Fibres de carbone", "Matériaux composites", "Résines époxy", "Préimprégnés"],
+      "company_size": "ETI",
+      "certifications": ["ISO 9001", "AS9100", "EN 9100"],
+      "financial_health_score": 0.82,
+      "extra_metadata": {
+        "founded_year": 1988,
+        "employee_count": 420,
+        "annual_revenue_eur": 85000000,
+        "r_and_d_budget_eur": 6000000,
+        "aerospace_revenue_percentage": 65
+      },
+      "active": true
+    }
+  ],
+  "supplier_relationships": [
+    {
+      "hutchinson_site_id": "site_bangkok",
+      "supplier_id": "supplier_thai_rubber",
+      "products_supplied": ["Caoutchouc naturel", "Latex", "EPDM"],
+      "annual_volume_eur": 5000000,
+      "criticality": "Critique",
+      "is_sole_supplier": true,
+      "has_backup_supplier": true,
+      "backup_supplier_id": "supplier_vietnam_rubber",
+      "lead_time_days": 7,
+      "stock_buffer_days": 14,
+      "contract_end_date": "2027-12-31",
+      "risk_mitigation_plan": "Fournisseur backup Vietnam activable en 10 jours. Stock de sécurité de 14 jours. Transport aérien d'urgence possible.",
+      "extra_metadata": {
+        "contract_type": "Long-term supply agreement",
+        "payment_terms": "Net 60",
+        "quality_rating": 4.5,
+        "delivery_performance_percentage": 96,
+        "price_stability": "Indexed to natural rubber market price"
+      }
+    },
+    {
+      "hutchinson_site_id": "site_bangkok",
+      "supplier_id": "supplier_vietnam_rubber",
+      "products_supplied": ["Caoutchouc naturel", "Latex"],
+      "annual_volume_eur": 1000000,
+      "criticality": "Important",
+      "is_sole_supplier": false,
+      "has_backup_supplier": false,
+      "backup_supplier_id": null,
+      "lead_time_days": 10,
+      "stock_buffer_days": 21,
+      "contract_end_date": "2026-12-31",
+      "risk_mitigation_plan": "Fournisseur secondaire pour diversification. Peut augmenter volumes si nécessaire.",
+      "extra_metadata": {
+        "contract_type": "Annual contract",
+        "payment_terms": "Net 45",
+        "quality_rating": 4.2,
+        "delivery_performance_percentage": 92
+      }
+    },
+    {
+      "hutchinson_site_id": "site_munich",
+      "supplier_id": "supplier_german_steel",
+      "products_supplied": ["Acier haute résistance", "Tôles laminées"],
+      "annual_volume_eur": 8000000,
+      "criticality": "Critique",
+      "is_sole_supplier": false,
+      "has_backup_supplier": true,
+      "backup_supplier_id": "supplier_mexican_steel",
+      "lead_time_days": 14,
+      "stock_buffer_days": 30,
+      "contract_end_date": "2028-06-30",
+      "risk_mitigation_plan": "Dual sourcing avec fournisseur mexicain. Stock de sécurité 30 jours. Contrat long terme avec clauses de volume garanti.",
+      "extra_metadata": {
+        "contract_type": "Multi-year framework agreement",
+        "payment_terms": "Net 90",
+        "quality_rating": 4.8,
+        "delivery_performance_percentage": 98,
+        "carbon_footprint_tons_co2_per_ton": 1.8
+      }
+    },
+    {
+      "hutchinson_site_id": "site_munich",
+      "supplier_id": "supplier_french_polymers",
+      "products_supplied": ["Polymères techniques", "Résines"],
+      "annual_volume_eur": 3000000,
+      "criticality": "Important",
+      "is_sole_supplier": false,
+      "has_backup_supplier": false,
+      "backup_supplier_id": null,
+      "lead_time_days": 7,
+      "stock_buffer_days": 45,
+      "contract_end_date": "2027-03-31",
+      "risk_mitigation_plan": "Plusieurs fournisseurs alternatifs disponibles en Europe. Stock important car produits stables.",
+      "extra_metadata": {
+        "contract_type": "Annual contract with renewal option",
+        "payment_terms": "Net 60",
+        "quality_rating": 4.6,
+        "delivery_performance_percentage": 95
+      }
+    },
+    {
+      "hutchinson_site_id": "site_warsaw",
+      "supplier_id": "supplier_polish_components",
+      "products_supplied": ["Roulements", "Engrenages", "Pièces usinées"],
+      "annual_volume_eur": 2000000,
+      "criticality": "Critique",
+      "is_sole_supplier": true,
+      "has_backup_supplier": false,
+      "backup_supplier_id": null,
+      "lead_time_days": 5,
+      "stock_buffer_days": 10,
+      "contract_end_date": "2026-09-30",
+      "risk_mitigation_plan": "Fournisseur local unique. Stock minimal car délais courts. Identification de fournisseurs backup en cours.",
+      "extra_metadata": {
+        "contract_type": "Annual contract",
+        "payment_terms": "Net 30",
+        "quality_rating": 4.3,
+        "delivery_performance_percentage": 89,
+        "proximity_km": 15
+      }
+    },
+    {
+      "hutchinson_site_id": "site_shanghai",
+      "supplier_id": "supplier_chinese_electronics",
+      "products_supplied": ["Composants électroniques", "Capteurs", "Microcontrôleurs"],
+      "annual_volume_eur": 6000000,
+      "criticality": "Critique",
+      "is_sole_supplier": false,
+      "has_backup_supplier": false,
+      "backup_supplier_id": null,
+      "lead_time_days": 14,
+      "stock_buffer_days": 20,
+      "contract_end_date": "2027-12-31",
+      "risk_mitigation_plan": "Fournisseur principal en Chine. Stock de sécurité 20 jours. Qualification de fournisseurs alternatifs en Asie en cours.",
+      "extra_metadata": {
+        "contract_type": "Long-term supply agreement",
+        "payment_terms": "Net 45",
+        "quality_rating": 4.7,
+        "delivery_performance_percentage": 94,
+        "technology_partnership": true
+      }
+    },
+    {
+      "hutchinson_site_id": "site_mexico",
+      "supplier_id": "supplier_mexican_steel",
+      "products_supplied": ["Acier", "Tôles", "Acier galvanisé"],
+      "annual_volume_eur": 4000000,
+      "criticality": "Important",
+      "is_sole_supplier": false,
+      "has_backup_supplier": false,
+      "backup_supplier_id": null,
+      "lead_time_days": 10,
+      "stock_buffer_days": 25,
+      "contract_end_date": "2027-06-30",
+      "risk_mitigation_plan": "Fournisseur local au Mexique. Plusieurs alternatives disponibles en Amérique du Nord.",
+      "extra_metadata": {
+        "contract_type": "Annual contract",
+        "payment_terms": "Net 60",
+        "quality_rating": 4.1,
+        "delivery_performance_percentage": 91,
+        "local_content_percentage": 100
+      }
+    },
+    {
+      "hutchinson_site_id": "site_detroit",
+      "supplier_id": "supplier_us_hydraulics",
+      "products_supplied": ["Huiles hydrauliques", "Fluides techniques"],
+      "annual_volume_eur": 3500000,
+      "criticality": "Important",
+      "is_sole_supplier": false,
+      "has_backup_supplier": false,
+      "backup_supplier_id": null,
+      "lead_time_days": 7,
+      "stock_buffer_days": 60,
+      "contract_end_date": "2028-12-31",
+      "risk_mitigation_plan": "Produits standardisés avec nombreux fournisseurs alternatifs. Stock important car produits stables.",
+      "extra_metadata": {
+        "contract_type": "Multi-year framework agreement",
+        "payment_terms": "Net 90",
+        "quality_rating": 4.9,
+        "delivery_performance_percentage": 99,
+        "just_in_time_delivery": true
+      }
+    },
+    {
+      "hutchinson_site_id": "site_toulouse",
+      "supplier_id": "supplier_ukrainian_titanium",
+      "products_supplied": ["Titane", "Alliages de titane", "Titane Grade 5"],
+      "annual_volume_eur": 10000000,
+      "criticality": "Critique",
+      "is_sole_supplier": true,
+      "has_backup_supplier": false,
+      "backup_supplier_id": null,
+      "lead_time_days": 30,
+      "stock_buffer_days": 90,
+      "contract_end_date": "2027-12-31",
+      "risk_mitigation_plan": "Fournisseur unique pour titane aéronautique. Stock stratégique 90 jours. Recherche active de sources alternatives (USA, Japon, Kazakhstan).",
+      "extra_metadata": {
+        "contract_type": "Long-term strategic supply agreement",
+        "payment_terms": "Net 120",
+        "quality_rating": 4.8,
+        "delivery_performance_percentage": 87,
+        "geopolitical_risk_level": "Very High",
+        "strategic_stockpile_days": 180,
+        "alternative_sources_under_qualification": ["VSMPO-AVISMA Russia", "Timet USA", "Toho Titanium Japan"]
+      }
+    },
+    {
+      "hutchinson_site_id": "site_toulouse",
+      "supplier_id": "supplier_italian_composites",
+      "products_supplied": ["Fibres de carbone", "Matériaux composites", "Préimprégnés"],
+      "annual_volume_eur": 4500000,
+      "criticality": "Important",
+      "is_sole_supplier": false,
+      "has_backup_supplier": false,
+      "backup_supplier_id": null,
+      "lead_time_days": 14,
+      "stock_buffer_days": 45,
+      "contract_end_date": "2027-09-30",
+      "risk_mitigation_plan": "Fournisseur européen de composites. Plusieurs alternatives en Europe (France, Allemagne, UK).",
+      "extra_metadata": {
+        "contract_type": "Annual contract with volume commitment",
+        "payment_terms": "Net 60",
+        "quality_rating": 4.7,
+        "delivery_performance_percentage": 93,
+        "technical_support": "On-site engineer available"
+      }
+    }
+  ],
+  "documents": [
+    {
+      "id": "doc_bangkok_flood",
+      "title": "Inondations majeures à Bangkok - Risque d'interruption de production dans les zones industrielles",
+      "source_url": "https://www.bangkokpost.com/thailand/general/2026/01/28/major-floods-hit-bangkok-industrial-zones",
+      "event_type": "climatique",
+      "event_subtype": "inondation",
+      "publication_date": "2026-01-28T08:00:00Z",
+      "content": "Des inondations sévères frappent Bangkok et ses environs suite à des pluies torrentielles exceptionnelles (350mm en 48h). Les autorités thaïlandaises estiment que les inondations pourraient durer 2 à 3 semaines. Les zones industrielles de Lat Krabang, Samut Prakan et Bang Phli sont particulièrement touchées, avec des niveaux d'eau atteignant 1,5 mètre dans certaines zones. Les routes principales sont coupées et le port de Bangkok est partiellement fermé. Le gouvernement a déclaré l'état d'urgence dans 5 provinces. Les entreprises manufacturières de la région sont invitées à activer leurs plans de continuité d'activité. Les experts météorologiques prévoient des précipitations supplémentaires dans les prochains jours.",
+      "summary": "Inondations sévères à Bangkok affectant les zones industrielles pendant 2-3 semaines. Routes coupées, port partiellement fermé. Niveau d'eau jusqu'à 1,5m.",
+      "geographic_scope": {
+        "type": "radius",
+        "coordinates": {
+          "latitude": 13.7563,
+          "longitude": 100.5018
+        },
+        "radius_km": 50,
+        "affected_regions": ["Bangkok Metropolitan Region", "Samut Prakan", "Bang Phli", "Lat Krabang"],
+        "affected_cities": ["Bangkok", "Samut Prakan"]
+      },
+      "extra_metadata": {
+        "severity": "high",
+        "duration_estimate_days": 21,
+        "source_reliability": "high",
+        "water_level_meters": 1.5,
+        "rainfall_mm_48h": 350,
+        "emergency_status": "State of emergency declared",
+        "affected_provinces": 5,
+        "estimated_economic_impact_usd": 500000000
+      },
+      "status": "new"
+    },
+    {
+      "id": "doc_cbam_europe",
+      "title": "Entrée en vigueur du CBAM (Carbon Border Adjustment Mechanism) en Europe - Impact majeur sur les importations d'acier et aluminium",
+      "source_url": "https://ec.europa.eu/taxation_customs/cbam/2026/implementation",
+      "event_type": "reglementaire",
+      "event_subtype": "CBAM",
+      "publication_date": "2026-01-15T10:00:00Z",
+      "content": "Le mécanisme d'ajustement carbone aux frontières (CBAM) entre en phase définitive le 1er janvier 2026. Les importateurs d'acier, aluminium, ciment, engrais et électricité dans l'Union Européenne devront désormais payer une taxe carbone basée sur les émissions de CO2 incorporées dans ces produits. Les entreprises ont jusqu'au 31 mars 2026 pour déclarer leurs émissions du premier trimestre. Le non-respect de ces obligations peut entraîner des amendes allant jusqu'à 50€ par tonne de CO2 non déclarée. Les experts estiment que cela pourrait augmenter les coûts d'importation de 10 à 30% selon les fournisseurs et leurs pratiques environnementales. Les pays tiers sans mécanisme de tarification du carbone seront les plus impactés. La Commission Européenne a publié un guide de 250 pages pour aider les entreprises à se conformer. Les secteurs automobile et aéronautique, grands consommateurs d'acier et d'aluminium, devront revoir leurs stratégies d'approvisionnement.",
+      "summary": "Le CBAM impose une taxe carbone sur les importations d'acier et aluminium en UE. Augmentation des coûts de 10-30%. Deadline de conformité: 31 mars 2026. Amendes jusqu'à 50€/tonne CO2.",
+      "geographic_scope": {
+        "type": "regulatory",
+        "affected_countries": ["France", "Germany", "Poland", "Italy", "Spain", "Belgium", "Netherlands", "Austria", "Sweden", "Finland"],
+        "affected_regions": ["European Union"],
+        "affected_sectors": ["Métallurgie", "Automobile", "Aéronautique", "Construction"],
+        "affected_products": ["Acier", "Aluminium", "Alliages métalliques", "Tôles", "Profilés"]
+      },
+      "extra_metadata": {
+        "regulation_type": "environmental",
+        "regulation_number": "EU 2023/956",
+        "compliance_deadline": "2026-03-31",
+        "penalty_range": "50€ per ton CO2",
+        "cost_impact_percentage_min": 10,
+        "cost_impact_percentage_max": 30,
+        "affected_import_volume_tons_per_year": 50000000,
+        "guide_pages": 250,
+        "transition_period_end": "2026-12-31"
+      },
+      "status": "new"
+    },
+    {
+      "id": "doc_ukraine_conflict",
+      "title": "Escalade du conflit en Ukraine - Suspension des exportations de titane et impact majeur sur les chaînes d'approvisionnement aéronautiques",
+      "source_url": "https://www.reuters.com/markets/commodities/ukraine-titanium-exports-suspended-2026-01-25",
+      "event_type": "geopolitique",
+      "event_subtype": "conflit",
+      "publication_date": "2026-01-25T14:00:00Z",
+      "content": "L'escalade du conflit en Ukraine entraîne une suspension temporaire des exportations de titane et d'alliages spéciaux. L'Ukraine, via ses principaux producteurs Zaporizhstal et Ukrainian Titanium Works, représente environ 30% de la production mondiale de titane de qualité aéronautique (Grade 5 et Grade 23). Les principaux producteurs ukrainiens ont annoncé une interruption de leurs opérations d'exportation pour une durée estimée à 6 mois minimum, en raison de la situation sécuritaire et des difficultés logistiques. Les prix du titane ont déjà augmenté de 45% sur les marchés internationaux (London Metal Exchange). Les stocks mondiaux sont estimés à 3-4 mois de consommation. Les industriels de l'aéronautique (Airbus, Boeing, Safran, Rolls-Royce) sont invités à identifier des sources alternatives d'urgence. Les principales alternatives sont : VSMPO-AVISMA (Russie, mais sous sanctions), Timet (USA, capacité limitée), Toho Titanium (Japon), et UKAD (Kazakhstan). Les délais de qualification de nouvelles sources sont estimés à 12-18 mois pour l'aéronautique. Les experts prévoient des perturbations majeures dans la production d'avions et de moteurs d'avion pour les 12-24 prochains mois.",
+      "summary": "Suspension des exportations de titane ukrainien (30% de la production mondiale). Prix +45%. Durée estimée: 6 mois minimum. Impact majeur sur l'aéronautique.",
+      "geographic_scope": {
+        "type": "geopolitical",
+        "directly_affected_countries": ["Ukraine"],
+        "indirectly_affected_countries": ["Poland", "Romania", "Moldova", "Belarus", "Russia", "Slovakia", "Hungary"],
+        "globally_affected_regions": ["Europe", "North America", "Asia"],
+        "affected_sectors": ["Aéronautique", "Défense", "Médical", "Automobile haut de gamme"],
+        "affected_products": ["Titane", "Alliages de titane", "Pièces forgées", "Titane Grade 5", "Titane Grade 23"]
+      },
+      "extra_metadata": {
+        "conflict_intensity": "high",
+        "duration_estimate_days": 180,
+        "price_increase_percentage": 45,
+        "global_supply_impact_percentage": 30,
+        "global_stock_months": 3.5,
+        "alternative_sources": ["VSMPO-AVISMA (Russia)", "Timet (USA)", "Toho Titanium (Japan)", "UKAD (Kazakhstan)"],
+        "qualification_time_months": 18,
+        "affected_companies": ["Airbus", "Boeing", "Safran", "Rolls-Royce", "GE Aviation"],
+        "geopolitical_risk_level": "Critical"
+      },
+      "status": "new"
+    }
+  ],
+  "pertinence_checks": [
+    {
+      "id": "check_bangkok_flood",
+      "document_id": "doc_bangkok_flood",
+      "decision": "OUI",
+      "confidence": 0.95,
+      "reasoning": "Événement climatique majeur affectant directement le site de Bangkok (distance: 8km du centre de l'inondation) et son fournisseur principal Thai Rubber Industries (distance: 12km). Zone industrielle Lat Krabang dans le rayon de 50km. Le site Bangkok produit des composants critiques pour l'automobile et l'aéronautique. Le fournisseur Thai Rubber est un fournisseur unique avec seulement 14 jours de stock, alors que l'événement durera 21 jours. Risque élevé de rupture de stock et d'arrêt de production.",
+      "matched_elements": {
+        "sites": [
+          {
+            "site_id": "site_bangkok",
+            "site_name": "Bangkok Manufacturing Plant",
+            "distance_km": 8,
+            "impact_level": "critique"
+          }
+        ],
+        "suppliers": [
+          {
+            "supplier_id": "supplier_thai_rubber",
+            "supplier_name": "Thai Rubber Industries Co., Ltd.",
+            "distance_km": 12,
+            "impact_level": "critique"
+          }
+        ]
+      },
+      "llm_model": "claude-3-5-sonnet-20241022",
+      "llm_tokens": 1250,
+      "processing_time_ms": 2800
+    },
+    {
+      "id": "check_cbam_europe",
+      "document_id": "doc_cbam_europe",
+      "decision": "OUI",
+      "confidence": 0.90,
+      "reasoning": "Réglementation européenne majeure impactant directement les sites Hutchinson en Europe (Munich, Toulouse, Paris) et leurs fournisseurs d'acier et aluminium hors UE. Le CBAM impose une taxe carbone sur les importations, augmentant les coûts de 10-30%. Sites concernés : Munich (grand consommateur d'acier), Toulouse (aluminium aéronautique). Fournisseurs impactés : Chinese Electronics (composants avec métaux), Mexican Steel (hors UE), US Hydraulics (hors UE). Impact financier significatif et nécessité de revoir les stratégies d'approvisionnement. Deadline de conformité proche (31 mars 2026).",
+      "matched_elements": {
+        "sites": [
+          {
+            "site_id": "site_munich",
+            "site_name": "Munich Production Facility",
+            "country": "Germany",
+            "impact_level": "élevé",
+            "reason": "Grand consommateur d'acier, fournisseurs hors UE"
+          },
+          {
+            "site_id": "site_toulouse",
+            "site_name": "Toulouse Aerospace Plant",
+            "country": "France",
+            "impact_level": "élevé",
+            "reason": "Aluminium et titane, fournisseurs hors UE"
+          },
+          {
+            "site_id": "site_paris",
+            "site_name": "Paris R&D Center",
+            "country": "France",
+            "impact_level": "moyen",
+            "reason": "Prototypes avec métaux importés"
+          }
+        ],
+        "suppliers": [
+          {
+            "supplier_id": "supplier_chinese_electronics",
+            "supplier_name": "Shenzhen Electronics Manufacturing Ltd.",
+            "country": "China",
+            "impact_level": "moyen",
+            "reason": "Composants électroniques avec métaux"
+          },
+          {
+            "supplier_id": "supplier_mexican_steel",
+            "supplier_name": "Aceros Mexicanos SA de CV",
+            "country": "Mexico",
+            "impact_level": "élevé",
+            "reason": "Acier hors UE, taxe CBAM directe"
+          },
+          {
+            "supplier_id": "supplier_us_hydraulics",
+            "supplier_name": "American Hydraulics Inc.",
+            "country": "USA",
+            "impact_level": "faible",
+            "reason": "Fluides, impact indirect limité"
+          }
+        ]
+      },
+      "llm_model": "claude-3-5-sonnet-20241022",
+      "llm_tokens": 1580,
+      "processing_time_ms": 3200
+    },
+    {
+      "id": "check_ukraine_conflict",
+      "document_id": "doc_ukraine_conflict",
+      "decision": "OUI",
+      "confidence": 0.98,
+      "reasoning": "Conflit géopolitique majeur avec impact critique sur la supply chain. Le fournisseur Ukrainian Titanium Works est directement affecté par le conflit et suspend ses exportations. Ce fournisseur est l'unique source de titane pour le site aéronautique critique de Toulouse (10M€/an). Le titane est une matière première stratégique irremplaçable à court terme pour l'aéronautique. Stock actuel: 90 jours. Durée estimée du conflit: 180 jours minimum. Risque de rupture de stock après 90 jours. Délais de qualification de sources alternatives: 12-18 mois. Impact financier majeur (prix +45%) et risque d'arrêt de production pour Airbus, Safran, Dassault. Criticité maximale.",
+      "matched_elements": {
+        "sites": [
+          {
+            "site_id": "site_toulouse",
+            "site_name": "Toulouse Aerospace Plant",
+            "country": "France",
+            "impact_level": "critique",
+            "reason": "Dépendance totale au titane ukrainien, fournisseur unique, stock 90 jours < durée conflit 180 jours"
+          }
+        ],
+        "suppliers": [
+          {
+            "supplier_id": "supplier_ukrainian_titanium",
+            "supplier_name": "Ukrainian Titanium Works",
+            "country": "Ukraine",
+            "impact_level": "critique",
+            "reason": "Directement affecté par le conflit, suspension des exportations, 30% de la production mondiale"
+          }
+        ],
+        "affected_customers": ["Airbus", "Safran", "Dassault Aviation", "Thales"],
+        "alternative_sources_status": "Qualification en cours, délais 12-18 mois"
+      },
+      "llm_model": "claude-3-5-sonnet-20241022",
+      "llm_tokens": 1820,
+      "processing_time_ms": 3600
+    }
+  ]
+}
