@@ -4,9 +4,10 @@ import './RegisterPage.css';
 
 interface RegisterPageProps {
   onRegisterSuccess: () => void;
+  onShowHome?: () => void;
 }
 
-export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess }) => {
+export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess, onShowHome }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -67,7 +68,6 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess })
     return (
       <div className="register-container">
         <div className="register-card">
-          <div className="register-logo">G</div>
           <h1 className="register-title">Inscription réussie !</h1>
           <p className="register-success">Redirection vers la page de connexion...</p>
         </div>
@@ -78,9 +78,7 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess })
   return (
     <div className="register-container">
       <div className="register-card">
-        <div className="register-logo">G</div>
         <h1 className="register-title">Créer un compte</h1>
-        <p className="register-subtitle">Plateforme de veille réglementaire durable</p>
 
         <form onSubmit={handleSubmit} className="register-form">
           {error && <div className="register-error">{error}</div>}
@@ -120,8 +118,8 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess })
               required
               disabled={loading}
             >
-              <option value="juridique">Équipe Juridique</option>
-              <option value="decisive">Équipe Décisionnaire</option>
+              <option value="juridique">Admin</option>
+              <option value="decisive">Consultant</option>
             </select>
           </div>
 
@@ -160,6 +158,11 @@ export const RegisterPage: React.FC<RegisterPageProps> = ({ onRegisterSuccess })
 
         <div className="register-footer">
           Déjà un compte ? <a href="#" onClick={(e) => { e.preventDefault(); onRegisterSuccess(); }}>Se connecter</a>
+          {onShowHome && (
+            <div className="register-home-link">
+              <a href="#" onClick={(e) => { e.preventDefault(); onShowHome(); }}>Retour à l'accueil</a>
+            </div>
+          )}
         </div>
       </div>
     </div>
