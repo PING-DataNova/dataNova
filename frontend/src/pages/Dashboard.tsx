@@ -9,7 +9,7 @@ import { impactsService } from '../services/impactsService';
 interface DashboardProps {
   user: User;
   onLogout: () => void;
-  onNavigate: (page: 'landing' | 'login' | 'register' | 'dashboard' | 'agent') => void;
+  onNavigate: (page: 'landing' | 'login' | 'register' | 'dashboard' | 'agent' | 'supplier-analysis') => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => {
@@ -190,6 +190,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                className="px-8 py-3 rounded-full bg-lime-400 text-slate-950 font-black text-sm uppercase tracking-widest hover:bg-white hover:scale-105 transition-all shadow-[0_0_20px_rgba(163,230,53,0.3)]"
              >
                Lancer l'agent
+             </button>
+             <button
+               onClick={() => onNavigate('supplier-analysis')}
+               className="px-6 py-3 rounded-full bg-blue-600 text-white font-black text-sm uppercase tracking-widest hover:bg-blue-700 hover:scale-105 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+             >
+               🏭 Analyse Fournisseur
              </button>
           </div>
         </header>

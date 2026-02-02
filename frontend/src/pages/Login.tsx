@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { User } from '../types';
+import { login as loginApi, saveToken } from '../services/authService';
 
 interface LoginProps {
   onNavigate: (page: 'landing' | 'login' | 'register' | 'dashboard') => void;
@@ -10,11 +11,37 @@ interface LoginProps {
 const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password) {
-      onLogin({ email, fullName: 'Expert Hutchinson', role: 'Analyste Stratégique' });
+    setError(null);
+    
+    if (!email || !password) {
+      setError('Veuillez remplir tous les champs');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await loginApi({ email, password });
+      
+      // Sauvegarder le token
+      saveToken(response.token);
+      
+      // Convertir vers le type User du frontend
+      const user: User = {
+        email: response.user.email,
+        fullName: response.user.name,
+        role: response.user.role === 'juridique' ? 'Analyste Juridique' : 'Décisionnaire'
+      };
+      
+      onLogin(user);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur de connexion');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -39,6 +66,15 @@ const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-medium flex items-center space-x-2">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>{error}</span>
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-xs font-black uppercase tracking-widest text-slate-400 ml-1">Email Professionnel</label>
               <input
@@ -47,6 +83,7 @@ const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
                 className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-lime-400/20 focus:bg-white transition-all text-slate-900 font-medium"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
                 required
               />
             </div>
@@ -62,16 +99,30 @@ const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
                 className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-lime-400/20 focus:bg-white transition-all text-slate-900 font-medium"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
                 required
               />
             </div>
 
             <button
               type="submit"
-              className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 uppercase tracking-[0.2em] text-sm flex items-center justify-center space-x-2 group"
+              disabled={isLoading}
+              className="w-full py-5 bg-slate-900 text-white font-black rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-200 uppercase tracking-[0.2em] text-sm flex items-center justify-center space-x-2 group disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span>Authentification</span>
-              <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              {isLoading ? (
+                <>
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                  <span>Connexion en cours...</span>
+                </>
+              ) : (
+                <>
+                  <span>Authentification</span>
+                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </>
+              )}
             </button>
           </form>
 

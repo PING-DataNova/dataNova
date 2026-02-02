@@ -635,3 +635,12 @@ class SupplierAnalysis(Base):
     
     # Relations
     requested_by_user = relationship("User", foreign_keys=[requested_by])
+
+
+# ============================================================================
+# ALIAS POUR COMPATIBILITÉ AVEC ANCIEN CODE
+# ============================================================================
+
+# Alias pour compatibilité avec les routes API existantes
+Analysis = PertinenceCheck
+ImpactAssessment = RiskAnalysis

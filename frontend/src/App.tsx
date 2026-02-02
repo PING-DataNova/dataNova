@@ -5,10 +5,13 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AgentDashboard from './pages/AgentDashboard';
+import SupplierAnalysis from './pages/SupplierAnalysis';
 import { User } from './types';
 
+type PageType = 'landing' | 'login' | 'register' | 'dashboard' | 'agent' | 'supplier-analysis';
+
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<'landing' | 'login' | 'register' | 'dashboard' | 'agent'>('landing');
+  const [currentPage, setCurrentPage] = useState<PageType>('landing');
   const [user, setUser] = useState<User | null>(null);
 
   // Persistence logic (simulated)
@@ -32,7 +35,7 @@ const App: React.FC = () => {
     setCurrentPage('landing');
   };
 
-  const navigateTo = (page: 'landing' | 'login' | 'register' | 'dashboard') => {
+  const navigateTo = (page: PageType) => {
     setCurrentPage(page);
   };
 
@@ -46,6 +49,9 @@ const App: React.FC = () => {
       )}
       {currentPage === 'agent' && user && (
         <AgentDashboard user={user} onNavigate={navigateTo} />
+      )}
+      {currentPage === 'supplier-analysis' && user && (
+        <SupplierAnalysis onBack={() => setCurrentPage('dashboard')} />
       )}
     </div>
   );

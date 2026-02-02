@@ -1,0 +1,524 @@
+/* SupplierAnalysis.css - Styles pour le formulaire d'analyse fournisseur */
+
+.supplier-analysis-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  min-height: 100vh;
+  background: #F8FAFC;
+}
+
+.supplier-analysis-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.supplier-analysis-header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1F2937;
+  margin: 0;
+}
+
+.supplier-analysis-header .subtitle {
+  color: #6B7280;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.back-button {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  color: #2563EB;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.back-button:hover {
+  color: #1D4ED8;
+}
+
+/* Formulaire */
+.supplier-form {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+  padding: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+}
+
+.form-section h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-group label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.form-group label .required {
+  color: #EF4444;
+}
+
+.form-group .hint {
+  font-size: 0.8rem;
+  color: #9CA3AF;
+  font-weight: 400;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+  padding: 0.75rem 1rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #1F2937;
+  background-color: white;
+}
+
+.form-group input::placeholder {
+  color: #9CA3AF;
+}
+
+.form-group select option {
+  color: #1F2937;
+}
+
+.add-tag input,
+.add-tag select {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #1F2937;
+  background-color: white;
+}
+
+.add-tag input::placeholder {
+  color: #9CA3AF;
+}
+
+.add-tag input:focus,
+.add-tag select:focus {
+  outline: none;
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Tags input pour matières et codes NC */
+.tags-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tags-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: 32px;
+}
+
+.add-tag {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Les styles de .add-tag input sont définis plus haut */
+
+.add-tag button {
+  padding: 0.75rem 1rem;
+  background: #10B981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.add-tag button:hover {
+  background: #059669;
+}
+
+.tags-input-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  min-height: 48px;
+  align-items: center;
+}
+
+.tags-input-container:focus-within {
+  border-color: #2563EB;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #DBEAFE;
+  color: #1E40AF;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.tag button {
+  background: none;
+  border: none;
+  color: #3B82F6;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0;
+  line-height: 1;
+  font-weight: bold;
+}
+
+.tag button:hover {
+  color: #1E40AF;
+}
+
+.tag.tag-code {
+  background: #E5E7EB;
+  color: #374151;
+  font-family: monospace;
+}
+
+.tag .remove-tag {
+  background: none;
+  border: none;
+  color: #3B82F6;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  line-height: 1;
+}
+
+.tag .remove-tag:hover {
+  color: #1E40AF;
+}
+
+.tags-input {
+  border: none;
+  outline: none;
+  flex: 1;
+  min-width: 120px;
+  font-size: 0.95rem;
+  padding: 0.25rem;
+}
+
+/* Suggestions dropdown */
+.suggestions-container {
+  position: relative;
+}
+
+.suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #D1D5DB;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.suggestion-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.suggestion-item:hover {
+  background: #F3F4F6;
+}
+
+/* Radio buttons pour criticité */
+.radio-group {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.radio-option:hover {
+  border-color: #9CA3AF;
+}
+
+.radio-option.selected {
+  border-color: #2563EB;
+  background: #EFF6FF;
+}
+
+.radio-option input[type="radio"] {
+  display: none;
+}
+
+.radio-option .radio-label {
+  font-size: 0.95rem;
+}
+
+.radio-option.standard.selected {
+  border-color: #10B981;
+  background: #ECFDF5;
+}
+
+.radio-option.important.selected {
+  border-color: #F59E0B;
+  background: #FFFBEB;
+}
+
+.radio-option.critique.selected {
+  border-color: #EF4444;
+  background: #FEF2F2;
+}
+
+/* Boutons */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #E5E7EB;
+}
+
+.submit-button {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+  color: white;
+  width: 100%;
+  margin-top: 1.5rem;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+.submit-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+}
+
+.submit-button.primary {
+  background: #2563EB;
+  color: white;
+}
+
+.submit-button.primary:hover:not(:disabled) {
+  background: #1D4ED8;
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  background: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-button:hover {
+  background: #F3F4F6;
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #E5E7EB;
+  border-top-color: #2563EB;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Spinner dans le bouton */
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.submit-button.loading {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.loading-overlay p {
+  margin-top: 1rem;
+  color: #6B7280;
+  font-size: 0.95rem;
+}
+
+/* Error message */
+.error-message {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Validation message */
+.validation-message {
+  background: #FFFBEB;
+  border: 1px solid #FDE68A;
+  color: #92400E;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.validation-message ul {
+  margin: 0.5rem 0 0 1.5rem;
+  padding: 0;
+}
+
+.validation-message li {
+  margin: 0.25rem 0;
+}
+
+/* Submit button disabled */
+.submit-button.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #9CA3AF;
+  box-shadow: none;
+}
+
+.submit-button.disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .supplier-analysis-page {
+    padding: 1rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .radio-group {
+    flex-direction: column;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .submit-button, .cancel-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

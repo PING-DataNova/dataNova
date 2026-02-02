@@ -69,12 +69,18 @@ def register(data: RegisterRequest, session: Session = Depends(get_session)):
         )
     
     # Créer l'utilisateur
+    # Séparer le nom complet en prénom/nom
+    name_parts = data.name.strip().split(' ', 1)
+    first_name = name_parts[0]
+    last_name = name_parts[1] if len(name_parts) > 1 else ''
+    
     user = User(
         email=data.email,
         password_hash=hash_password(data.password),
-        name=data.name,
+        first_name=first_name,
+        last_name=last_name,
         role=data.role,
-        is_active=True
+        active=True
     )
     
     session.add(user)
@@ -84,7 +90,7 @@ def register(data: RegisterRequest, session: Session = Depends(get_session)):
     return UserResponse(
         id=user.id,
         email=user.email,
-        name=user.name,
+        name=f"{user.first_name} {user.last_name}".strip(),
         role=user.role
     )
 
@@ -122,7 +128,7 @@ def login(data: LoginRequest, session: Session = Depends(get_session)):
         )
     
     # Vérifier que le compte est actif
-    if not user.is_active:
+    if not user.active:
         raise HTTPException(
             status_code=403,
             detail="Ce compte a été désactivé"
@@ -145,7 +151,7 @@ def login(data: LoginRequest, session: Session = Depends(get_session)):
         user=UserResponse(
             id=user.id,
             email=user.email,
-            name=user.name,
+            name=f"{user.first_name} {user.last_name}".strip(),
             role=user.role
         )
     )
@@ -187,6 +193,6 @@ def get_current_user(token: str, session: Session = Depends(get_session)):
     return UserResponse(
         id=user.id,
         email=user.email,
-        name=user.name,
+        name=f"{user.first_name} {user.last_name}".strip(),
         role=user.role
     )
