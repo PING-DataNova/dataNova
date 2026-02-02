@@ -6,9 +6,10 @@ import './LoginPage.css';
 interface LoginPageProps {
   onLogin: (userType: 'juridique' | 'decisive', userData: any) => void;
   onShowRegister?: () => void;
+  onShowHome?: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onShowRegister }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onShowRegister, onShowHome }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,9 +42,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onShowRegister })
     <div className="login-container">
       <div className="login-card">
         <div className="login-header">
-          <div className="logo-container">
-            <div className="logo">G</div>
-          </div>
           <h1>Plateforme de veille réglementaire durable</h1>
         </div>
 
@@ -102,6 +100,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onShowRegister })
             {onShowRegister && (
               <p className="register-link">
                 Pas encore de compte ? <a href="#" onClick={(e) => { e.preventDefault(); onShowRegister(); }}>S'inscrire</a>
+              </p>
+            )}
+            {onShowHome && (
+              <p className="home-link">
+                <a href="#" onClick={(e) => { e.preventDefault(); onShowHome(); }}>
+                  Retour à l'accueil
+                </a>
               </p>
             )}
           </div>
