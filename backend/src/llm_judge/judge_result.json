@@ -1,0 +1,238 @@
+{
+  "event_id": "doc_bangkok_flood",
+  "event_type": "climatique",
+  "judge_evaluation": {
+    "pertinence_checker_evaluation": {
+      "source_relevance": {
+        "score": 9,
+        "confidence": 0.95,
+        "comment": "Source officielle gouvernementale (Thai Meteorological Department) hautement fiable pour les alertes météorologiques. URL vérifiable et date de publication récente.",
+        "evidence": [
+          "Source identifiée: Thai Meteorological Department (TMD), agence météorologique nationale officielle de Thaïlande",
+          "URL fournie et vérifiable: https://www.tmd.go.th/en/weather/warning/flood",
+          "Date de publication précise: 2026-01-28T14:30:00+07:00",
+          "Type de document approprié: bulletin d'alerte météorologique officiel",
+          "Contenu détaillé avec données quantitatives (280mm pluie, 3.2m niveau fleuve)"
+        ],
+        "weaknesses": [
+          "Pas de vérification explicite que l'URL est accessible ou que la source existe réellement",
+          "Absence de mention d'autres sources corroborantes pour valider l'information"
+        ]
+      },
+      "company_data_alignment": {
+        "score": 6,
+        "confidence": 0.65,
+        "comment": "Identification correcte du site de Bangkok, mais manque de justification sur l'identification du fournisseur Thai Rubber Industries et absence de données internes explicites.",
+        "evidence": [
+          "Site 'site_bangkok' correctement identifié comme affecté",
+          "Mention de la zone industrielle de Lat Krabang comme zone à risque élevé dans le document source",
+          "Cohérence géographique entre l'événement (Bangkok) et les entités identifiées"
+        ],
+        "weaknesses": [
+          "Aucune donnée interne Hutchinson fournie pour valider que 'site_bangkok' existe réellement dans la base",
+          "Identification de 'supplier_thai_rubber' sans justification de sa localisation à Lat Krabang ou Bangkok",
+          "Pas de vérification que Thai Rubber Industries est bien dans les 10 fournisseurs référencés",
+          "Absence de données sur l'adresse exacte du site ou du fournisseur pour confirmer l'impact",
+          "Pas d'information sur les autres sites (7 restants) pour confirmer qu'ils ne sont pas affectés"
+        ]
+      },
+      "logical_coherence": {
+        "score": 8,
+        "confidence": 0.85,
+        "comment": "Raisonnement structuré et conclusion cohérente avec les preuves présentées. Lien logique clair entre l'événement climatique majeur et la décision 'OUI'.",
+        "evidence": [
+          "Progression logique: événement majeur → zone industrielle affectée → site dans cette zone → décision OUI",
+          "Niveau de confiance élevé (0.95) cohérent avec la gravité de l'événement et la source officielle",
+          "Référence historique (inondations 2011) renforce la pertinence de l'alerte",
+          "Mots-clés identifiés ('inondation', 'Bangkok', 'caoutchouc', 'production') pertinents pour l'analyse"
+        ],
+        "weaknesses": [
+          "Le mot-clé 'caoutchouc' n'apparaît pas dans le document source fourni, ce qui crée une incohérence",
+          "Pas d'explication sur le niveau de confiance 0.95 spécifiquement (pourquoi pas 0.9 ou 1.0?)",
+          "Manque de nuance sur le degré d'impact (l'analyse ne distingue pas entre risque potentiel et impact confirmé)"
+        ]
+      },
+      "traceability": {
+        "score": 7,
+        "confidence": 0.8,
+        "comment": "Traçabilité correcte pour la source et le site, mais lacunes importantes sur l'identification du fournisseur et l'origine des mots-clés.",
+        "evidence": [
+          "Source clairement tracée avec URL, date et type de source",
+          "Site 'site_bangkok' lié à la mention de Lat Krabang dans le document",
+          "Vérification de source explicitement documentée (verified: true)",
+          "Décision et niveau de confiance clairement indiqués"
+        ],
+        "weaknesses": [
+          "Aucune traçabilité pour 'supplier_thai_rubber': pas de mention dans le document source de ce fournisseur spécifique",
+          "Mot-clé 'caoutchouc' non traçable dans le document source",
+          "Mot-clé 'production' apparaît dans le titre mais pas justifié comme critère de matching",
+          "Pas de référence aux données internes Hutchinson utilisées pour identifier les entités",
+          "Absence de traçabilité sur la méthode de calcul du niveau de confiance 0.95"
+        ]
+      },
+      "weighted_score": 7.3,
+      "confidence_overall": 0.81
+    },
+    "risk_analyzer_evaluation": {
+      "source_relevance": {
+        "score": 9,
+        "confidence": 0.95,
+        "comment": "Source officielle (Thai Meteorological Department) hautement fiable avec données météorologiques précises et référence historique pertinente (inondations 2011).",
+        "evidence": [
+          "Source gouvernementale officielle: Thai Meteorological Department (TMD)",
+          "Données quantitatives précises: 280mm de pluie, 3.2m au-dessus normale, durée 14-21 jours",
+          "Référence historique pertinente: inondations 2011 avec 60% d'usines arrêtées pendant 3 mois",
+          "Zones géographiques spécifiques identifiées: Lat Krabang (zone industrielle)",
+          "URL source vérifiable fournie"
+        ],
+        "weaknesses": [
+          "Pas de validation croisée avec d'autres sources météorologiques",
+          "Absence de données en temps réel sur l'état actuel des infrastructures industrielles"
+        ]
+      },
+      "company_data_alignment": {
+        "score": 8,
+        "confidence": 0.9,
+        "comment": "Bonne utilisation des données Hutchinson avec identification correcte des entités impactées, mais manque de détails sur certaines relations supply chain.",
+        "evidence": [
+          "Site Bangkok correctement identifié avec coordonnées exactes (13.7563, 100.5018)",
+          "Fournisseur Thai Rubber Industries identifié avec distance calculée (11.89 km)",
+          "Criticité correctement évaluée: site 'moyen', fournisseur 'fort'",
+          "Backup identifié: supplier_vietnam_rubber mentionné",
+          "Volume annuel précis: 5M EUR pour Thai Rubber Industries",
+          "Stock tampon documenté: 7 jours"
+        ],
+        "weaknesses": [
+          "Production value EUR à 0 pour le site Bangkok (donnée manquante ou incohérente)",
+          "Employee count à 0 (donnée manquante)",
+          "Pas de détails sur les autres sites potentiellement impactés indirectement",
+          "Relations entre site Bangkok et autres fournisseurs non explorées"
+        ]
+      },
+      "logical_coherence": {
+        "score": 9,
+        "confidence": 0.92,
+        "comment": "Analyse en cascade très cohérente avec raisonnement logique solide reliant probabilité d'impact, durée, stocks et conséquences financières.",
+        "evidence": [
+          "Chaîne logique claire: inondation → arrêt fournisseur (14j) → épuisement stock (7j) → rupture production",
+          "Probabilité d'impact élevée justifiée (92%) par vulnérabilité historique Bangkok",
+          "Calcul cohérent: 7 jours stock < 14 jours perturbation = rupture imminente",
+          "Impact financier 2.85M EUR (57% du volume annuel) logiquement dérivé",
+          "Niveau CRITIQUE justifié par convergence de 5 facteurs documentés",
+          "Timeline cascade cohérente: 0-7j stock → 7-21j disruption → 10-21j retards clients"
+        ],
+        "weaknesses": [
+          "Hypothèse de 'ralentissement 40-60%' pendant transition vers backup non détaillée dans le calcul",
+          "Impact sur les autres sites Hutchinson (effet domino) mentionné mais non quantifié"
+        ]
+      },
+      "completeness": {
+        "score": 8,
+        "confidence": 0.88,
+        "comment": "Analyse complète couvrant la majorité des aspects critiques, mais certains éléments de cascade inter-sites et impacts clients restent superficiels.",
+        "evidence": [
+          "Sites impactés: 1 identifié avec niveau d'impact",
+          "Fournisseurs impactés: 1 identifié avec analyse détaillée",
+          "Cascade analysis présente avec probabilité, durée, impact financier",
+          "8 recommandations couvrant court/moyen/long terme",
+          "Timeline détaillée: 0-24h, 24-48h, 1 semaine, 1-3 mois, 3-6 mois",
+          "Impact client documenté: retards 10-21 jours, pénalités contractuelles",
+          "Coûts estimés: 2.85M EUR avec composantes (production, bascule, logistique, pénalités)"
+        ],
+        "weaknesses": [
+          "Pas d'analyse des sites de backup mentionnés (capacité, délai activation)",
+          "Impact sur les clients finaux (automobile, aéronautique) non détaillé par secteur",
+          "Pas d'analyse de sensibilité sur les hypothèses (durée, probabilité)",
+          "Risques secondaires non explorés (qualité produits backup, conformité certifications)"
+        ]
+      },
+      "recommendation_appropriateness": {
+        "score": 9,
+        "confidence": 0.93,
+        "comment": "Recommandations très concrètes, actionnables et bien priorisées avec timelines réalistes et rationales solides pour chaque action.",
+        "evidence": [
+          "8 recommandations structurées par urgence (IMMEDIATE, HIGH, MEDIUM, LOW)",
+          "Actions immédiates claires: activation backup, cellule crise 24/7, négociation express",
+          "Timelines précises et réalistes: 0-24h, 24-48h, 1 semaine, 1-3 mois, 3-6 mois",
+          "Rationales détaillées pour chaque action justifiant l'urgence",
+          "Actions opérationnelles concrètes: transfert 100% commandes, livraisons avion, stocks 7→21j",
+          "Mix équilibré: actions court terme (crise) + moyen terme (résilience) + long terme (prévention)",
+          "Quantifications précises: +150% capacité, stocks 21j, diversification 40/30/30%"
+        ],
+        "weaknesses": [
+          "Pas de responsables désignés pour chaque action",
+          "Coûts des recommandations non estimés (ex: surcoût livraisons avion, monitoring climatique)"
+        ]
+      },
+      "traceability": {
+        "score": 7,
+        "confidence": 0.85,
+        "comment": "Bonne traçabilité globale avec sources identifiées, mais certains calculs financiers et hypothèses manquent de transparence détaillée.",
+        "evidence": [
+          "Source document clairement référencée: Thai Meteorological Department avec URL",
+          "Coordonnées géographiques tracées: site (13.7563, 100.5018), fournisseur (13.65, 100.49)",
+          "Distance calculée: 11.89 km avec méthode géographique documentée",
+          "Données fournisseur tracées: 5M EUR volume, 7j lead time, 'bon' santé financière",
+          "Référence historique: inondations 2011 avec 60% usines arrêtées",
+          "Probabilité 92% justifiée par vulnérabilité historique Bangkok"
+        ],
+        "weaknesses": [
+          "Calcul détaillé de 2.85M EUR non décomposé (pertes production + bascule + logistique + pénalités)",
+          "Hypothèse 'ralentissement 40-60%' non tracée à une source ou calcul",
+          "Estimation 'retards 10-21 jours' non détaillée dans le calcul",
+          "Stock tampon 7 jours: source de cette donnée non indiquée",
+          "Capacité du fournisseur vietnamien à absorber +150% non vérifiée"
+        ]
+      },
+      "strategic_alignment": {
+        "score": 8,
+        "confidence": 0.87,
+        "comment": "Bonne prise en compte des priorités stratégiques avec focus sur continuité production et relation client, mais priorisation entre sites pourrait être plus explicite.",
+        "evidence": [
+          "Focus sur continuité d'activité: activation immédiate backup, cellule crise 24/7",
+          "Protection relation client: alerte proactive, solutions alternatives, transparence",
+          "Résilience long terme: diversification géographique, stocks sécurité, monitoring",
+          "Secteurs stratégiques identifiés: automobile et aéronautique 'particulièrement sensibles'",
+          "Criticité fournisseur unique reconnue avec plan de mitigation",
+          "Protection financière: limitation pénalités, optimisation coûts transition"
+        ],
+        "weaknesses": [
+          "Site Bangkok classé 'moyen' en criticité mais traité comme prioritaire (incohérence potentielle)",
+          "Pas de comparaison explicite avec d'autres sites pour justifier la priorisation",
+          "Impact sur la stratégie globale Hutchinson (parts de marché, réputation) non abordé",
+          "Arbitrage coûts court terme vs investissements long terme non explicité"
+        ]
+      },
+      "actionability_timeline": {
+        "score": 9,
+        "confidence": 0.91,
+        "comment": "Timelines très réalistes et actionnables avec séquencement logique des actions et urgences clairement différenciées.",
+        "evidence": [
+          "Actions immédiates (0-24h) réalistes: activation backup, cellule crise",
+          "Séquencement logique: crise (0-48h) → stabilisation (1 semaine) → résilience (1-6 mois)",
+          "Urgences différenciées: IMMEDIATE (3 actions), HIGH (2), MEDIUM (2), LOW (1)",
+          "Timeline 0-12h pour cellule crise: réaliste pour mobilisation équipes",
+          "Timeline 24-48h pour négociation fournisseur: cohérente avec urgence",
+          "Timeline 1-3 mois pour diversification: réaliste pour qualification nouveaux fournisseurs",
+          "Délai 7 jours avant rupture stock clairement identifié comme contrainte critique"
+        ],
+        "weaknesses": [
+          "Pas de jalons intermédiaires pour actions longues (1-6 mois)",
+          "Dépendances entre actions non explicitées (ex: négociation avant transfert commandes)"
+        ]
+      },
+      "weighted_score": 8.32,
+      "confidence_overall": 0.9
+    },
+    "overall_quality_score": 7.81,
+    "overall_confidence": 0.85,
+    "action_recommended": "REVIEW",
+    "reasoning": "Le score global de 7.81/10 se situe dans la fourchette 7.0-8.4 avec une confiance globale de 0.85 qui atteint le seuil de 0.80. Selon les règles de décision, cette combinaison correspond au cas 'score global 7.0-8.4 ET confiance ≥ 0.80', ce qui déclenche une validation humaine standard.",
+    "metadata": {
+      "judge_model": "claude-sonnet-4-5-20250929",
+      "evaluation_timestamp": "2026-01-31T18:52:17.344022Z",
+      "weights_used": "climatique",
+      "total_criteria_evaluated": 12
+    }
+  }
+}

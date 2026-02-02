@@ -1,5 +1,5 @@
 """
-Repository pour les analyses - Gestion de la table "analyses"
+Repository pour les analyses - Gestion de la table "pertinence_checks"
 """
 
 import json
@@ -8,13 +8,13 @@ from typing import Optional, List, Dict
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from src.storage.models import Analysis, Document
+from src.storage.models import PertinenceCheck, Document
 
 logger = structlog.get_logger()
 
 
 class AnalysisRepository:
-    """Repository pour les opérations CRUD sur les analyses"""
+    """Repository pour les opérations CRUD sur les analyses (pertinence_checks)"""
     
     def __init__(self, session: Session):
         self.session = session
@@ -28,9 +28,9 @@ class AnalysisRepository:
         matched_nc_codes: List[str] = None,
         llm_reasoning: str = None,
         metadata: Dict = None
-    ) -> Analysis:
+    ) -> PertinenceCheck:
         """
-        Crée une nouvelle analyse
+        Crée une nouvelle analyse de pertinence
         
         Args:
             document_id: ID du document analysé
@@ -42,16 +42,30 @@ class AnalysisRepository:
             metadata: Métadonnées additionnelles
             
         Returns:
-            Analysis créée
+            PertinenceCheck créée
         """
-        analysis = Analysis(
+        # Convertir is_relevant en decision
+        if is_relevant:
+            decision = "OUI"
+        else:
+            decision = "NON"
+        
+        # Construire matched_elements
+        matched_elements = {
+            "keywords": matched_keywords or [],
+            "nc_codes": matched_nc_codes or []
+        }
+        
+        analysis = PertinenceCheck(
             document_id=document_id,
-            is_relevant=is_relevant,
+            decision=decision,
             confidence=confidence,
-            matched_keywords=matched_keywords or [],
-            matched_nc_codes=matched_nc_codes or [],
-            llm_reasoning=llm_reasoning,
-            validation_status="pending"
+            reasoning=llm_reasoning or "Analyse automatique",
+            matched_elements=matched_elements,
+            affected_sites=[],
+            affected_suppliers=[],
+            llm_model="claude-sonnet-4-20250514",
+            analysis_metadata=metadata or {}
         )
         
         self.session.add(analysis)
@@ -71,7 +85,7 @@ class AnalysisRepository:
         self,
         document_analysis,  # DocumentAnalysis Pydantic
         document_id: str
-    ) -> Analysis:
+    ) -> PertinenceCheck:
         """
         Sauvegarde une analyse depuis une DocumentAnalysis Pydantic
         
@@ -122,29 +136,29 @@ class AnalysisRepository:
         
         return analysis
     
-    def find_by_id(self, analysis_id: str) -> Optional[Analysis]:
+    def find_by_id(self, analysis_id: str) -> Optional[PertinenceCheck]:
         """Récupère une analyse par son ID"""
         return self.session.query(Analysis).filter_by(id=analysis_id).first()
     
-    def find_by_document(self, document_id: str) -> Optional[Analysis]:
+    def find_by_document(self, document_id: str) -> Optional[PertinenceCheck]:
         """Récupère l'analyse associée à un document"""
         return self.session.query(Analysis).filter_by(
             document_id=document_id
         ).order_by(Analysis.created_at.desc()).first()
     
-    def find_all_relevant(self, limit: int = 100) -> List[Analysis]:
+    def find_all_relevant(self, limit: int = 100) -> List[PertinenceCheck]:
         """Récupère toutes les analyses pertinentes"""
         return self.session.query(Analysis).filter_by(
             is_relevant=True
         ).order_by(Analysis.created_at.desc()).limit(limit).all()
     
-    def find_by_status(self, validation_status: str, limit: int = 100) -> List[Analysis]:
+    def find_by_status(self, validation_status: str, limit: int = 100) -> List[PertinenceCheck]:
         """Récupère les analyses par statut de validation"""
         return self.session.query(Analysis).filter_by(
             validation_status=validation_status
         ).order_by(Analysis.created_at.desc()).limit(limit).all()
     
-    def approve(self, analysis_id: str, validated_by: str = "system", comment: str = "") -> Analysis:
+    def approve(self, analysis_id: str, validated_by: str = "system", comment: str = "") -> PertinenceCheck:
         """Approuve une analyse"""
         analysis = self.find_by_id(analysis_id)
         if analysis:
@@ -158,7 +172,7 @@ class AnalysisRepository:
         
         return analysis
     
-    def reject(self, analysis_id: str, validated_by: str = "system", comment: str = "") -> Analysis:
+    def reject(self, analysis_id: str, validated_by: str = "system", comment: str = "") -> PertinenceCheck:
         """Rejette une analyse"""
         analysis = self.find_by_id(analysis_id)
         if analysis:

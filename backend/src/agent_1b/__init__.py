@@ -11,7 +11,7 @@ Output validé avec Pydantic.
 
 __version__ = "0.1.0"
 
-from .agent import Agent1B, run_agent_1b_on_document
+from .agent import Agent1B, run_agent_1b
 from .models import (
     DocumentAnalysis,
     AnalysisAlert,

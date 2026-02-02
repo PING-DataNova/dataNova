@@ -1,0 +1,99 @@
+{
+  "export_timestamp": "2026-01-31T20:05:22.483996+00:00",
+  "total_evaluations": 1,
+  "overview": {
+    "avg_overall_score": 7.81,
+    "avg_confidence": 0.85,
+    "avg_pertinence_score": 7.3,
+    "avg_risk_score": 8.32
+  },
+  "criteria_scores": {
+    "pertinence_source_relevance": {
+      "average": 9.0,
+      "min": 9,
+      "max": 9,
+      "count": 1
+    },
+    "pertinence_company_data_alignment": {
+      "average": 6.0,
+      "min": 6,
+      "max": 6,
+      "count": 1
+    },
+    "pertinence_logical_coherence": {
+      "average": 8.0,
+      "min": 8,
+      "max": 8,
+      "count": 1
+    },
+    "pertinence_traceability": {
+      "average": 7.0,
+      "min": 7,
+      "max": 7,
+      "count": 1
+    },
+    "risk_source_relevance": {
+      "average": 9.0,
+      "min": 9,
+      "max": 9,
+      "count": 1
+    },
+    "risk_company_data_alignment": {
+      "average": 8.0,
+      "min": 8,
+      "max": 8,
+      "count": 1
+    },
+    "risk_logical_coherence": {
+      "average": 9.0,
+      "min": 9,
+      "max": 9,
+      "count": 1
+    },
+    "risk_completeness": {
+      "average": 8.0,
+      "min": 8,
+      "max": 8,
+      "count": 1
+    },
+    "risk_recommendation_appropriateness": {
+      "average": 9.0,
+      "min": 9,
+      "max": 9,
+      "count": 1
+    },
+    "risk_traceability": {
+      "average": 7.0,
+      "min": 7,
+      "max": 7,
+      "count": 1
+    },
+    "risk_strategic_alignment": {
+      "average": 8.0,
+      "min": 8,
+      "max": 8,
+      "count": 1
+    },
+    "risk_actionability_timeline": {
+      "average": 9.0,
+      "min": 9,
+      "max": 9,
+      "count": 1
+    }
+  },
+  "decisions": {
+    "REVIEW": {
+      "count": 1,
+      "percentage": 100.0
+    }
+  },
+  "event_types": {
+    "climatique": {
+      "count": 1,
+      "avg_score": 7.81,
+      "decisions": {
+        "REVIEW": 1
+      }
+    }
+  }
+}

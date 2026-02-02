@@ -1,90 +1,113 @@
-# Agent 2 - Analyse d'impact
+# Agent 2 - Risk Analyzer
 
-**Responsable** : Dev 4
+**Version**: 2.1 (avec raisonnement LLM en cascade et prompts adaptés)
 
-## Mission
+**Modèle LLM**: Claude Sonnet 4 (20250514)
 
-Analyser l'impact des lois validees (analyses approuvees) sur l'entreprise et
-produire des metriques d'impact exploitables.
+## 🎯 Rôle
 
-## Workflow
+Agent 2 est le cœur de PING. Il analyse l'impact d'un événement sur la supply chain de Hutchinson en 3 étapes :
 
+1. **Projection Multi-Mode**: Identifie les sites et fournisseurs impactés selon le type de risque.
+2. **Analyse de Criticité**: Évalue la criticité de chaque entité impactée.
+3.**Raisonnement LLM en Cascade**: Analyse l'impact complet sur toute la chaîne et génère des recommandations.
+
+## 📊 Architecture
+
+```mermaid
+graph TD
+    A[Document] --> B{Agent 2};
+    B --> C{Détection Type de Risque};
+    C -->|Climatique| D[Projection Géographique];
+    C -->|Réglementaire| E[Projection Réglementaire];
+    C -->|Géopolitique| F[Projection Géopolitique];
+    D --> G[Entités Impactées];
+    E --> G;
+    F --> G;
+    G --> H{Analyse de Criticité};
+    H --> I{Raisonnement LLM en Cascade};
+    I --> J[Analyse d'Impact Complète];
+    J --> K[Recommandations Actionnables];
 ```
-Input: Analyses avec validation_status="approved"
-   |
-1. Charger l'analyse et le document
-   |
-2. Charger les donnees entreprise (company_processes)
-   |
-3. Faire le matching loi <-> donnees entreprise
-   |
-4. Produire les metriques d'impact
-   |
-5. Creer ImpactAssessment
-   |
-Output: ImpactAssessment (1 ligne par loi)
+
+## 🧠 Raisonnement LLM Adapté
+
+Le raisonnement LLM utilise des prompts spécifiques pour chaque type de risque :
+
+### 1. Prompt Climatique 🌧️
+
+Focus sur :
+
+- Durée de la perturbation
+- Impact logistique (routes, transports)
+- Délai avant rupture de stock
+- Alternatives logistiques
+- Cascade sur production et livraisons
+
+### 2. Prompt Réglementaire 📋
+
+Focus sur :
+
+- Applicabilité et conformité actuelle
+- Coûts de mise en conformité
+- Délai légal pour se conformer
+- Impact sur compétitivité
+- Risque de pénalités
+
+### 3. Prompt Géopolitique 🌍
+
+Focus sur :
+
+- Sanctions économiques
+- Fermeture de frontières
+- Routes commerciales perturbées
+- Sécurité des installations
+- Alternatives géographiques
+
+## 🚀 Utilisation
+
+### Installation
+
+```bash
+# Installer les dépendances
+uv add anthropic
+
+# Configurer la clé API
+export ANTHROPIC_API_KEY="votre_clé"
 ```
 
-## Base de donnees
+### Exemple de Code
 
-### Input (lecture)
-- `analyses` (validation_status="approved")
-- `documents` (workflow_status="validated")
-- `company_processes`
+```python
+from agents.agent_2 import Agent2
 
-### Output (ecriture)
-- `impact_assessments` (nouvelle entree)
+# Initialiser l'agent
+agent = Agent2(llm_model="claude-sonnet-4-20250514")
 
-## Metriques d'impact (sans score chiffre)
+# Analyser un événement
+result = agent.analyze(
+    document=document_mock,
+    pertinence_result=pertinence_mock,
+    sites=sites_mock,
+    suppliers=suppliers_mock,
+    relationships=relationships_mock
+)
 
-- `risk_main` (choix predefini)
-- `impact_level` (faible | moyen | eleve)
-- `risk_details` (texte libre)
-- `modality` (choix predefini)
-- `deadline` (format MM-YYYY)
-- `recommendation` (texte libre)
+# Afficher les résultats
+print(result)
+```
 
-## Fichiers a implementer
+## 🧪 Tests
 
-### 1. `agent.py`
-Classe principale `Agent2` avec :
-- `__init__()` : Initialisation LLM + outils
-- `run()` : Pipeline principal
-- `analyze_impact(analysis_id)` : Analyse une regulation validee
+Le fichier `test_agent_2.py` contient 3 scénarios de test complets :
 
-### 2. `tools/impact_analyzer.py`
-Outil pour produire les metriques d'impact.
+1. **Inondation Bangkok** (climatique)
+2.**CBAM Europe** (réglementaire)
+3.**Conflit Ukraine** (géopolitique)
 
-### 3. `tools/action_recommender.py`
-Outil pour proposer une recommendation textuelle.
+Pour lancer les tests :
 
-### 4. `prompts/agent_2_prompt.py`
-Prompt principal oriente metriques d'impact.
-
-## Modeles SQLAlchemy
-
-- `ImpactAssessment` (metriques d'impact)
-- `Analysis` (lien loi validee)
-- `CompanyProcess` (donnees entreprise)
-
-## Tests (a creer)
-
-- `tests/test_agent_2.py`
-- Test `analyze_impact()`
-- Test `generate_recommendations()`
-- Test creation `ImpactAssessment`
-
-## Exemple d'output
-
-```json
-{
-  "analysis_id": "analysis_456",
-  "regulation_type": "CBAM",
-  "risk_main": "fiscal",
-  "impact_level": "eleve",
-  "risk_details": "Taxes carbone sur imports acier",
-  "modality": "certificat",
-  "deadline": "12-2025",
-  "recommendation": "Prioriser transport bas-carbone et preparer les certificats CO2."
-}
+```bash
+cd backend/src/agents/agent_2
+python test_agent_2.py
 ```

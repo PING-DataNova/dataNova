@@ -1,0 +1,126 @@
+{
+  "description": "Configuration des domaines EUR-Lex pour la collecte de l'Agent 1A",
+  "version": "1.0",
+  "last_updated": "2026-02-01",
+  
+  "domains": {
+    "environment": {
+      "name": "Environnement",
+      "code": "15",
+      "enabled": true,
+      "description": "Législation environnementale (émissions, déchets, substances)",
+      "subdomains": [
+        {"code": "1510", "name": "Environnement - Généralités"},
+        {"code": "1520", "name": "Espace, environnement et protection de la nature"},
+        {"code": "1530", "name": "Lutte contre la pollution"},
+        {"code": "1540", "name": "Gestion des déchets"}
+      ]
+    },
+    "industry": {
+      "name": "Politique industrielle et marché intérieur",
+      "code": "13",
+      "enabled": true,
+      "description": "Réglementation industrielle, normes, conformité produits",
+      "subdomains": [
+        {"code": "1310", "name": "Politique industrielle"},
+        {"code": "1320", "name": "Normalisation technique"},
+        {"code": "1330", "name": "Libre circulation des marchandises"}
+      ]
+    },
+    "external_trade": {
+      "name": "Relations extérieures et commerce",
+      "code": "11",
+      "enabled": true,
+      "description": "Commerce international, douanes, tarifs (CBAM)",
+      "subdomains": [
+        {"code": "1110", "name": "Relations extérieures"},
+        {"code": "1120", "name": "Politique commerciale commune"},
+        {"code": "1130", "name": "Régimes douaniers"}
+      ]
+    },
+    "energy": {
+      "name": "Énergie",
+      "code": "12",
+      "enabled": true,
+      "description": "Énergie, émissions CO2, énergies renouvelables",
+      "subdomains": [
+        {"code": "1210", "name": "Politique énergétique"},
+        {"code": "1220", "name": "Charbon"},
+        {"code": "1230", "name": "Hydrocarbures"},
+        {"code": "1240", "name": "Électricité"},
+        {"code": "1250", "name": "Énergie nucléaire"}
+      ]
+    },
+    "transport": {
+      "name": "Transports",
+      "code": "07",
+      "enabled": true,
+      "description": "Normes véhicules, émissions transport",
+      "subdomains": [
+        {"code": "0710", "name": "Politique des transports"},
+        {"code": "0720", "name": "Transport terrestre"},
+        {"code": "0730", "name": "Transport maritime"},
+        {"code": "0740", "name": "Transport aérien"}
+      ]
+    },
+    "company_law": {
+      "name": "Droit des sociétés et reporting",
+      "code": "17",
+      "enabled": true,
+      "description": "CSRD, reporting extra-financier, gouvernance",
+      "subdomains": [
+        {"code": "1710", "name": "Droit des sociétés"},
+        {"code": "1720", "name": "Comptabilité"}
+      ]
+    }
+  },
+  
+  "document_types": {
+    "regulation": {
+      "code": "R",
+      "name": "Règlement",
+      "enabled": true,
+      "description": "Acte juridique contraignant, directement applicable"
+    },
+    "directive": {
+      "code": "L",
+      "name": "Directive",
+      "enabled": true,
+      "description": "Acte juridique fixant des objectifs à transposer"
+    },
+    "decision": {
+      "code": "D",
+      "name": "Décision",
+      "enabled": true,
+      "description": "Acte juridique obligatoire pour ses destinataires"
+    },
+    "implementing_act": {
+      "code": "R",
+      "subtype": "implementing",
+      "name": "Acte d'exécution",
+      "enabled": true,
+      "description": "Règlement d'exécution"
+    },
+    "delegated_act": {
+      "code": "R",
+      "subtype": "delegated",
+      "name": "Acte délégué",
+      "enabled": true,
+      "description": "Règlement délégué"
+    }
+  },
+  
+  "collection_settings": {
+    "collections": ["LEGISLATION", "CONSLEG"],
+    "language": "en",
+    "max_age_days": 365,
+    "default_page_size": 50,
+    "description": "LEGISLATION = textes originaux, CONSLEG = textes consolidés"
+  },
+  
+  "notes": {
+    "domain_codes": "Les codes correspondent aux répertoires EUR-Lex (Directory codes)",
+    "celex_type": "Le caractère type dans CELEX: R=Règlement, L=Directive, D=Décision",
+    "api_doc": "https://eur-lex.europa.eu/content/tools/webservices/DataExtractionUsingWebServices-v1.00.pdf"
+  }
+}

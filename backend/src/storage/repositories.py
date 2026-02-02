@@ -10,12 +10,11 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from src.storage.models import (
     Document,
-    Analysis,
+    PertinenceCheck,
+    RiskAnalysis,
     Alert,
     ExecutionLog,
     CompanyProfile,
-    CompanyProcess,
-    ImpactAssessment,
 )
 
 
@@ -108,8 +107,11 @@ class DocumentRepository:
                 existing.status = "modified"
                 existing.content = content
                 existing.hash_sha256 = hash_sha256
-                existing.nc_codes = nc_codes
-                existing.document_metadata = document_metadata
+                # Stocker nc_codes dans extra_metadata
+                metadata = document_metadata or {}
+                if nc_codes:
+                    metadata["nc_codes"] = nc_codes
+                existing.extra_metadata = metadata
                 existing.last_checked = datetime.utcnow()
                 self.session.flush()
                 return (existing, "modified")
@@ -119,18 +121,21 @@ class DocumentRepository:
                 self.session.flush()
                 return (existing, "unchanged")
         else:
-            # Nouveau document
+            # Nouveau document - stocker nc_codes dans extra_metadata
+            metadata = document_metadata or {}
+            if nc_codes:
+                metadata["nc_codes"] = nc_codes
+            
             document = Document(
                 source_url=source_url,
                 hash_sha256=hash_sha256,
                 title=title,
                 content=content,
-                nc_codes=nc_codes,
-                regulation_type=regulation_type,
+                event_type="reglementaire",
+                event_subtype=regulation_type,
                 publication_date=publication_date,
-                document_metadata=document_metadata,
+                extra_metadata=metadata,
                 status="new",
-                workflow_status="raw",
                 first_seen=datetime.utcnow(),
                 last_checked=datetime.utcnow()
             )
@@ -250,17 +255,17 @@ class AnalysisRepository:
     def __init__(self, session: Session):
         self.session = session
     
-    def save(self, analysis: Analysis) -> Analysis:
+    def save(self, analysis: PertinenceCheck) -> PertinenceCheck:
         """Sauvegarder une analyse"""
         self.session.add(analysis)
         self.session.flush()
         return analysis
     
-    def find_by_id(self, analysis_id: str) -> Optional[Analysis]:
+    def find_by_id(self, analysis_id: str) -> Optional[PertinenceCheck]:
         """Trouver une analyse par ID"""
-        return self.session.query(Analysis).filter(Analysis.id == analysis_id).first()
+        return self.session.query(PertinenceCheck).filter(PertinenceCheck.id == analysis_id).first()
     
-    def find_by_document_id(self, document_id: str) -> Optional[Analysis]:
+    def find_by_document_id(self, document_id: str) -> Optional[PertinenceCheck]:
         """
         Trouver l'analyse d'un document spécifique
         
@@ -270,12 +275,12 @@ class AnalysisRepository:
         Returns:
             Analyse ou None
         """
-        return self.session.query(Analysis)\
-            .filter(Analysis.document_id == document_id)\
-            .order_by(Analysis.created_at.desc())\
+        return self.session.query(PertinenceCheck)\
+            .filter(PertinenceCheck.document_id == document_id)\
+            .order_by(PertinenceCheck.created_at.desc())\
             .first()
     
-    def list_relevant_analyses(self, validation_status: str = "approved") -> List[Analysis]:
+    def list_relevant_analyses(self, validation_status: str = "approved") -> List[PertinenceCheck]:
         """
         Lister les analyses par validation_status
         
@@ -285,12 +290,12 @@ class AnalysisRepository:
         Returns:
             Liste d'analyses
         """
-        return self.session.query(Analysis)\
-            .filter(Analysis.validation_status == validation_status)\
-            .order_by(Analysis.created_at.desc())\
+        return self.session.query(PertinenceCheck)\
+            .filter(PertinenceCheck.validation_status == validation_status)\
+            .order_by(PertinenceCheck.created_at.desc())\
             .all()
     
-    def find_by_validation_status(self, validation_status: str) -> List[Analysis]:
+    def find_by_validation_status(self, validation_status: str) -> List[PertinenceCheck]:
         """
         Trouver les analyses par validation_status
         
@@ -300,9 +305,9 @@ class AnalysisRepository:
         Returns:
             Liste d'analyses
         """
-        return self.session.query(Analysis)\
-            .filter(Analysis.validation_status == validation_status)\
-            .order_by(Analysis.created_at.desc())\
+        return self.session.query(PertinenceCheck)\
+            .filter(PertinenceCheck.validation_status == validation_status)\
+            .order_by(PertinenceCheck.created_at.desc())\
             .all()
     
     def update_validation(
@@ -338,38 +343,38 @@ class AnalysisRepository:
 
 
 class ImpactAssessmentRepository:
-    """Repository pour gérer les analyses d'impact (Agent 2)"""
+    """Repository pour gérer les analyses d'impact (Agent 2) - Utilise RiskAnalysis"""
     
     def __init__(self, session: Session):
         self.session = session
     
-    def save(self, impact: ImpactAssessment) -> ImpactAssessment:
+    def save(self, impact: RiskAnalysis) -> RiskAnalysis:
         """Sauvegarder une analyse d'impact"""
         self.session.add(impact)
         self.session.flush()
         return impact
     
-    def find_by_id(self, impact_id: str) -> Optional[ImpactAssessment]:
+    def find_by_id(self, impact_id: str) -> Optional[RiskAnalysis]:
         """Trouver une analyse d'impact par ID"""
-        return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.id == impact_id)\
+        return self.session.query(RiskAnalysis)\
+            .filter(RiskAnalysis.id == impact_id)\
             .first()
     
-    def find_by_analysis_id(self, analysis_id: str) -> Optional[ImpactAssessment]:
+    def find_by_analysis_id(self, analysis_id: str) -> Optional[RiskAnalysis]:
         """
         Trouver l'analyse d'impact pour une analyse donnée
         
         Args:
-            analysis_id: ID de l'analyse
+            analysis_id: ID de l'analyse (pertinence_check_id)
         
         Returns:
-            ImpactAssessment ou None
+            RiskAnalysis ou None
         """
-        return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.analysis_id == analysis_id)\
+        return self.session.query(RiskAnalysis)\
+            .filter(RiskAnalysis.pertinence_check_id == analysis_id)\
             .first()
     
-    def list_by_impact_level(self, impact_level: str) -> List[ImpactAssessment]:
+    def list_by_impact_level(self, impact_level: str) -> List[RiskAnalysis]:
         """
         Lister les analyses d'impact par niveau d'impact
 
@@ -379,12 +384,12 @@ class ImpactAssessmentRepository:
         Returns:
             Liste d'analyses d'impact
         """
-        return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.impact_level == impact_level)\
-            .order_by(ImpactAssessment.created_at.desc())\
+        return self.session.query(RiskAnalysis)\
+            .filter(RiskAnalysis.risk_level == impact_level)\
+            .order_by(RiskAnalysis.created_at.desc())\
             .all()
 
-    def list_by_risk_main(self, risk_main: str) -> List[ImpactAssessment]:
+    def list_by_risk_main(self, risk_main: str) -> List[RiskAnalysis]:
         """
         Lister les analyses d'impact par risque principal
 
@@ -394,9 +399,9 @@ class ImpactAssessmentRepository:
         Returns:
             Liste d'analyses d'impact
         """
-        return self.session.query(ImpactAssessment)\
-            .filter(ImpactAssessment.risk_main == risk_main)\
-            .order_by(ImpactAssessment.created_at.desc())\
+        return self.session.query(RiskAnalysis)\
+            .filter(RiskAnalysis.risk_level == risk_main)\
+            .order_by(RiskAnalysis.created_at.desc())\
             .all()
 
 
@@ -611,42 +616,43 @@ class CompanyProfileRepository:
             profile.updated_at = datetime.utcnow()
             self.session.flush()
 
-class CompanyProcessRepository:
-    """Repository pour gerer les donnees entreprise (company_processes)"""
-
-    def __init__(self, session: Session):
-        self.session = session
-
-    def save(self, process: CompanyProcess) -> CompanyProcess:
-        """Sauvegarder un profil entreprise"""
-        self.session.add(process)
-        self.session.flush()
-        return process
-
-    def find_by_id(self, process_id: str) -> Optional[CompanyProcess]:
-        """Trouver un profil par ID"""
-        return self.session.query(CompanyProcess)\
-            .filter(CompanyProcess.id == process_id)\
-            .first()
-
-    def find_by_name(self, company_name: str) -> Optional[CompanyProcess]:
-        """Trouver un profil par nom d'entreprise"""
-        return self.session.query(CompanyProcess)\
-            .filter(CompanyProcess.company_name == company_name)\
-            .first()
-
-    def list_all(self) -> List[CompanyProcess]:
-        """Lister tous les profils"""
-        return self.session.query(CompanyProcess)\
-            .order_by(CompanyProcess.created_at.desc())\
-            .all()
-
-    def update(self, process_id: str, **kwargs) -> None:
-        """Mettre a jour un profil"""
-        process = self.find_by_id(process_id)
-        if process:
-            for key, value in kwargs.items():
-                if hasattr(process, key):
-                    setattr(process, key, value)
-            process.updated_at = datetime.utcnow()
+# NOTE: CompanyProcessRepository commenté car le modèle CompanyProcess n'existe plus
+# class CompanyProcessRepository:
+#     """Repository pour gerer les donnees entreprise (company_processes)"""
+#
+#     def __init__(self, session: Session):
+#         self.session = session
+#
+#     def save(self, process: CompanyProcess) -> CompanyProcess:
+#         """Sauvegarder un profil entreprise"""
+#         self.session.add(process)
+#         self.session.flush()
+#         return process
+#
+#     def find_by_id(self, process_id: str) -> Optional[CompanyProcess]:
+#         """Trouver un profil par ID"""
+#         return self.session.query(CompanyProcess)\
+#             .filter(CompanyProcess.id == process_id)\
+#             .first()
+#
+#     def find_by_name(self, company_name: str) -> Optional[CompanyProcess]:
+#         """Trouver un profil par nom d'entreprise"""
+#         return self.session.query(CompanyProcess)\
+#             .filter(CompanyProcess.company_name == company_name)\
+#             .first()
+#
+#     def list_all(self) -> List[CompanyProcess]:
+#         """Lister tous les profils"""
+#         return self.session.query(CompanyProcess)\
+#             .order_by(CompanyProcess.created_at.desc())\
+#             .all()
+#
+#     def update(self, process_id: str, **kwargs) -> None:
+#         """Mettre a jour un profil"""
+#         process = self.find_by_id(process_id)
+#         if process:
+#             for key, value in kwargs.items():
+#                 if hasattr(process, key):
+#                     setattr(process, key, value)
+#             process.updated_at = datetime.utcnow()
             self.session.flush()
