@@ -1,0 +1,83 @@
+/* Styles personnalisés pour la carte Leaflet */
+
+/* Force la carte à prendre toute la hauteur disponible */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 280px !important;
+  background: #0F172A !important;
+  border-radius: 0.75rem;
+}
+
+/* Forcer le chargement des tuiles */
+.leaflet-tile-container {
+  will-change: transform;
+}
+
+.leaflet-tile {
+  will-change: transform;
+  transition: opacity 0.2s linear;
+}
+
+/* Éviter les zones grises pendant le chargement */
+.leaflet-tile-pane {
+  background: #0F172A;
+}
+
+/* Style des popups */
+.leaflet-popup-content-wrapper {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  padding: 0;
+}
+
+.leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+}
+
+.leaflet-popup-tip {
+  background: white;
+}
+
+/* Masquer les contrôles par défaut */
+.leaflet-control-attribution {
+  display: none !important;
+}
+
+/* Style des marqueurs personnalisés */
+.custom-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Animation de pulsation pour les risques élevés */
+@keyframes pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+/* Curseur sur la carte */
+.leaflet-grab {
+  cursor: grab;
+}
+
+.leaflet-dragging .leaflet-grab {
+  cursor: grabbing;
+}
+
+/* Éviter le flicker au zoom */
+.leaflet-fade-anim .leaflet-tile {
+  will-change: opacity;
+}
+
+.leaflet-zoom-anim .leaflet-zoom-animated {
+  will-change: transform;
+}

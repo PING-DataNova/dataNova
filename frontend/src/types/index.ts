@@ -9,8 +9,10 @@ export interface Regulation {
 }
 
 export interface User {
-  id: string;
-  name: string;
-  role: 'juridique' | 'decisive';
+  id?: string;
+  name?: string;
+  email?: string;
+  fullName?: string;
+  role: 'juridique' | 'decisive' | 'admin' | string;
   avatar?: string;
 }

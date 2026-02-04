@@ -28,9 +28,9 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
       {/* Header */}
       <div className="results-header">
         <button className="back-button" onClick={onBack}>
-          ← Retour
+          Retour
         </button>
-        <h1>📊 Résultats - {supplier_info.name}</h1>
+        <h1>Résultats - {supplier_info.name}</h1>
         <p className="subtitle">{supplier_info.city ? `${supplier_info.city}, ` : ''}{supplier_info.country}</p>
       </div>
 
@@ -61,12 +61,10 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
       {/* Stats rapides */}
       <div className="quick-stats">
         <div className="stat-card regulatory">
-          <span className="stat-icon">📜</span>
           <span className="stat-value">{regulatory_risks.count}</span>
           <span className="stat-label">Risques réglementaires</span>
         </div>
         <div className="stat-card weather">
-          <span className="stat-icon">🌤️</span>
           <span className="stat-value">{weather_risks.count}</span>
           <span className="stat-label">Alertes météo</span>
         </div>
@@ -75,7 +73,7 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
       {/* Risques réglementaires */}
       {regulatory_risks.count > 0 && (
         <div className="section">
-          <h2>📜 Risques Réglementaires</h2>
+          <h2>Risques réglementaires</h2>
           <div className="risks-list">
             {regulatory_risks.items.map((risk, index) => (
               <div key={index} className={`risk-card relevance-${risk.relevance}`}>
@@ -90,9 +88,9 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
                 </div>
                 <h3>{risk.title}</h3>
                 <div className="risk-meta">
-                  <span>📋 CELEX: {risk.celex_id}</span>
-                  {risk.publication_date && <span>📅 {risk.publication_date}</span>}
-                  <span>🔍 Matière: {risk.matched_keyword}</span>
+                  <span>CELEX: {risk.celex_id}</span>
+                  {risk.publication_date && <span>{risk.publication_date}</span>}
+                  <span>Matière: {risk.matched_keyword}</span>
                 </div>
                 <a 
                   href={risk.source_url} 
@@ -100,7 +98,7 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
                   rel="noopener noreferrer"
                   className="eurlex-link"
                 >
-                  🔗 Voir sur EUR-Lex
+                  Voir sur EUR-Lex
                 </a>
               </div>
             ))}
@@ -111,7 +109,7 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
       {/* Alertes météo */}
       {weather_risks.count > 0 && (
         <div className="section">
-          <h2>🌤️ Alertes Météo (16 prochains jours)</h2>
+          <h2>Alertes météo (16 prochains jours)</h2>
           <div className="risks-list">
             {weather_risks.items.map((alert, index) => (
               <div key={index} className={`risk-card severity-${alert.severity}`}>
@@ -123,20 +121,20 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
                     {alert.severity.toUpperCase()}
                   </span>
                   <span className="alert-type">
-                    {alert.alert_type === 'heavy_rain' && '🌧️ Fortes pluies'}
-                    {alert.alert_type === 'snow' && '❄️ Neige'}
-                    {alert.alert_type === 'extreme_heat' && '🌡️ Canicule'}
-                    {alert.alert_type === 'extreme_cold' && '🥶 Grand froid'}
-                    {alert.alert_type === 'high_wind' && '💨 Vents forts'}
+                    {alert.alert_type === 'heavy_rain' && 'Fortes pluies'}
+                    {alert.alert_type === 'snow' && 'Neige'}
+                    {alert.alert_type === 'extreme_heat' && 'Canicule'}
+                    {alert.alert_type === 'extreme_cold' && 'Grand froid'}
+                    {alert.alert_type === 'high_wind' && 'Vents forts'}
                   </span>
                 </div>
                 <h3>{alert.description}</h3>
                 <div className="risk-meta">
-                  <span>📅 {alert.date}</span>
-                  <span>📊 {alert.value} {alert.unit} (seuil: {alert.threshold})</span>
+                  <span>{alert.date}</span>
+                  <span>{alert.value} {alert.unit} (seuil: {alert.threshold})</span>
                 </div>
                 <div className="supply-chain-impact">
-                  ⚠️ Impact: {alert.supply_chain_risk}
+                  Impact: {alert.supply_chain_risk}
                 </div>
               </div>
             ))}
@@ -147,7 +145,6 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
       {/* Pas de risques détectés */}
       {regulatory_risks.count === 0 && weather_risks.count === 0 && (
         <div className="no-risks">
-          <span className="no-risks-icon">✅</span>
           <h3>Aucun risque majeur détecté</h3>
           <p>Ce fournisseur ne présente pas de risques réglementaires ou météorologiques significatifs pour le moment.</p>
         </div>
@@ -156,7 +153,7 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
       {/* Recommandations */}
       {recommendations.length > 0 && (
         <div className="section">
-          <h2>💡 Recommandations</h2>
+          <h2>Recommandations</h2>
           <div className="recommendations-list">
             {recommendations.map((rec, index) => (
               <div key={index} className={`recommendation-card priority-${rec.priority}`}>
@@ -165,14 +162,14 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
                     className="priority-badge"
                     style={{ backgroundColor: PRIORITY_COLORS[rec.priority] || '#6B7280' }}
                   >
-                    {rec.priority === 'high' && '🔴 HAUTE PRIORITÉ'}
-                    {rec.priority === 'medium' && '🟠 MOYENNE'}
-                    {rec.priority === 'low' && '🟢 BASSE'}
+                    {rec.priority === 'high' && 'HAUTE PRIORITÉ'}
+                    {rec.priority === 'medium' && 'MOYENNE'}
+                    {rec.priority === 'low' && 'BASSE'}
                   </span>
                   <span className="rec-type">
-                    {rec.type === 'regulatory' && '📜'}
-                    {rec.type === 'weather' && '🌤️'}
-                    {rec.type === 'general' && '💼'}
+                    {rec.type === 'regulatory' && 'Réglementaire'}
+                    {rec.type === 'weather' && 'Météo'}
+                    {rec.type === 'general' && 'Général'}
                   </span>
                 </div>
                 <h3>{rec.action}</h3>
@@ -185,7 +182,7 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
 
       {/* Informations du fournisseur */}
       <div className="section supplier-summary">
-        <h2>📋 Récapitulatif Fournisseur</h2>
+      <h2>Récapitulatif fournisseur</h2>
         <div className="summary-grid">
           <div className="summary-item">
             <span className="label">Nom</span>
@@ -228,16 +225,16 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
 
       {/* Temps de traitement */}
       <div className="processing-info">
-        ⏱️ Analyse effectuée en {(result.processing_time_ms / 1000).toFixed(2)}s
+        Analyse effectuée en {(result.processing_time_ms / 1000).toFixed(2)}s
       </div>
 
       {/* Actions */}
       <div className="actions">
         <button className="action-button primary" onClick={onNewAnalysis}>
-          🔄 Nouvelle analyse
+          Nouvelle analyse
         </button>
         <button className="action-button secondary" onClick={onBack}>
-          📜 Retour au dashboard
+          Retour au dashboard
         </button>
       </div>
     </div>
