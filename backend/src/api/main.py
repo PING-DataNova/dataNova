@@ -28,11 +28,14 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
+        # Azure Static Web Apps
+        "https://yellow-glacier-027c6c103.1.azurestaticapps.net",
+        "https://yellow-glacier-027c6c103.azurestaticapps.net",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_origin_regex=r"https://.*\.azurestaticapps\.net",  # Accepte tous les Static Web Apps
+    allow_origin_regex=r"https://.*\.azurestaticapps\.net",  # Fallback pour tous les Static Web Apps
 )
 
 # Enregistrer les routes
