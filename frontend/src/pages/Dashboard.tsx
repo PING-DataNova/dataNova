@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { User, RiskData, Notification } from '../types';
 import RiskTable from '../components/RiskTable';
 import NotificationCenter from '../components/NotificationCenter';
-import { PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area, Tooltip } from 'recharts';
+import RiskMatrix, { RiskMatrixItem } from '../components/RiskMatrix';
+import SupplierMap, { SupplierLocation } from '../components/SupplierMap';
 import { impactsService } from '../services/impactsService';
+import { USE_MOCK_DATA, MOCK_IMPACTS, MOCK_IMPACT_STATS, MOCK_TREND_DATA, MOCK_SUPPLIERS } from '../data/mockImpacts';
 
 interface DashboardProps {
   user: User;
@@ -12,10 +14,126 @@ interface DashboardProps {
   onNavigate: (page: 'landing' | 'login' | 'register' | 'dashboard' | 'agent' | 'supplier-analysis') => void;
 }
 
+// Interface pour les utilisateurs en attente (Admin)
+interface PendingUser {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  department?: string;
+  requestDate: Date;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+// Données mock des utilisateurs en attente
+const MOCK_PENDING_USERS: PendingUser[] = [
+  {
+    id: '1',
+    fullName: 'Marie Dupont',
+    email: 'marie.dupont@hutchinson.com',
+    role: 'Analyste',
+    department: 'Supply Chain',
+    requestDate: new Date('2026-02-03T14:30:00'),
+    status: 'pending',
+  },
+  {
+    id: '2',
+    fullName: 'Pierre Martin',
+    email: 'pierre.martin@hutchinson.com',
+    role: 'Manager',
+    department: 'Achats',
+    requestDate: new Date('2026-02-02T09:15:00'),
+    status: 'pending',
+  },
+  {
+    id: '3',
+    fullName: 'Sophie Bernard',
+    email: 'sophie.bernard@hutchinson.com',
+    role: 'Analyste',
+    department: 'Qualité',
+    requestDate: new Date('2026-02-01T16:45:00'),
+    status: 'pending',
+  },
+  {
+    id: '4',
+    fullName: 'Lucas Petit',
+    email: 'lucas.petit@hutchinson.com',
+    role: 'Viewer',
+    department: 'Production',
+    requestDate: new Date('2026-01-31T11:20:00'),
+    status: 'pending',
+  },
+  {
+    id: '5',
+    fullName: 'Emma Leroy',
+    email: 'emma.leroy@hutchinson.com',
+    role: 'Analyste',
+    department: 'R&D',
+    requestDate: new Date('2026-01-30T08:00:00'),
+    status: 'approved',
+  },
+  {
+    id: '6',
+    fullName: 'Thomas Moreau',
+    email: 'thomas.moreau@external.com',
+    role: 'Viewer',
+    department: 'Externe',
+    requestDate: new Date('2026-01-29T15:30:00'),
+    status: 'rejected',
+  },
+];
+
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => {
-  const [activeTab, setActiveTab] = useState<'Réglementations' | 'Climat' | 'Géopolitique'>('Réglementations');
+  const [activeTab, setActiveTab] = useState<'Dashboard' | 'Réglementations' | 'Climat' | 'Géopolitique' | 'Administration'>('Dashboard');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showRealTimeToast, setShowRealTimeToast] = useState<string | null>(null);
+  
+  // États pour le tri des risques dans le Dashboard
+  const [sortBy, setSortBy] = useState<'risk' | 'date'>('risk');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
+  // États pour l'onglet Administration
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>(MOCK_PENDING_USERS);
+  const [adminFilter, setAdminFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [adminSearchQuery, setAdminSearchQuery] = useState('');
+  const [showConfirmModal, setShowConfirmModal] = useState<{ action: 'approve' | 'reject'; user: PendingUser } | null>(null);
+
+  // Fonctions Admin
+  const handleApprove = (userId: string) => {
+    setPendingUsers(prev => prev.map(u => 
+      u.id === userId ? { ...u, status: 'approved' as const } : u
+    ));
+    setShowConfirmModal(null);
+  };
+
+  const handleReject = (userId: string) => {
+    setPendingUsers(prev => prev.map(u => 
+      u.id === userId ? { ...u, status: 'rejected' as const } : u
+    ));
+    setShowConfirmModal(null);
+  };
+
+  const filteredPendingUsers = pendingUsers.filter(u => {
+    const matchesFilter = adminFilter === 'all' || u.status === adminFilter;
+    const matchesSearch = u.fullName.toLowerCase().includes(adminSearchQuery.toLowerCase()) ||
+                         u.email.toLowerCase().includes(adminSearchQuery.toLowerCase()) ||
+                         (u.department?.toLowerCase().includes(adminSearchQuery.toLowerCase()));
+    return matchesFilter && matchesSearch;
+  });
+
+  const pendingCount = pendingUsers.filter(u => u.status === 'pending').length;
+  const approvedCount = pendingUsers.filter(u => u.status === 'approved').length;
+  const rejectedCount = pendingUsers.filter(u => u.status === 'rejected').length;
+
+  const formatAdminDate = (date: Date) => {
+    return date.toLocaleDateString('fr-FR', { 
+      day: '2-digit', 
+      month: 'short', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
   
   // Real-time notification simulation (keep lightweight fallback)
   useEffect(() => {
@@ -44,51 +162,145 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
   const [loadingRisks, setLoadingRisks] = useState(true);
   const [impactStats, setImpactStats] = useState<{ name: string; value: number; color: string }[]>([]);
   const [trendData, setTrendData] = useState<{ name: string; val: number }[]>([]);
+  const [riskMatrixItems, setRiskMatrixItems] = useState<RiskMatrixItem[]>([]);
 
+  // Filtre des risques selon l'onglet actif
   const filteredRisks = risks.filter(r => r.category === activeTab);
+  
+  // Filtre de la matrice selon l'onglet (pour les onglets individuels)
+  const filteredMatrixItems = riskMatrixItems.filter(item => item.category === activeTab);
+
+  // Fonction pour obtenir le poids numérique du niveau de risque
+  const getRiskWeight = (level: string): number => {
+    const weights: Record<string, number> = {
+      'critique': 4,
+      'eleve': 3,
+      'élevé': 3,
+      'moyen': 2,
+      'faible': 1,
+    };
+    return weights[level.toLowerCase()] || 0;
+  };
+
+  // Tous les risques triés pour le Dashboard
+  const allRisksSorted = [...risks].sort((a, b) => {
+    if (sortBy === 'risk') {
+      const weightA = getRiskWeight(a.impact_level);
+      const weightB = getRiskWeight(b.impact_level);
+      return sortOrder === 'desc' ? weightB - weightA : weightA - weightB;
+    } else {
+      // Tri par date
+      const dateA = new Date(a.created_at || a.deadline || '').getTime();
+      const dateB = new Date(b.created_at || b.deadline || '').getTime();
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    }
+  });
 
   // Load impacts from backend and compute stats
+  // Si le backend ne retourne rien, utilise les données mock (désactivable via USE_MOCK_DATA)
   useEffect(() => {
     const loadImpacts = async () => {
       setLoadingRisks(true);
       try {
         const resp = await impactsService.getImpacts({ limit: 200 });
-        const mapped: RiskData[] = resp.impacts.map(i => ({
-          id: i.id,
-          risk_main: i.regulation_title || i.risk_main,
-          impact_level: i.impact_level as any,
-          risk_details: i.risk_details || '',
-          modality: i.modality,
-          deadline: i.deadline,
-          recommendation: i.recommendation || '',
-          llm_reasoning: i.llm_reasoning || '',
-          created_at: i.created_at,
-          category: 'Réglementations',
-        }));
+        
+        // Si le backend retourne des données, les utiliser
+        if (resp.impacts && resp.impacts.length > 0) {
+          const mapped: RiskData[] = resp.impacts.map(i => ({
+            id: i.id,
+            risk_main: i.regulation_title || i.risk_main,
+            impact_level: i.impact_level as any,
+            risk_details: i.risk_details || '',
+            modality: i.modality,
+            deadline: i.deadline,
+            recommendation: i.recommendation || '',
+            llm_reasoning: i.llm_reasoning || '',
+            created_at: i.created_at,
+            category: (i as any).category || 'Réglementations',
+          }));
 
-        setRisks(mapped);
+          setRisks(mapped);
 
-        // compute impactStats
-        const counts: Record<string, number> = {};
-        resp.impacts.forEach(it => { counts[it.impact_level] = (counts[it.impact_level] || 0) + 1; });
-        const stats = [
-          { name: 'Faible', value: counts['faible'] || 0, color: '#10B981' },
-          { name: 'Moyen', value: counts['moyen'] || 0, color: '#F59E0B' },
-          { name: 'Elevé', value: counts['eleve'] || 0, color: '#F97316' },
-          { name: 'Critique', value: counts['critique'] || 0, color: '#EF4444' },
-        ];
-        setImpactStats(stats);
+          // compute impactStats
+          const counts: Record<string, number> = {};
+          resp.impacts.forEach(it => { counts[it.impact_level] = (counts[it.impact_level] || 0) + 1; });
+          const stats = [
+            { name: 'Faible', value: counts['faible'] || 0, color: '#10B981' },
+            { name: 'Moyen', value: counts['moyen'] || 0, color: '#F59E0B' },
+            { name: 'Elevé', value: counts['eleve'] || 0, color: '#F97316' },
+            { name: 'Critique', value: counts['critique'] || 0, color: '#EF4444' },
+          ];
+          setImpactStats(stats);
 
-        // compute simple monthly trend from deadline (MM-YYYY or other)
-        const months: Record<string, number> = {};
-        resp.impacts.forEach(it => {
-          const key = it.deadline || it.created_at || 'unknown';
-          months[key] = (months[key] || 0) + 1;
-        });
-        const trend = Object.keys(months).slice(0,6).map(k => ({ name: k, val: months[k] }));
-        setTrendData(trend);
+          // compute simple monthly trend from deadline (MM-YYYY or other)
+          const months: Record<string, number> = {};
+          resp.impacts.forEach(it => {
+            const key = it.deadline || it.created_at || 'unknown';
+            months[key] = (months[key] || 0) + 1;
+          });
+          const trend = Object.keys(months).slice(0,6).map(k => ({ name: k, val: months[k] }));
+          setTrendData(trend);
+        } 
+        // Sinon, utiliser les données mock si activées
+        else if (USE_MOCK_DATA) {
+          console.log('📊 Utilisation des données de démonstration (backend vide)');
+          const mapped: RiskData[] = MOCK_IMPACTS.map(i => ({
+            id: i.id,
+            risk_main: i.regulation_title || i.risk_main,
+            impact_level: i.impact_level as any,
+            risk_details: i.risk_details || '',
+            modality: i.modality,
+            deadline: i.deadline,
+            recommendation: i.recommendation || '',
+            llm_reasoning: i.llm_reasoning || '',
+            created_at: i.created_at,
+            category: i.category,
+          }));
+          setRisks(mapped);
+          setImpactStats(MOCK_IMPACT_STATS);
+          setTrendData(MOCK_TREND_DATA);
+          
+          // Données pour la matrice de risque (toutes catégories)
+          const matrixItems: RiskMatrixItem[] = MOCK_IMPACTS.map(i => ({
+            id: i.id,
+            title: i.regulation_title,
+            riskLevel: i.risk_level,
+            impactLevel: i.impact_gravity,
+            category: i.category,
+          }));
+          setRiskMatrixItems(matrixItems);
+        }
       } catch (err) {
         console.error('Erreur récupération impacts:', err);
+        // En cas d'erreur, utiliser les données mock si activées
+        if (USE_MOCK_DATA) {
+          console.log('📊 Utilisation des données de démonstration (erreur backend)');
+          const mapped: RiskData[] = MOCK_IMPACTS.map(i => ({
+            id: i.id,
+            risk_main: i.regulation_title || i.risk_main,
+            impact_level: i.impact_level as any,
+            risk_details: i.risk_details || '',
+            modality: i.modality,
+            deadline: i.deadline,
+            recommendation: i.recommendation || '',
+            llm_reasoning: i.llm_reasoning || '',
+            created_at: i.created_at,
+            category: i.category,
+          }));
+          setRisks(mapped);
+          setImpactStats(MOCK_IMPACT_STATS);
+          setTrendData(MOCK_TREND_DATA);
+          
+          // Données pour la matrice de risque (toutes catégories)
+          const matrixItems: RiskMatrixItem[] = MOCK_IMPACTS.map(i => ({
+            id: i.id,
+            title: i.regulation_title,
+            riskLevel: i.risk_level,
+            impactLevel: i.impact_gravity,
+            category: i.category,
+          }));
+          setRiskMatrixItems(matrixItems);
+        }
       } finally {
         setLoadingRisks(false);
       }
@@ -96,9 +308,213 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
     loadImpacts();
   }, []);
 
+  // État pour le modal de détails de la matrice
+  const [matrixModalOpen, setMatrixModalOpen] = useState(false);
+  const [selectedCellItems, setSelectedCellItems] = useState<RiskMatrixItem[]>([]);
+  const [selectedCellInfo, setSelectedCellInfo] = useState<{ riskLevel: string; impactLevel: string }>({ riskLevel: '', impactLevel: '' });
+
+  // État pour les fournisseurs et leur modal
+  const [suppliers, setSuppliers] = useState<SupplierLocation[]>(MOCK_SUPPLIERS);
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<SupplierLocation | null>(null);
+
+  const handleSupplierClick = (supplier: SupplierLocation) => {
+    setSelectedSupplier(supplier);
+    setSupplierModalOpen(true);
+  };
+
+  const handleMatrixCellClick = (riskLevel: string, impactLevel: string, items: RiskMatrixItem[]) => {
+    if (items.length > 0) {
+      setSelectedCellItems(items);
+      setSelectedCellInfo({ riskLevel, impactLevel });
+      setMatrixModalOpen(true);
+    }
+  };
+
+  // Labels pour l'affichage
+  const riskLevelLabels: Record<string, string> = { eleve: 'Élevé', moyen: 'Moyen', faible: 'Faible' };
+  const impactLevelLabels: Record<string, string> = { fort: 'Fort', moyen: 'Moyen', faible: 'Faible' };
+
+  // Trouver les détails complets d'un risque par son ID
+  const getFullRiskDetails = (id: string) => {
+    return risks.find(r => r.id === id) || MOCK_IMPACTS.find(i => i.id === id);
+  };
+
   return (
     <div className="flex h-screen bg-[#F8FAFC] font-sans selection:bg-lime-200">
       
+      {/* Modal Détails Fournisseur */}
+      {supplierModalOpen && selectedSupplier && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setSupplierModalOpen(false)}>
+          <div 
+            className="bg-white rounded-3xl shadow-2xl max-w-lg w-full mx-4 overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className={`p-6 ${
+              selectedSupplier.riskLevel === 'eleve' 
+                ? 'bg-gradient-to-r from-red-500 to-red-600' 
+                : selectedSupplier.riskLevel === 'moyen'
+                  ? 'bg-gradient-to-r from-amber-400 to-amber-500'
+                  : 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-white">{selectedSupplier.name}</h2>
+                  <p className="text-white/80 text-sm">{selectedSupplier.city}, {selectedSupplier.country}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSupplierModalOpen(false)}
+                className="absolute top-4 right-4 w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
+              >
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className={`px-3 py-1.5 rounded-full text-sm font-bold ${
+                  selectedSupplier.riskLevel === 'eleve' 
+                    ? 'bg-red-100 text-red-700' 
+                    : selectedSupplier.riskLevel === 'moyen'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  Risque {riskLevelLabels[selectedSupplier.riskLevel] || selectedSupplier.riskLevel}
+                </span>
+                <span className="px-3 py-1.5 bg-slate-100 text-slate-600 rounded-full text-sm font-bold">
+                  {selectedSupplier.riskCount} réglementation{selectedSupplier.riskCount > 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Réglementations impactantes</h3>
+                <div className="flex flex-wrap gap-2">
+                  {selectedSupplier.regulations?.map((reg: string, idx: number) => (
+                    <span key={idx} className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium text-slate-700">
+                      {reg}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-100 flex gap-2">
+                <button className="flex-1 px-4 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors">
+                  Voir profil complet
+                </button>
+                <button 
+                  onClick={() => setSupplierModalOpen(false)}
+                  className="px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
+                >
+                  Fermer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Détails Matrice */}
+      {matrixModalOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setMatrixModalOpen(false)}>
+          <div 
+            className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className={`p-6 ${
+              selectedCellInfo.riskLevel === 'eleve' && selectedCellInfo.impactLevel === 'fort' 
+                ? 'bg-gradient-to-r from-red-500 to-red-600' 
+                : selectedCellInfo.riskLevel === 'eleve' || selectedCellInfo.impactLevel === 'fort'
+                  ? 'bg-gradient-to-r from-orange-400 to-orange-500'
+                  : 'bg-gradient-to-r from-slate-600 to-slate-700'
+            }`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-white text-xl font-black mb-1">
+                    Risque {riskLevelLabels[selectedCellInfo.riskLevel]} / Impact {impactLevelLabels[selectedCellInfo.impactLevel]}
+                  </h2>
+                  <p className="text-white/80 text-sm">
+                    {selectedCellItems.length} réglementation{selectedCellItems.length > 1 ? 's' : ''} concernée{selectedCellItems.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setMatrixModalOpen(false)}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {/* Liste des risques */}
+            <div className="p-6 overflow-y-auto max-h-[60vh] space-y-4">
+              {selectedCellItems.map(item => {
+                const details = getFullRiskDetails(item.id);
+                return (
+                  <div key={item.id} className="border border-slate-200 rounded-2xl p-5 hover:shadow-lg transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-bold text-slate-900 text-lg">{item.title}</h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+                        selectedCellInfo.riskLevel === 'eleve' && selectedCellInfo.impactLevel === 'fort'
+                          ? 'bg-red-100 text-red-700'
+                          : selectedCellInfo.riskLevel === 'eleve' || selectedCellInfo.impactLevel === 'fort'
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-yellow-100 text-yellow-700'
+                      }`}>
+                        {selectedCellInfo.riskLevel === 'eleve' && selectedCellInfo.impactLevel === 'fort' ? 'Critique' : 'À surveiller'}
+                      </span>
+                    </div>
+                    
+                    {details && (
+                      <>
+                        <p className="text-slate-600 text-sm mb-4">
+                          {('risk_details' in details ? details.risk_details : '') || ('risk_main' in details ? details.risk_main : '')}
+                        </p>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-slate-400 font-medium block mb-1">Échéance</span>
+                            <span className="text-slate-700 font-bold">
+                              {('deadline' in details ? details.deadline : 'N/A') || 'Non définie'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-medium block mb-1">Modalité</span>
+                            <span className="text-slate-700">
+                              {('modality' in details ? details.modality : 'N/A') || 'Non définie'}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {('recommendation' in details && details.recommendation) && (
+                          <div className="mt-4 p-3 bg-lime-50 rounded-xl border border-lime-200">
+                            <span className="text-lime-700 font-bold text-xs uppercase block mb-1">Recommandation</span>
+                            <p className="text-lime-800 text-sm">{details.recommendation}</p>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notification Pop-up */}
       {showRealTimeToast && (
         <div className="fixed top-8 right-8 z-[100] animate-bounce">
@@ -118,24 +534,25 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
       )}
 
       {/* Modern Slim Sidebar */}
-      <aside className="w-20 lg:w-72 bg-slate-950 text-slate-300 flex flex-col transition-all duration-300">
+      <aside className="w-20 lg:w-72 flex-shrink-0 bg-slate-950 text-slate-300 flex flex-col">
         <div className="p-6 flex justify-center lg:justify-start items-center space-x-3 mb-10">
           <img src="/hutchinson-logo.svg" alt="Hutchinson" className="w-10 h-10 flex-shrink-0 object-contain" />
           <span className="hidden lg:block font-black text-xl tracking-tighter text-white">HUTCHINSON</span>
         </div>
 
         <nav className="flex-grow px-4 space-y-3">
-          {(['Réglementations', 'Climat', 'Géopolitique'] as const).map(tab => (
+          {(['Dashboard', 'Réglementations', 'Climat', 'Géopolitique'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`w-full group relative flex items-center lg:space-x-4 p-3 lg:px-5 lg:py-4 rounded-2xl transition-all duration-300 ${
                 activeTab === tab 
-                  ? 'bg-white text-slate-900 shadow-xl shadow-lime-900/40' 
+                  ? 'bg-slate-800 text-lime-400' 
                   : 'hover:bg-slate-900 text-slate-500 hover:text-white'
               }`}
             >
               <div className="flex-shrink-0">
+                {tab === 'Dashboard' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>}
                 {tab === 'Réglementations' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>}
                 {tab === 'Climat' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>}
                 {tab === 'Géopolitique' && <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18"/></svg>}
@@ -144,6 +561,32 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
               {activeTab === tab && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-lime-400 rounded-l-full hidden lg:block"></div>}
             </button>
           ))}
+          
+          {/* Onglet Administration - visible uniquement pour les admins */}
+          {user.role === 'admin' && (
+            <button
+              onClick={() => setActiveTab('Administration')}
+              className={`w-full group relative flex items-center lg:space-x-4 p-3 lg:px-5 lg:py-4 rounded-2xl transition-all duration-300 ${
+                activeTab === 'Administration' 
+                  ? 'bg-slate-800 text-amber-400' 
+                  : 'hover:bg-slate-900 text-amber-500/60 hover:text-amber-400'
+              }`}
+            >
+              <div className="flex-shrink-0">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <span className="hidden lg:block font-bold text-sm tracking-tight">Administration</span>
+              {pendingCount > 0 && (
+                <span className="hidden lg:flex ml-auto bg-amber-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  {pendingCount}
+                </span>
+              )}
+              {activeTab === 'Administration' && <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-amber-400 rounded-l-full hidden lg:block"></div>}
+            </button>
+          )}
         </nav>
 
         <div className="p-6">
@@ -172,12 +615,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
         {/* Header Navigation */}
         <header className="px-10 py-6 flex justify-between items-center bg-white border-b border-slate-100">
           <div>
-             <div className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
-                <span>Database</span>
-                <span>/</span>
-                <span className="text-lime-500">{activeTab}</span>
-             </div>
-             <h1 className="text-3xl font-black text-slate-900 tracking-tighter">Insights Globaux</h1>
+             <h1 className="text-3xl font-black text-slate-900 tracking-tighter">{activeTab}</h1>
           </div>
           <div className="flex items-center space-x-8">
              <div className="hidden md:flex bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 items-center">
@@ -185,77 +623,297 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                 <input type="text" placeholder="Rechercher un dossier..." className="bg-transparent text-sm font-medium outline-none w-48" />
              </div>
              <NotificationCenter notifications={notifications} />
-             <button
-               onClick={() => onNavigate('agent')}
-               className="px-8 py-3 rounded-full bg-lime-400 text-slate-950 font-black text-sm uppercase tracking-widest hover:bg-white hover:scale-105 transition-all shadow-[0_0_20px_rgba(163,230,53,0.3)]"
-             >
-               Lancer l'agent
-             </button>
-             <button
-               onClick={() => onNavigate('supplier-analysis')}
-               className="px-6 py-3 rounded-full bg-blue-600 text-white font-black text-sm uppercase tracking-widest hover:bg-blue-700 hover:scale-105 transition-all shadow-[0_0_20px_rgba(37,99,235,0.3)]"
-             >
-               🏭 Analyse Fournisseur
-             </button>
           </div>
         </header>
 
         {/* Dynamic Content */}
         <div className="flex-grow overflow-y-auto p-10 space-y-10 custom-scrollbar">
           
+          {/* Dashboard View - Grand bouton Analyse Fournisseur */}
+          {activeTab === 'Dashboard' && (
+            <div className="space-y-8">
+              
+              {/* Welcome Banner - Bandeau bleu nuit */}
+              <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2.5rem] p-10 text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-lime-400/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <div className="relative z-10 text-center">
+                  <h2 className="text-4xl font-black mb-4">Bienvenue, {user.fullName}</h2>
+                  <p className="text-slate-400 text-lg mb-10">Analysez les risques de votre chaîne d'approvisionnement</p>
+                  
+                  {/* Grand bouton Analyse Fournisseur */}
+                  <button
+                    onClick={() => onNavigate('supplier-analysis')}
+                    className="group relative inline-flex items-center justify-center gap-4 px-12 py-6 rounded-2xl bg-gradient-to-r from-lime-400 to-emerald-500 text-slate-900 font-black text-xl uppercase tracking-wider hover:from-lime-300 hover:to-emerald-400 hover:scale-105 transition-all duration-300 shadow-[0_0_40px_rgba(163,230,53,0.4)]"
+                  >
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                    </svg>
+                    Analyse Fournisseur
+                    <svg className="w-6 h-6 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Notifications récentes - Toutes typologies */}
+              <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-xl font-black text-slate-900">Notifications Récentes</h3>
+                  <span className="px-3 py-1 bg-blue-100 text-blue-600 rounded-full text-xs font-bold">
+                    {notifications.filter(n => !n.isRead).length} non lues
+                  </span>
+                </div>
+                
+                {notifications.length === 0 ? (
+                  <div className="text-center py-12">
+                    <svg className="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    <p className="text-slate-400 font-medium">Aucune notification pour le moment</p>
+                    <p className="text-slate-300 text-sm mt-1">Les alertes apparaîtront ici</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {notifications.slice(0, 5).map(notif => (
+                      <div 
+                        key={notif.id} 
+                        className={`p-4 rounded-2xl border transition-all ${
+                          notif.isRead 
+                            ? 'bg-slate-50 border-slate-100' 
+                            : 'bg-blue-50 border-blue-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start space-x-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                              notif.category === 'Climat' ? 'bg-emerald-100 text-emerald-600' :
+                              notif.category === 'Géopolitique' ? 'bg-purple-100 text-purple-600' :
+                              'bg-orange-100 text-orange-600'
+                            }`}>
+                              {notif.category === 'Climat' && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>}
+                              {notif.category === 'Géopolitique' && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18"/></svg>}
+                              {notif.category !== 'Climat' && notif.category !== 'Géopolitique' && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-slate-900">{notif.title}</h4>
+                              <p className="text-sm text-slate-500 mt-1">{notif.description}</p>
+                            </div>
+                          </div>
+                          <span className="text-xs text-slate-400 whitespace-nowrap ml-4">
+                            {notif.timestamp.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Accès rapide aux typologies */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <button 
+                  onClick={() => setActiveTab('Réglementations')}
+                  className="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all text-left group"
+                >
+                  <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
+                    <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                  </div>
+                  <h4 className="font-bold text-slate-900 mb-1">Réglementations</h4>
+                  <p className="text-sm text-slate-500">Voir les risques réglementaires</p>
+                </button>
+                
+                <button 
+                  onClick={() => setActiveTab('Climat')}
+                  className="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all text-left group"
+                >
+                  <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition-colors">
+                    <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>
+                  </div>
+                  <h4 className="font-bold text-slate-900 mb-1">Risques Climat</h4>
+                  <p className="text-sm text-slate-500">Alertes climatiques et météo</p>
+                </button>
+                
+                <button 
+                  onClick={() => setActiveTab('Géopolitique')}
+                  className="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all text-left group"
+                >
+                  <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-colors">
+                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18"/></svg>
+                  </div>
+                  <h4 className="font-bold text-slate-900 mb-1">Géopolitique</h4>
+                  <p className="text-sm text-slate-500">Sanctions et restrictions</p>
+                </button>
+              </div>
+
+              {/* Liste de tous les risques triables */}
+              <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">Tous les Risques</h3>
+                    <p className="text-sm text-slate-500">{allRisksSorted.length} risques identifiés</p>
+                  </div>
+                  
+                  {/* Boutons de tri */}
+                  <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center bg-slate-100 rounded-xl p-1">
+                      <button
+                        onClick={() => setSortBy('risk')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                          sortBy === 'risk' 
+                            ? 'bg-white text-slate-900 shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        Par risque
+                      </button>
+                      <button
+                        onClick={() => setSortBy('date')}
+                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                          sortBy === 'date' 
+                            ? 'bg-white text-slate-900 shadow-sm' 
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        Par date
+                      </button>
+                    </div>
+                    
+                    <button
+                      onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                      className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-sm font-bold text-slate-600 transition-colors"
+                    >
+                      {sortOrder === 'desc' ? (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
+                          </svg>
+                          {sortBy === 'risk' ? 'Élevé → Faible' : 'Récent → Ancien'}
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"/>
+                          </svg>
+                          {sortBy === 'risk' ? 'Faible → Élevé' : 'Ancien → Récent'}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Liste des risques */}
+                {loadingRisks ? (
+                  <div className="text-center py-12">
+                    <div className="w-8 h-8 border-4 border-lime-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-slate-400">Chargement des risques...</p>
+                  </div>
+                ) : allRisksSorted.length === 0 ? (
+                  <div className="text-center py-12">
+                    <svg className="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <p className="text-slate-400 font-medium">Aucun risque identifié</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                    {allRisksSorted.map((risk, index) => (
+                      <div 
+                        key={risk.id || index}
+                        className="p-4 bg-slate-50 hover:bg-slate-100 rounded-2xl border border-slate-100 transition-colors cursor-pointer"
+                        onClick={() => setActiveTab(risk.category as any || 'Réglementations')}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            {/* Icône catégorie */}
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                              risk.category === 'Climat' ? 'bg-emerald-100 text-emerald-600' :
+                              risk.category === 'Géopolitique' ? 'bg-purple-100 text-purple-600' :
+                              'bg-orange-100 text-orange-600'
+                            }`}>
+                              {risk.category === 'Climat' && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>}
+                              {risk.category === 'Géopolitique' && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18"/></svg>}
+                              {risk.category !== 'Climat' && risk.category !== 'Géopolitique' && <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>}
+                            </div>
+                            
+                            {/* Contenu */}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-bold text-slate-900 truncate">{risk.risk_main}</h4>
+                              <p className="text-sm text-slate-500 truncate">{risk.risk_details || 'Aucun détail disponible'}</p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                  risk.category === 'Climat' ? 'bg-emerald-100 text-emerald-700' :
+                                  risk.category === 'Géopolitique' ? 'bg-purple-100 text-purple-700' :
+                                  'bg-orange-100 text-orange-700'
+                                }`}>
+                                  {risk.category || 'Réglementations'}
+                                </span>
+                                <span className="text-xs text-slate-400">
+                                  {risk.deadline || risk.created_at || '-'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Badge niveau de risque */}
+                          <div className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase ${
+                            risk.impact_level === 'critique' ? 'bg-red-500 text-white' :
+                            risk.impact_level === 'eleve' ? 'bg-red-100 text-red-700' :
+                            risk.impact_level === 'moyen' ? 'bg-amber-100 text-amber-700' :
+                            'bg-emerald-100 text-emerald-700'
+                          }`}>
+                            {risk.impact_level === 'eleve' ? 'Élevé' : risk.impact_level}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* Other tabs content (Réglementations, Climat, Géopolitique) */}
+          {activeTab !== 'Dashboard' && activeTab !== 'Administration' && (
+            <>
           {/* Key Stats Row */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
-               <div className="flex justify-between items-start mb-6">
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Gravité Moyenne</h3>
-                  <span className="px-2 py-1 bg-red-100 text-red-600 rounded text-[10px] font-black uppercase">Attention</span>
+            <div className="lg:col-span-5 bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
+               <div className="flex items-center justify-between gap-3 mb-4">
+                  <h3 className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Risque / Impact - {activeTab}</h3>
+                  {filteredMatrixItems.filter(i => i.riskLevel === 'eleve' && i.impactLevel === 'fort').length > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-500 text-white rounded-full text-[10px] font-bold whitespace-nowrap">
+                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
+                      {filteredMatrixItems.filter(i => i.riskLevel === 'eleve' && i.impactLevel === 'fort').length} critique{filteredMatrixItems.filter(i => i.riskLevel === 'eleve' && i.impactLevel === 'fort').length > 1 ? 's' : ''}
+                    </span>
+                  )}
                </div>
-               <div className="h-48">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={impactStats} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value">
-                        {impactStats.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-               </div>
-               <div className="flex flex-wrap gap-4 mt-6 justify-center">
-                  {impactStats.map(s => (
-                    <div key={s.name} className="flex items-center space-x-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }}></div>
-                      <span className="text-[10px] font-black text-slate-500 uppercase">{s.name}</span>
-                    </div>
-                  ))}
+               <div className="h-72">
+                  <RiskMatrix items={filteredMatrixItems} onCellClick={handleMatrixCellClick} />
                </div>
             </div>
 
-            <div className="lg:col-span-8 bg-slate-900 p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
+            <div className="lg:col-span-7 bg-slate-900 p-6 rounded-[2.5rem] shadow-xl relative overflow-hidden" style={{ minHeight: '380px' }}>
                <div className="relative z-10 flex flex-col h-full">
-                  <div className="flex justify-between items-start mb-8">
+                  <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Tendances d'Analyse</h3>
-                      <p className="text-2xl font-black text-white">+28% de risques détectés <span className="text-lime-400">ce mois</span></p>
+                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Localisation des Fournisseurs</h3>
+                      <p className="text-lg font-black text-white">
+                        <span className="text-red-400">{suppliers.filter(s => s.riskLevel === 'eleve').length}</span> fournisseurs à risque élevé
+                      </p>
                     </div>
                     <div className="flex space-x-2">
-                       {['7d', '30d', '90d'].map(d => (
-                         <button key={d} className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${d === '30d' ? 'bg-lime-400 text-slate-950' : 'text-slate-500 hover:text-white'}`}>{d}</button>
-                       ))}
+                       <span className="px-3 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400">
+                         {suppliers.length} fournisseurs
+                       </span>
                     </div>
                   </div>
-                  <div className="flex-grow">
-                    <ResponsiveContainer width="100%" height="100%">
-                       <AreaChart data={trendData}>
-                          <defs>
-                            <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#A3E635" stopOpacity={0.3}/>
-                              <stop offset="95%" stopColor="#A3E635" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <Tooltip contentStyle={{ backgroundColor: '#0F172A', border: 'none', borderRadius: '12px', color: '#fff' }} />
-                          <Area type="monotone" dataKey="val" stroke="#A3E635" strokeWidth={4} fillOpacity={1} fill="url(#colorVal)" />
-                       </AreaChart>
-                    </ResponsiveContainer>
+                  <div className="flex-1" style={{ minHeight: '280px' }}>
+                    <SupplierMap 
+                      suppliers={suppliers} 
+                      onSupplierClick={handleSupplierClick}
+                    />
                   </div>
                </div>
             </div>
@@ -296,7 +954,245 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                </div>
              ))}
           </div>
+          </>
+          )}
+
+          {/* Administration View */}
+          {activeTab === 'Administration' && user.role === 'admin' && (
+            <div className="space-y-8">
+              {/* Stats cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-black text-slate-900">{pendingCount}</p>
+                      <p className="text-sm text-slate-500 font-medium">En attente</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-black text-slate-900">{approvedCount}</p>
+                      <p className="text-sm text-slate-500 font-medium">Approuvés</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                      <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-black text-slate-900">{rejectedCount}</p>
+                      <p className="text-sm text-slate-500 font-medium">Rejetés</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Filtres et recherche */}
+              <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm">
+                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+                  {/* Onglets de filtre */}
+                  <div className="flex gap-2">
+                    {[
+                      { key: 'pending', label: 'En attente', count: pendingCount },
+                      { key: 'approved', label: 'Approuvés', count: approvedCount },
+                      { key: 'rejected', label: 'Rejetés', count: rejectedCount },
+                      { key: 'all', label: 'Tous', count: pendingUsers.length },
+                    ].map(tab => (
+                      <button
+                        key={tab.key}
+                        onClick={() => setAdminFilter(tab.key as any)}
+                        className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+                          adminFilter === tab.key
+                            ? 'bg-slate-900 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {tab.label} ({tab.count})
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Barre de recherche */}
+                  <div className="relative">
+                    <svg className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                    <input
+                      type="text"
+                      value={adminSearchQuery}
+                      onChange={(e) => setAdminSearchQuery(e.target.value)}
+                      placeholder="Rechercher..."
+                      className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-lime-400 w-64"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Liste des utilisateurs */}
+              <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+                {filteredPendingUsers.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <svg className="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                    <p className="text-slate-400 font-medium">Aucune demande trouvée</p>
+                    <p className="text-slate-300 text-sm mt-1">Modifiez vos filtres ou votre recherche</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100">
+                    {filteredPendingUsers.map(pendingUser => (
+                      <div key={pendingUser.id} className="p-6 hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center justify-between gap-4">
+                          {/* Info utilisateur */}
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className="w-12 h-12 bg-gradient-to-br from-slate-700 to-slate-900 rounded-xl flex items-center justify-center text-white font-bold text-lg">
+                              {pendingUser.fullName.split(' ').map(n => n[0]).join('')}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-slate-900 truncate">{pendingUser.fullName}</h3>
+                              <p className="text-sm text-slate-500 truncate">{pendingUser.email}</p>
+                            </div>
+                          </div>
+
+                          {/* Détails */}
+                          <div className="hidden md:flex items-center gap-6 text-sm">
+                            <div className="text-center">
+                              <p className="text-slate-400 text-xs uppercase font-bold">Rôle</p>
+                              <p className="text-slate-700 font-medium">{pendingUser.role}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-slate-400 text-xs uppercase font-bold">Département</p>
+                              <p className="text-slate-700 font-medium">{pendingUser.department || '-'}</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-slate-400 text-xs uppercase font-bold">Date</p>
+                              <p className="text-slate-700 font-medium whitespace-nowrap">{formatAdminDate(pendingUser.requestDate)}</p>
+                            </div>
+                          </div>
+
+                          {/* Statut et actions */}
+                          <div className="flex items-center gap-3">
+                            {pendingUser.status === 'pending' ? (
+                              <>
+                                <button
+                                  onClick={() => setShowConfirmModal({ action: 'approve', user: pendingUser })}
+                                  className="px-4 py-2 bg-emerald-500 text-white rounded-xl font-bold text-sm hover:bg-emerald-600 transition-colors flex items-center gap-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                                  </svg>
+                                  Approuver
+                                </button>
+                                <button
+                                  onClick={() => setShowConfirmModal({ action: 'reject', user: pendingUser })}
+                                  className="px-4 py-2 bg-red-100 text-red-600 rounded-xl font-bold text-sm hover:bg-red-200 transition-colors flex items-center gap-2"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                                  </svg>
+                                  Rejeter
+                                </button>
+                              </>
+                            ) : (
+                              <span className={`px-4 py-2 rounded-xl font-bold text-sm ${
+                                pendingUser.status === 'approved' 
+                                  ? 'bg-emerald-100 text-emerald-700' 
+                                  : 'bg-red-100 text-red-700'
+                              }`}>
+                                {pendingUser.status === 'approved' ? '✓ Approuvé' : '✗ Rejeté'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Modal de confirmation Admin */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setShowConfirmModal(null)}>
+            <div 
+              className="bg-white rounded-3xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className={`p-6 ${showConfirmModal.action === 'approve' ? 'bg-emerald-500' : 'bg-red-500'}`}>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                    {showConfirmModal.action === 'approve' ? (
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
+                      </svg>
+                    ) : (
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black text-white">
+                      {showConfirmModal.action === 'approve' ? 'Approuver l\'accès' : 'Rejeter la demande'}
+                    </h2>
+                    <p className="text-white/80 text-sm">{showConfirmModal.user.fullName}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                <p className="text-slate-600 mb-6">
+                  {showConfirmModal.action === 'approve' 
+                    ? `Voulez-vous accorder l'accès à ${showConfirmModal.user.email} ? Cette personne pourra se connecter à la plateforme.`
+                    : `Voulez-vous rejeter la demande de ${showConfirmModal.user.email} ? Cette personne ne pourra pas accéder à la plateforme.`
+                  }
+                </p>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowConfirmModal(null)}
+                    className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={() => showConfirmModal.action === 'approve' 
+                      ? handleApprove(showConfirmModal.user.id)
+                      : handleReject(showConfirmModal.user.id)
+                    }
+                    className={`flex-1 px-4 py-3 rounded-xl font-bold transition-colors ${
+                      showConfirmModal.action === 'approve'
+                        ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                        : 'bg-red-500 text-white hover:bg-red-600'
+                    }`}
+                  >
+                    Confirmer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

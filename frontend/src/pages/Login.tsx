@@ -30,11 +30,19 @@ const Login: React.FC<LoginProps> = ({ onNavigate, onLogin }) => {
       // Sauvegarder le token
       saveToken(response.token);
       
+      // Déterminer le rôle affiché - garder 'admin' si c'est un admin
+      let displayRole = 'Décisionnaire';
+      if (response.user.role === 'juridique') {
+        displayRole = 'Analyste Juridique';
+      } else if (response.user.role === 'admin') {
+        displayRole = 'admin';
+      }
+      
       // Convertir vers le type User du frontend
       const user: User = {
         email: response.user.email,
         fullName: response.user.name,
-        role: response.user.role === 'juridique' ? 'Analyste Juridique' : 'Décisionnaire'
+        role: displayRole
       };
       
       onLogin(user);

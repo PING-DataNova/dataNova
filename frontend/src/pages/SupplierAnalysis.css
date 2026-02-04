@@ -1,11 +1,12 @@
 /* SupplierAnalysis.css - Styles pour le formulaire d'analyse fournisseur */
 
 .supplier-analysis-page {
-  max-width: 800px;
+  max-width: 1100px;
+  width: 100%;
   margin: 0 auto;
   padding: 2rem;
-  min-height: 100vh;
-  background: #F8FAFC;
+  background: transparent; /* inherit global background */
+  font-family: inherit;
 }
 
 .supplier-analysis-header {
@@ -50,8 +51,6 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 2rem;
-}
   padding: 2rem;
 }
 
@@ -235,7 +234,7 @@
 .tag.tag-code {
   background: #E5E7EB;
   color: #374151;
-  font-family: monospace;
+  font-family: inherit;
 }
 
 .tag .remove-tag {

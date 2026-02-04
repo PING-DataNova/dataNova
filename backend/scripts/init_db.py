@@ -12,8 +12,16 @@ import json
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.storage.database import init_db, get_session
-from src.storage.repositories import CompanyProfileRepository, CompanyProcessRepository
-from src.storage.models import CompanyProfile, CompanyProcess
+from src.storage.repositories import CompanyProfileRepository
+from src.storage.models import CompanyProfile
+
+# CompanyProcess model/repository may have been removed in some branches. Import defensively.
+try:
+    from src.storage.repositories import CompanyProcessRepository
+    from src.storage.models import CompanyProcess
+except Exception:
+    CompanyProcessRepository = None
+    CompanyProcess = None
 
 
 def load_test_company_profiles():
@@ -55,17 +63,19 @@ def load_test_company_profiles():
                 print(f"{company_name} - deja existant, ignore")
                 continue
 
-            nc_codes = data.get("nc_codes", [])
-            keywords = data.get("keywords", [])
+            # Map incoming test profile data to the current CompanyProfile model
+            headquarters_country = data.get("headquarters_country") or data.get("country") or "Unknown"
+            total_sites = len(data.get("sites", [])) if isinstance(data.get("sites", []), list) else None
 
             profile = CompanyProfile(
                 company_name=company_name,
-                nc_codes=nc_codes,
-                keywords=keywords,
-                regulations=data.get("regulations", ["CBAM"]),
-                contact_emails=data.get("contact_emails", []),
-                config=data.get("config", {}),
-                active=True
+                headquarters_country=headquarters_country,
+                total_sites=total_sites,
+                total_suppliers=data.get("total_suppliers"),
+                risk_tolerance=data.get("risk_tolerance", "medium"),
+                notification_settings={"contact_emails": data.get("contact_emails", [])},
+                data_sources_config=data.get("config", {}),
+                llm_config=data.get("llm_config", {})
             )
 
             repo.save(profile)
@@ -83,6 +93,10 @@ def load_test_company_profiles():
 def load_test_company_processes():
     """Charger les donnees entreprise de test depuis data/company_processes/"""
     print("\nChargement des donnees entreprise de test...")
+
+    if CompanyProcessRepository is None or CompanyProcess is None:
+        print("CompanyProcess model/repository not available; skipping company_processes load.")
+        return
 
     session = get_session()
     repo = CompanyProcessRepository(session)

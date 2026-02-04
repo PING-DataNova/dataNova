@@ -228,6 +228,14 @@ class PertinenceCheck(Base):
     llm_tokens = Column(Integer, nullable=True)
     processing_time_ms = Column(Integer, nullable=True)
     analysis_metadata = Column(JSON, nullable=True)
+    # Validation / workflow fields (added for API compatibility)
+    validation_status = Column(String(20), nullable=False, default="pending")
+    validation_comment = Column(Text, nullable=True)
+    validated_by = Column(String(255), nullable=True)
+    validated_at = Column(DateTime, nullable=True)
+    matched_keywords = Column(JSON, nullable=True)
+    matched_nc_codes = Column(JSON, nullable=True)
+    llm_reasoning = Column(Text, nullable=True)
     
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     

@@ -384,7 +384,7 @@
 .summary-item .tag-code {
   background: #E5E7EB;
   color: #374151;
-  font-family: monospace;
+  font-family: inherit;
 }
 
 /* Processing info */
