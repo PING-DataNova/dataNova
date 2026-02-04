@@ -198,7 +198,7 @@ const SupplierMap: React.FC<SupplierMapProps> = ({ suppliers, onSupplierClick })
                   <span className="font-bold text-slate-900">{supplier.name}</span>
                 </div>
                 <p className="text-sm text-slate-600 mb-2">
-                  📍 {supplier.city ? `${supplier.city}, ` : ''}{supplier.country}
+                  {supplier.city ? `${supplier.city}, ` : ''}{supplier.country}
                 </p>
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`px-2 py-0.5 text-xs font-bold text-white rounded ${getRiskBadgeClass(supplier.riskLevel)}`}>

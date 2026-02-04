@@ -4,7 +4,7 @@ import { User, RiskData, Notification } from '../types';
 import RiskTable from '../components/RiskTable';
 import NotificationCenter from '../components/NotificationCenter';
 import RiskMatrix, { RiskMatrixItem } from '../components/RiskMatrix';
-import RiskMatrixAdvanced, { RiskPoint } from '../components/RiskMatrixAdvanced';
+import RiskMatrixAdvanced from '../components/RiskMatrixAdvanced';
 import RiskDonutChart from '../components/RiskDonutChart';
 import SupplierMap, { SupplierLocation } from '../components/SupplierMap';
 import RiskDetailModal from '../components/RiskDetailModal';
@@ -90,12 +90,8 @@ const MOCK_PENDING_USERS: PendingUser[] = [
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => {
   const [activeTab, setActiveTab] = useState<'Dashboard' | 'Réglementations' | 'Climat' | 'Géopolitique' | 'Administration'>('Dashboard');
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications] = useState<Notification[]>([]);
   const [showRealTimeToast, setShowRealTimeToast] = useState<string | null>(null);
-  
-  // États pour le tri des risques dans le Dashboard
-  const [sortBy, setSortBy] = useState<'risk' | 'date'>('risk');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
   // États pour l'onglet Administration
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>(MOCK_PENDING_USERS);
@@ -165,26 +161,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
       minute: '2-digit'
     });
   };
-  
-  // Fonction pour afficher une notification toast (appelée uniquement quand il y a de vraies notifications)
-  const triggerNewRiskNotification = (category: string, title: string) => {
-    const newNotif: Notification = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: title,
-      description: `Un nouveau risque de type ${category} vient d'être enregistré dans la base.`,
-      category: category,
-      timestamp: new Date(),
-      isRead: false
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-    setShowRealTimeToast(title);
-    setTimeout(() => setShowRealTimeToast(null), 5000);
-  };
 
   const [risks, setRisks] = useState<RiskData[]>([]);
-  const [loadingRisks, setLoadingRisks] = useState(true);
-  const [impactStats, setImpactStats] = useState<{ name: string; value: number; color: string }[]>([]);
-  const [trendData, setTrendData] = useState<{ name: string; val: number }[]>([]);
+  const [, setLoadingRisks] = useState(true);
+  const [, setImpactStats] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [, setTrendData] = useState<{ name: string; val: number }[]>([]);
   const [riskMatrixItems, setRiskMatrixItems] = useState<RiskMatrixItem[]>([]);
   
   // États pour les KPI du dashboard
@@ -195,6 +176,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
     medium_risks: number;
     low_risks: number;
     critical_deadlines: number;
+    average_score?: number;
     by_risk_type: { [key: string]: number };
   } | null>(null);
 
@@ -216,18 +198,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
     return weights[level.toLowerCase()] || 0;
   };
 
-  // Tous les risques triés pour le Dashboard
+  // Tous les risques triés pour le Dashboard (tri par risque décroissant par défaut)
   const allRisksSorted = [...risks].sort((a, b) => {
-    if (sortBy === 'risk') {
-      const weightA = getRiskWeight(a.impact_level);
-      const weightB = getRiskWeight(b.impact_level);
-      return sortOrder === 'desc' ? weightB - weightA : weightA - weightB;
-    } else {
-      // Tri par date
-      const dateA = new Date(a.created_at || a.deadline || '').getTime();
-      const dateB = new Date(b.created_at || b.deadline || '').getTime();
-      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
-    }
+    const weightA = getRiskWeight(a.impact_level);
+    const weightB = getRiskWeight(b.impact_level);
+    return weightB - weightA;
   });
 
   // Load dashboard stats from backend
@@ -395,7 +370,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
   const [selectedCellInfo, setSelectedCellInfo] = useState<{ riskLevel: string; impactLevel: string }>({ riskLevel: '', impactLevel: '' });
 
   // État pour les fournisseurs et leur modal
-  const [suppliers, setSuppliers] = useState<SupplierLocation[]>(MOCK_SUPPLIERS);
+  const [suppliers] = useState<SupplierLocation[]>(MOCK_SUPPLIERS);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierLocation | null>(null);
 
@@ -678,11 +653,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
       {/* Modern Slim Sidebar */}
       <aside className="w-20 lg:w-72 flex-shrink-0 bg-slate-950 text-slate-300 flex flex-col">
         <div className="p-6 flex flex-col items-center lg:items-start mb-10">
-          <img src="/hutchinson-logo.svg" alt="Hutchinson" className="w-16 h-16 lg:w-20 lg:h-20 flex-shrink-0 object-contain mb-3" />
-          <div className="hidden lg:block text-center lg:text-left">
-            <span className="font-black text-xl tracking-tighter text-white block">HUTCHINSON</span>
-            <span className="text-[10px] text-lime-400 font-medium tracking-widest">DATANOVA RISK PLATFORM</span>
-          </div>
+          <img src="/hutchinson-logo-white.svg" alt="Hutchinson" className="hidden lg:block h-8 object-contain mb-4" />
+          <img src="/hutchinson-logo.svg" alt="Hutchinson" className="lg:hidden w-12 h-12 object-contain" />
+          <span className="hidden lg:block text-[10px] text-lime-400 font-medium tracking-widest">DATANOVA RISK PLATFORM</span>
         </div>
 
         <nav className="flex-grow px-4 space-y-3">
@@ -779,7 +752,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                 <div className="bg-white rounded-2xl p-6 border-2 border-amber-200 shadow-sm">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">🔔</span>
+                      <svg className="w-7 h-7 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                     </div>
                     <div>
                       <p className="text-4xl font-black text-amber-600">{dashboardStats?.total_impacts || 0}</p>
@@ -793,7 +766,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                 <div className="bg-white rounded-2xl p-6 border-2 border-red-200 shadow-sm">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">⚠️</span>
+                      <svg className="w-7 h-7 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                     </div>
                     <div>
                       <p className="text-4xl font-black text-red-600">{dashboardStats?.high_risks || 0}</p>
@@ -807,7 +780,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                 <div className="bg-white rounded-2xl p-6 border-2 border-blue-200 shadow-sm">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">📊</span>
+                      <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
                     </div>
                     <div>
                       <p className="text-4xl font-black text-blue-600">
@@ -827,7 +800,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                 <div className="bg-white rounded-2xl p-6 border-2 border-emerald-200 shadow-sm">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 bg-emerald-100 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">📄</span>
+                      <svg className="w-7 h-7 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                     </div>
                     <div>
                       <p className="text-4xl font-black text-emerald-600">{dashboardStats?.total_regulations || 0}</p>
@@ -842,7 +815,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* World Map Section - 2/3 width */}
                 <div className="lg:col-span-2 bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
-                  <h3 className="text-xl font-black text-slate-900 mb-4">🌍 Carte des Risques Mondiaux</h3>
+                  <h3 className="text-xl font-black text-slate-900 mb-4">Carte des Risques Mondiaux</h3>
                   <div className="h-[400px] rounded-2xl overflow-hidden">
                     <SupplierMap 
                       suppliers={suppliers} 
@@ -863,15 +836,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                             risk.impact_level === 'eleve' ? 'bg-orange-100' :
                             risk.impact_level === 'moyen' ? 'bg-yellow-100' : 'bg-green-100'
                           }`}>
-                            <span className={`text-sm font-bold ${
-                              risk.impact_level === 'critique' ? 'text-red-600' :
-                              risk.impact_level === 'eleve' ? 'text-orange-600' :
-                              risk.impact_level === 'moyen' ? 'text-yellow-600' : 'text-green-600'
-                            }`}>
-                              {risk.impact_level === 'critique' ? '🔴' :
-                               risk.impact_level === 'eleve' ? '🟠' :
-                               risk.impact_level === 'moyen' ? '🟡' : '🟢'}
-                            </span>
+                            <span className={`w-3 h-3 rounded-full ${
+                              risk.impact_level === 'critique' ? 'bg-red-500' :
+                              risk.impact_level === 'eleve' ? 'bg-orange-500' :
+                              risk.impact_level === 'moyen' ? 'bg-yellow-500' : 'bg-green-500'
+                            }`}></span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs text-slate-400">{new Date(risk.created_at || '').toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}</p>
@@ -900,7 +869,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
               <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900">🏆 Top 10 Risques Critiques</h3>
+                    <h3 className="text-xl font-black text-slate-900">Top 10 Risques Critiques</h3>
                     <p className="text-sm text-slate-500">Les impacts les plus importants à traiter en priorité</p>
                   </div>
                   <div className="flex gap-2">

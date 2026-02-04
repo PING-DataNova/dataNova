@@ -66,7 +66,6 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
   };
 
   const renderAffectedEntity = (entity: AffectedEntity, index: number, type: 'site' | 'supplier') => {
-    const icon = type === 'site' ? '🏭' : '📦';
     const scoreColor = getScoreColor(entity.risk_score);
     const keyInfo = entity.reasoning ? extractKeyInfo(entity.reasoning) : [];
     
@@ -74,7 +73,11 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
       <div key={entity.id || index} className="bg-slate-50 rounded-lg p-3 mb-2 border border-slate-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-lg">{icon}</span>
+            {type === 'site' ? (
+              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            ) : (
+              <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            )}
             <h4 className="font-semibold text-slate-800 text-sm">{entity.name}</h4>
           </div>
           <div className="flex items-center gap-2">
@@ -168,7 +171,7 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
               {risk.impacts_description && (
                 <section>
                   <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <span className="text-xl">📋</span>
+                    <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                     Description de l'Impact
                   </h3>
                   <div className="bg-slate-50 rounded-lg p-4 text-slate-700">
@@ -181,7 +184,7 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
               {risk.supply_chain_impact && (
                 <section className="flex items-center gap-4">
                   <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
-                    <span>🔗</span>
+                    <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                     Impact Supply Chain
                   </h3>
                   <div className={`px-3 py-1 rounded-lg font-bold text-sm ${
@@ -200,7 +203,7 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
                 {risk.affected_sites && risk.affected_sites.length > 0 && (
                   <section>
                     <h3 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-                      <span>🏭</span>
+                      <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                       Sites Affectés ({risk.affected_sites.length})
                     </h3>
                     <div className="max-h-60 overflow-y-auto pr-1 space-y-1">
@@ -213,7 +216,7 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
                 {risk.affected_suppliers && risk.affected_suppliers.length > 0 && (
                   <section>
                     <h3 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-                      <span>📦</span>
+                      <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                       Fournisseurs ({risk.affected_suppliers.length})
                     </h3>
                     <div className="max-h-60 overflow-y-auto pr-1 space-y-1">
@@ -227,7 +230,7 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
               {risk.weather_risk_summary && (
                 <section>
                   <h3 className="text-base font-bold text-slate-800 mb-2 flex items-center gap-2">
-                    <span>🌦️</span>
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
                     Risques Météorologiques
                   </h3>
                   <div className="bg-blue-50 rounded-lg p-3">
@@ -253,10 +256,10 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(risk.weather_risk_summary.alerts_by_type).map(([type, count]) => (
                           <span key={type} className="px-2 py-0.5 bg-white rounded text-xs text-slate-700 border border-slate-200">
-                            {type === 'extreme_heat' && '🔥'}
-                            {type === 'extreme_cold' && '❄️'}
-                            {type === 'strong_wind' && '💨'}
-                            {type === 'storm' && '⛈️'}
+                            {type === 'extreme_heat' && 'Chaleur'}
+                            {type === 'extreme_cold' && 'Froid'}
+                            {type === 'strong_wind' && 'Vent'}
+                            {type === 'storm' && 'Tempête'}
                             {' '}{count}
                           </span>
                         ))}
@@ -270,7 +273,7 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
               {risk.recommendations && (
                 <section>
                   <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <span className="text-xl">💡</span>
+                    <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
                     Recommandations
                   </h3>
                   <div className="bg-green-50 rounded-lg p-4">
@@ -285,7 +288,7 @@ const RiskDetailModal: React.FC<RiskDetailModalProps> = ({ risk, isLoading, onCl
               {risk.source_url && (
                 <section>
                   <h3 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <span className="text-xl">🔗</span>
+                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
                     Source
                   </h3>
                   <a 

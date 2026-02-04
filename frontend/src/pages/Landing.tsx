@@ -16,9 +16,8 @@ const Landing: React.FC<LandingProps> = ({ onNavigate }) => {
 
       {/* Header */}
       <nav className="relative z-20 p-8 flex justify-between items-center max-w-7xl mx-auto w-full">
-        <div className="flex items-center space-x-3 group cursor-pointer" onClick={() => onNavigate('landing')}>
-          <img src="/hutchinson-logo.svg" alt="Hutchinson" className="w-12 h-12 object-contain" />
-          <span className="font-black text-2xl tracking-[0.2em] text-white">HUTCHINSON</span>
+        <div className="flex items-center group cursor-pointer" onClick={() => onNavigate('landing')}>
+          <img src="/hutchinson-logo-white.svg" alt="Hutchinson" className="h-8 object-contain" />
         </div>
         
         <div className="hidden lg:flex space-x-12 text-sm font-bold uppercase tracking-widest text-slate-400">
