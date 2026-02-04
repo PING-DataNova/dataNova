@@ -37,12 +37,12 @@ class Agent2:
     et génère des recommandations.
     """
     
-    def __init__(self, llm_model: str = "claude-sonnet-4-5-20250929"):
+    def __init__(self, llm_model: str = None):
         """
         Initialise Agent 2 Extended
         
         Args:
-            llm_model: Modèle LLM à utiliser pour le raisonnement
+            llm_model: Modèle LLM à utiliser pour le raisonnement (optionnel)
         """
         self.geographic_engine = GeographicEngine()
         self.regulatory_engine = RegulatoryEngine()
@@ -138,15 +138,31 @@ class Agent2:
         weather_risk_summary = self._aggregate_weather_risks(risk_projections)
         
         # ========================================
-        # Génération de recommandations (LLM)
+        # Génération de recommandations et sections détaillées (LLM avec données BI)
         # ========================================
-        recommendations = self._generate_recommendations(
+        detailed_report = self._generate_recommendations(
             document,
             affected_sites,
             affected_suppliers,
             criticality_results,
-            weather_risk_summary  # NOUVEAU: inclure météo
+            weather_risk_summary,
+            risk_projections  # NOUVEAU: passer les projections avec données BI
         )
+        
+        # Extraire les différentes sections du rapport
+        recommendations = detailed_report.get("recommendations", [])
+        context_and_stakes = detailed_report.get("context_and_stakes")
+        affected_entities_details = detailed_report.get("affected_entities_details")
+        financial_analysis = detailed_report.get("financial_analysis")
+        timeline = detailed_report.get("timeline")
+        prioritization_matrix = detailed_report.get("prioritization_matrix")
+        do_nothing_scenario = detailed_report.get("do_nothing_scenario")
+        recommendations_model = detailed_report.get("_model_used", "unknown")
+        
+        # ========================================
+        # NOUVEAU: Extraire les informations de source (demande client)
+        # ========================================
+        source_info = self._extract_source_info(document)
         
         # ========================================
         # Construire le résultat final
@@ -156,6 +172,12 @@ class Agent2:
             "event_type": event_type,
             "event_subtype": document.get('event_subtype'),
             "analysis_timestamp": datetime.utcnow().isoformat(),
+            
+            # ========================================
+            # NOUVEAU: SOURCE CITÉE (demande client obligatoire)
+            # "À chaque fois, vous mettez la source. L'utilisateur peut cliquer sur la source."
+            # ========================================
+            "source": source_info,
             
             # Résultats de projection
             "affected_sites": affected_sites,
@@ -183,8 +205,22 @@ class Agent2:
             # NOUVEAU : Risques météo agrégés
             "weather_risk_summary": weather_risk_summary,
             
-            # Recommandations
+            # Recommandations (Section 4)
             "recommendations": recommendations,
+            
+            # NOUVEAU : Sections détaillées du rapport (7 sections)
+            "context_and_stakes": context_and_stakes,  # Section 1
+            "affected_entities_details": affected_entities_details,  # Section 2
+            "financial_analysis": financial_analysis,  # Section 3
+            "timeline": timeline,  # Section 5
+            "prioritization_matrix": prioritization_matrix,  # Section 6
+            "do_nothing_scenario": do_nothing_scenario,  # Section 7
+            "recommendations_model": recommendations_model,  # Modèle utilisé
+            
+            # NOUVEAU: Mention "Généré par IA" (demande client)
+            "generated_by_ai": True,
+            "ai_model_used": recommendations_model,
+            "ai_confidence_score": None,  # Sera rempli par LLM Judge
             
             # Métadonnées
             "analysis_metadata": {
@@ -218,6 +254,7 @@ class Agent2:
         - business_interruption_score (0-100)
         - Sous-scores (severity, probability, exposure, urgency)
         - weather_risk (NOUVEAU: risque météo depuis Open-Meteo)
+        - business_impact_details (NOUVEAU: calcul BI détaillé avec vraies données)
         
         Returns:
             Liste de projections (une par entité)
@@ -236,7 +273,8 @@ class Agent2:
                 site,
                 'site',
                 supplier_relationships,
-                weather_risks.get(site.get('id'), {})
+                weather_risks.get(site.get('id'), {}),
+                sites  # NOUVEAU: passer les sites pour les calculs BI
             )
             projections.append(projection)
         
@@ -247,7 +285,8 @@ class Agent2:
                 supplier,
                 'supplier',
                 supplier_relationships,
-                weather_risks.get(supplier.get('id'), {})
+                weather_risks.get(supplier.get('id'), {}),
+                sites  # NOUVEAU: passer les sites pour les calculs BI
             )
             projections.append(projection)
         
@@ -259,10 +298,14 @@ class Agent2:
         entity: Dict,
         entity_type: str,  # 'site' ou 'supplier'
         supplier_relationships: List[Dict],
-        weather_risk: Dict = None  # NOUVEAU: données météo Open-Meteo
+        weather_risk: Dict = None,  # NOUVEAU: données météo Open-Meteo
+        sites: List[Dict] = None  # NOUVEAU: liste des sites pour calcul BI fournisseurs
     ) -> Dict:
         """
         Calcule la projection pour UNE entité (site ou fournisseur)
+        
+        AMÉLIORÉ: Utilise les vraies données Business Interruption de la base de données
+        pour calculer des impacts financiers réels (daily_revenue, contract_penalties, etc.)
         
         Returns:
             {
@@ -279,11 +322,12 @@ class Agent2:
                 "probability_score": 80.0,
                 "exposure_score": 75.0,
                 "urgency_score": 95.0,
-                "weather_risk_score": 45.0,  # NOUVEAU
-                "weather_risk": {...},  # NOUVEAU
+                "weather_risk_score": 45.0,
+                "weather_risk": {...},
                 "reasoning": "...",
                 "estimated_disruption_days": 14,
-                "revenue_impact_percentage": 3.5
+                "revenue_impact_percentage": 3.5,
+                "business_impact_details": {...}  # NOUVEAU: calcul BI détaillé
             }
         """
         event_type = document.get('event_type')
@@ -291,6 +335,7 @@ class Agent2:
         entity_id = entity.get('id')
         entity_name = entity.get('name')
         weather_risk = weather_risk or {}
+        sites = sites or []
         
         # Déterminer si l'entité est concernée
         is_concerned = self._is_entity_concerned(document, entity, entity_type)
@@ -315,7 +360,8 @@ class Agent2:
                 "weather_risk": weather_risk,
                 "reasoning": "Entité non concernée par l'événement",
                 "estimated_disruption_days": 0,
-                "revenue_impact_percentage": 0.0
+                "revenue_impact_percentage": 0.0,
+                "business_impact_details": None
             }
         
         # Entité concernée : calculer les scores
@@ -345,26 +391,70 @@ class Agent2:
         else:
             risk_score_360 = base_risk_score_360
         
-        # Business Interruption Score (intègre aussi le risque météo)
+        # ========================================
+        # NOUVEAU: Business Interruption avec vraies données
+        # ========================================
+        
+        # Estimer les jours de disruption
         disruption_days = self._estimate_entity_disruption_days(document, entity, entity_type)
         
-        # NOUVEAU: Ajouter des jours de disruption si risque météo
+        # Ajouter des jours de disruption si risque météo
         if weather_risk.get("has_weather_risk", False):
             weather_disruption = self._estimate_weather_disruption_days(weather_risk)
             disruption_days += weather_disruption
         
-        revenue_impact = self._estimate_entity_revenue_impact(entity, entity_type, supplier_relationships)
-        business_interruption = exposure * (disruption_days / 30) * revenue_impact  # Normalisé sur 100
-        business_interruption = min(100.0, business_interruption)  # Cap à 100
+        # NOUVEAU: Obtenir le calcul BI détaillé avec les vraies données
+        business_impact = self._estimate_entity_revenue_impact(
+            entity, entity_type, supplier_relationships, sites
+        )
         
-        # Raisonnement (optionnel : utiliser LLM)
-        reasoning = self._generate_entity_reasoning(document, entity, entity_type, risk_score_360)
+        # Extraire le % d'impact (pour compatibilité)
+        revenue_impact = business_impact.get("revenue_impact_percentage", 1.0)
+        
+        # NOUVEAU: Calculer le BI score basé sur les vraies données
+        # Formule améliorée: prend en compte l'impact financier réel
+        total_daily_impact = business_impact.get("total_daily_impact_eur", 0)
+        stock_coverage = business_impact.get("stock_coverage_days", 30)
+        is_sole_supplier = business_impact.get("is_sole_supplier", False)
+        
+        # Si le fournisseur ferme, quand l'impact commence-t-il ?
+        # Impact réel = après épuisement du stock
+        effective_disruption_days = max(0, disruption_days - stock_coverage)
+        
+        # Score BI amélioré (0-100)
+        # Base: exposure * impact financier relatif
+        # Multiplicateur si fournisseur unique
+        if total_daily_impact > 0:
+            # Normaliser l'impact sur 100
+            # 100k€/jour = score max
+            financial_impact_normalized = min(100, (total_daily_impact / 100000) * 100)
+            
+            # Combiner avec l'exposition et les jours effectifs
+            business_interruption = (
+                financial_impact_normalized * 0.4 +  # Impact financier (40%)
+                exposure * 0.3 +                     # Exposition (30%)
+                (effective_disruption_days / 30) * 100 * 0.2 +  # Durée effective (20%)
+                (100 if is_sole_supplier else 0) * 0.1  # Risque mono-fournisseur (10%)
+            )
+        else:
+            # Fallback si pas de données financières
+            business_interruption = exposure * (disruption_days / 30) * revenue_impact
+        
+        business_interruption = min(100.0, business_interruption)
+        
+        # Raisonnement avec LLM (analyse en cascade) - passer les données BI enrichies
+        reasoning = self._generate_entity_reasoning(
+            document, entity, entity_type, risk_score_360,
+            business_impact=business_impact,
+            supplier_relationships=supplier_relationships,
+            sites=sites
+        )
         
         # Ajouter le contexte météo au raisonnement si pertinent
         if weather_risk.get("has_weather_risk", False):
             reasoning += f"\n\n⚠️ RISQUE MÉTÉO: {weather_risk.get('weather_summary', '')}"
         
-        # Construire reasoning_details (transparence complète)
+        # Construire reasoning_details (transparence complète) avec données BI
         reasoning_details = {
             "why_concerned": self._explain_why_concerned(document, entity, entity_type),
             "risks_identified": self._identify_risks(document, entity, entity_type),
@@ -394,6 +484,14 @@ class Agent2:
                     "summary": weather_risk.get("weather_summary", ""),
                     "adjustment": weather_adjustment_reason
                 },
+                "business_interruption": {
+                    "daily_impact_eur": total_daily_impact,
+                    "stock_coverage_days": stock_coverage,
+                    "effective_disruption_days": effective_disruption_days,
+                    "is_sole_supplier": is_sole_supplier,
+                    "affected_customers_count": len(business_impact.get("affected_customers", [])),
+                    "calculation_breakdown": business_impact.get("calculation_breakdown", "")
+                },
                 "formula": "Risk Score 360° = (0.30×Severity + 0.25×Probability + 0.25×Exposure + 0.20×Urgency) + Weather Adjustment",
                 "calculation": f"Base: ({0.30}×{severity:.1f} + {0.25}×{probability:.1f} + {0.25}×{exposure:.1f} + {0.20}×{urgency:.1f}) = {base_risk_score_360:.1f}, Ajusté: {risk_score_360:.1f}"
             }
@@ -418,7 +516,8 @@ class Agent2:
             "reasoning": reasoning,
             "reasoning_details": reasoning_details,
             "estimated_disruption_days": disruption_days,
-            "revenue_impact_percentage": round(revenue_impact, 2)
+            "revenue_impact_percentage": round(revenue_impact, 2),
+            "business_impact_details": business_impact  # NOUVEAU: détails BI complets
         }
     
     def _estimate_weather_disruption_days(self, weather_risk: Dict) -> int:
@@ -769,49 +868,305 @@ class Agent2:
         self,
         entity: Dict,
         entity_type: str,
-        supplier_relationships: List[Dict]
-    ) -> float:
+        supplier_relationships: List[Dict],
+        sites: List[Dict] = None
+    ) -> Dict:
         """
-        Estime l'impact sur le CA (en %)
+        Estime l'impact Business Interruption avec les vraies données
         
-        Basé sur :
-        - Volume d'affaires de l'entité
-        - Criticité
+        NOUVEAU: Retourne un dict complet avec les calculs détaillés :
+        {
+            "revenue_impact_percentage": float,  # Impact % (ancien comportement, pour compatibilité)
+            "daily_revenue_loss_eur": float,     # Perte de CA par jour
+            "customer_penalties_per_day_eur": float,  # Pénalités contractuelles par jour
+            "total_daily_impact_eur": float,     # Impact total par jour
+            "switch_time_days": int,             # Jours pour changer de fournisseur
+            "stock_coverage_days": int,          # Jours de stock disponible
+            "is_sole_supplier": bool,            # Fournisseur unique ?
+            "affected_customers": list,          # Clients affectés (avec détails)
+            "calculation_breakdown": str         # Explication du calcul
+        }
         """
+        sites = sites or []
+        
         if entity_type == "supplier":
-            # Vérifier le volume d'affaires
-            entity_id = entity.get('id')
-            relationships = [r for r in supplier_relationships if r.get('supplier_id') == entity_id]
-            
-            if not relationships:
-                return 1.0
-            
-            # Estimer l'impact basé sur la criticité
-            max_criticality = max([
-                3 if r.get('criticality') == 'HIGH' else 
-                2 if r.get('criticality') == 'MEDIUM' else 1
-                for r in relationships
-            ])
-            
-            if max_criticality == 3:
-                return 5.0  # 5% du CA
-            elif max_criticality == 2:
-                return 2.0  # 2% du CA
-            else:
-                return 0.5  # 0.5% du CA
+            return self._calculate_supplier_business_impact(entity, supplier_relationships, sites)
         
         elif entity_type == "site":
-            # Impact basé sur l'importance stratégique
-            strategic_importance = entity.get('strategic_importance', 'MEDIUM')
-            
-            if strategic_importance == 'HIGH':
-                return 10.0  # 10% du CA
-            elif strategic_importance == 'MEDIUM':
-                return 5.0  # 5% du CA
-            else:
-                return 2.0  # 2% du CA
+            return self._calculate_site_business_impact(entity, supplier_relationships)
         
-        return 1.0
+        return {
+            "revenue_impact_percentage": 1.0,
+            "daily_revenue_loss_eur": 0,
+            "customer_penalties_per_day_eur": 0,
+            "total_daily_impact_eur": 0,
+            "switch_time_days": 0,
+            "stock_coverage_days": 0,
+            "is_sole_supplier": False,
+            "affected_customers": [],
+            "calculation_breakdown": "Type d'entité inconnu"
+        }
+    
+    def _calculate_supplier_business_impact(
+        self,
+        supplier: Dict,
+        supplier_relationships: List[Dict],
+        sites: List[Dict]
+    ) -> Dict:
+        """
+        Calcule l'impact Business Interruption pour un fournisseur
+        
+        Utilise les vraies données :
+        - daily_consumption_value de chaque relation
+        - contract_penalties_per_day des clients
+        - stock_coverage_days
+        - is_sole_supplier
+        - switch_time_days du fournisseur
+        """
+        supplier_id = supplier.get('id')
+        
+        # Récupérer les relations de ce fournisseur
+        relationships = [r for r in supplier_relationships if r.get('supplier_id') == supplier_id]
+        
+        if not relationships:
+            return {
+                "revenue_impact_percentage": 0.5,
+                "daily_revenue_loss_eur": 0,
+                "customer_penalties_per_day_eur": 0,
+                "total_daily_impact_eur": 0,
+                "switch_time_days": 0,
+                "stock_coverage_days": 0,
+                "is_sole_supplier": False,
+                "affected_customers": [],
+                "calculation_breakdown": "Aucune relation site-fournisseur trouvée"
+            }
+        
+        # Calculer l'impact cumulé sur tous les sites clients
+        total_daily_consumption = 0
+        total_penalties_per_day = 0
+        min_stock_coverage = float('inf')
+        has_sole_supplier = False
+        affected_sites = []
+        affected_customers = []
+        
+        for rel in relationships:
+            site_id = rel.get('hutchinson_site_id')
+            site = next((s for s in sites if s.get('id') == site_id), None)
+            
+            daily_consumption = rel.get('daily_consumption_value') or 0
+            penalties = rel.get('contract_penalties_per_day') or 0
+            stock_days = rel.get('stock_coverage_days') or 0
+            is_sole = rel.get('is_sole_supplier', False)
+            
+            total_daily_consumption += daily_consumption
+            total_penalties_per_day += penalties
+            
+            if stock_days > 0:
+                min_stock_coverage = min(min_stock_coverage, stock_days)
+            
+            if is_sole:
+                has_sole_supplier = True
+            
+            if site:
+                site_name = site.get('name', 'Site inconnu')
+                site_daily_revenue = site.get('daily_revenue') or 0
+                key_customers = site.get('key_customers') or []
+                
+                affected_sites.append({
+                    "site_id": site_id,
+                    "site_name": site_name,
+                    "daily_consumption": daily_consumption,
+                    "stock_coverage_days": stock_days,
+                    "is_sole_supplier": is_sole
+                })
+                
+                # Récupérer les pénalités clients du site (données key_customers)
+                for customer in key_customers:
+                    customer_penalty = customer.get('penalty_per_day_eur') or 0
+                    if customer_penalty > 0:
+                        affected_customers.append({
+                            "customer_name": customer.get('name', 'Client inconnu'),
+                            "site_impacted": site_name,
+                            "revenue_share_pct": customer.get('revenue_share_pct', 0),
+                            "penalty_per_day_eur": customer_penalty,
+                            "contract_type": customer.get('contract_type', 'unknown')
+                        })
+                        total_penalties_per_day += customer_penalty
+        
+        # Si stock coverage est infini (pas de données), utiliser valeur par défaut
+        if min_stock_coverage == float('inf'):
+            min_stock_coverage = 30  # Par défaut 30 jours
+        
+        # Données fournisseur
+        switch_time = supplier.get('switch_time_days') or 30
+        criticality_score = supplier.get('criticality_score') or 5
+        
+        # Calculer l'impact total par jour
+        # Impact = consommation journalière + pénalités clients
+        total_daily_impact = total_daily_consumption + total_penalties_per_day
+        
+        # Estimer le % d'impact sur le CA global Hutchinson
+        # (Approximation basée sur la consommation)
+        hutchinson_daily_revenue = sum([s.get('daily_revenue') or 0 for s in sites])
+        if hutchinson_daily_revenue > 0:
+            revenue_impact_pct = (total_daily_impact / hutchinson_daily_revenue) * 100
+        else:
+            # Fallback si pas de données revenue
+            revenue_impact_pct = criticality_score * 1.0  # 1% par point de criticité
+        
+        # Construire l'explication du calcul
+        breakdown = f"""
+📊 CALCUL D'IMPACT BUSINESS INTERRUPTION - {supplier.get('name', 'Fournisseur')}
+{'='*60}
+
+🔗 Sites approvisionnés: {len(affected_sites)}
+   - Consommation quotidienne totale: {total_daily_consumption:,.0f}€
+
+📦 Couverture stock minimum: {min_stock_coverage} jours
+   → Délai avant impact réel sur production
+
+🔄 Temps de substitution: {switch_time} jours
+   → Temps pour trouver un fournisseur alternatif
+
+⚠️  Fournisseur unique pour au moins un site: {'OUI' if has_sole_supplier else 'NON'}
+
+💰 IMPACT FINANCIER PAR JOUR D'ARRÊT:
+   - Approvisionnement manquant: {total_daily_consumption:,.0f}€
+   - Pénalités contractuelles clients: {total_penalties_per_day:,.0f}€
+   - TOTAL: {total_daily_impact:,.0f}€/jour
+
+📈 Impact estimé sur CA Hutchinson: {revenue_impact_pct:.2f}%
+"""
+        
+        return {
+            "revenue_impact_percentage": min(revenue_impact_pct, 100.0),
+            "daily_revenue_loss_eur": total_daily_consumption,
+            "customer_penalties_per_day_eur": total_penalties_per_day,
+            "total_daily_impact_eur": total_daily_impact,
+            "switch_time_days": switch_time,
+            "stock_coverage_days": min_stock_coverage,
+            "is_sole_supplier": has_sole_supplier,
+            "affected_customers": affected_customers,
+            "affected_sites": affected_sites,
+            "calculation_breakdown": breakdown
+        }
+    
+    def _calculate_site_business_impact(
+        self,
+        site: Dict,
+        supplier_relationships: List[Dict]
+    ) -> Dict:
+        """
+        Calcule l'impact Business Interruption pour un site Hutchinson
+        
+        Utilise les vraies données :
+        - daily_revenue du site
+        - key_customers (avec pénalités)
+        - safety_stock_days
+        - recovery_time_days
+        """
+        site_id = site.get('id')
+        site_name = site.get('name', 'Site')
+        
+        daily_revenue = site.get('daily_revenue') or 0
+        daily_production = site.get('daily_production_units') or 0
+        safety_stock = site.get('safety_stock_days') or 0
+        recovery_time = site.get('recovery_time_days') or 7
+        key_customers_raw = site.get('key_customers') or []
+        customer_penalty_per_day = site.get('customer_penalty_per_day') or 0
+        
+        # Gérer key_customers qui peut être string ou liste
+        if isinstance(key_customers_raw, str):
+            # Format string "Stellantis, Renault, VW" → utiliser customer_penalty_per_day global
+            customer_names = [c.strip() for c in key_customers_raw.split(',') if c.strip()]
+            affected_customers = [{"customer_name": name} for name in customer_names]
+            total_penalties_per_day = customer_penalty_per_day
+        elif isinstance(key_customers_raw, list):
+            # Format liste de dicts
+            total_penalties_per_day = 0
+            affected_customers = []
+            for customer in key_customers_raw:
+                if isinstance(customer, dict):
+                    penalty = customer.get('penalty_per_day_eur') or 0
+                    total_penalties_per_day += penalty
+                    if penalty > 0:
+                        affected_customers.append({
+                            "customer_name": customer.get('name', 'Client inconnu'),
+                            "revenue_share_pct": customer.get('revenue_share_pct', 0),
+                            "penalty_per_day_eur": penalty,
+                            "contract_type": customer.get('contract_type', 'unknown')
+                        })
+                else:
+                    # String dans la liste
+                    affected_customers.append({"customer_name": str(customer)})
+        else:
+            affected_customers = []
+            total_penalties_per_day = customer_penalty_per_day
+        
+        # Impact total par jour = perte de CA + pénalités
+        total_daily_impact = daily_revenue + total_penalties_per_day
+        
+        # Trouver les fournisseurs critiques de ce site
+        relationships = [r for r in supplier_relationships if r.get('hutchinson_site_id') == site_id]
+        sole_suppliers_count = sum(1 for r in relationships if r.get('is_sole_supplier'))
+        
+        breakdown = f"""
+📊 CALCUL D'IMPACT BUSINESS INTERRUPTION - Site {site_name}
+{'='*60}
+
+💰 Chiffre d'affaires quotidien: {daily_revenue:,.0f}€
+🏭 Production quotidienne: {daily_production:,} unités
+📦 Stock de sécurité: {safety_stock} jours
+⏱️  Temps de reprise estimé: {recovery_time} jours
+
+👥 CLIENTS IMPACTÉS ({len(affected_customers)}):
+"""
+        for c in affected_customers:
+            if isinstance(c, dict):
+                name = c.get('customer_name', 'Inconnu')
+                share = c.get('revenue_share_pct', 0)
+                penalty = c.get('penalty_per_day_eur', 0)
+                breakdown += f"   - {name}: {share}% du CA, {penalty:,.0f}€/jour de pénalité\n"
+            else:
+                breakdown += f"   - {c}\n"
+        
+        # Message adapté selon le nombre de fournisseurs uniques
+        if sole_suppliers_count > 0:
+            sole_supplier_msg = f"⚠️ {sole_suppliers_count} fournisseur(s) unique(s) - RISQUE ÉLEVÉ de rupture supply chain"
+        else:
+            sole_supplier_msg = f"✅ Aucun fournisseur unique - Risque supply chain maîtrisé"
+        
+        breakdown += f"""
+🔗 {sole_supplier_msg}
+
+💸 IMPACT FINANCIER PAR JOUR D'ARRÊT:
+   - Perte de CA: {daily_revenue:,.0f}€
+   - Pénalités clients: {total_penalties_per_day:,.0f}€
+   - TOTAL: {total_daily_impact:,.0f}€/jour
+"""
+        
+        # Revenue impact % (par rapport au CA total estimé Hutchinson)
+        # Approximation : on considère que ce site représente une partie du CA total
+        strategic_importance = site.get('strategic_importance', 'MEDIUM')
+        if strategic_importance == 'HIGH':
+            revenue_impact_pct = 15.0
+        elif strategic_importance == 'MEDIUM':
+            revenue_impact_pct = 8.0
+        else:
+            revenue_impact_pct = 3.0
+        
+        return {
+            "revenue_impact_percentage": revenue_impact_pct,
+            "daily_revenue_loss_eur": daily_revenue,
+            "customer_penalties_per_day_eur": total_penalties_per_day,
+            "total_daily_impact_eur": total_daily_impact,
+            "switch_time_days": 0,  # N/A pour un site
+            "stock_coverage_days": safety_stock,
+            "is_sole_supplier": False,  # N/A pour un site
+            "affected_customers": affected_customers,
+            "recovery_time_days": recovery_time,
+            "calculation_breakdown": breakdown
+        }
     
     # ========================================
     # Calcul des scores globaux
@@ -849,6 +1204,147 @@ class Agent2:
             risk_level = "FAIBLE"
         
         return risk_level, max_risk_score
+    
+    # ========================================
+    # NOUVEAU: Extraction des infos source (demande client)
+    # ========================================
+    
+    def _extract_source_info(self, document: Dict) -> Dict:
+        """
+        Extrait les informations de source pour le rapport.
+        
+        Demande client obligatoire:
+        > "À chaque fois, vous mettez la source. L'utilisateur peut cliquer 
+        > sur la source pour aller voir effectivement."
+        
+        Returns:
+            {
+                "title": "Règlement (UE) 2023/956 - CBAM",
+                "url": "https://eur-lex.europa.eu/...",
+                "publication_date": "2023-05-10",
+                "application_date": "2026-01-01",
+                "celex_id": "32023R0956",
+                "document_type": "Règlement",
+                "excerpt": "Les importateurs d'aluminium, acier, ciment..."
+            }
+        """
+        # Extraire l'URL source
+        source_url = document.get('source_url', '')
+        
+        # Si pas d'URL directe, essayer de construire depuis les métadonnées
+        if not source_url:
+            extra_meta = document.get('extra_metadata', {}) or {}
+            celex_id = extra_meta.get('celex_id', '')
+            if celex_id:
+                # Construire l'URL EUR-Lex depuis le CELEX
+                source_url = f"https://eur-lex.europa.eu/legal-content/FR/TXT/?uri=CELEX:{celex_id}"
+        
+        # Extraire le CELEX ID
+        extra_meta = document.get('extra_metadata', {}) or {}
+        celex_id = extra_meta.get('celex_id', '')
+        
+        # Extraire les dates (depuis le document ou les métadonnées)
+        publication_date = document.get('publication_date')
+        if not publication_date:
+            # Essayer d'extraire depuis created_at
+            created_at = document.get('created_at')
+            if created_at:
+                publication_date = str(created_at)[:10] if created_at else None
+        
+        # Date d'application (à extraire du contenu ou des métadonnées)
+        application_date = document.get('application_date')
+        if not application_date:
+            # Essayer d'extraire depuis le contenu via regex
+            application_date = self._extract_application_date(document.get('content', ''))
+        
+        # Extraire un extrait pertinent du texte (premiers 500 caractères significatifs)
+        content = document.get('content', '') or document.get('summary', '') or ''
+        excerpt = self._extract_relevant_excerpt(content)
+        
+        return {
+            "title": document.get('title', 'Document sans titre'),
+            "url": source_url,
+            "publication_date": publication_date,
+            "application_date": application_date,
+            "celex_id": celex_id,
+            "document_type": document.get('event_subtype', 'Réglementation'),
+            "excerpt": excerpt,
+            "can_click": bool(source_url)  # Indique si l'utilisateur peut cliquer
+        }
+    
+    def _extract_application_date(self, content: str) -> Optional[str]:
+        """
+        Essaie d'extraire la date d'application depuis le contenu.
+        
+        Recherche des patterns comme:
+        - "s'applique à partir du 1er janvier 2026"
+        - "entre en vigueur le 01/01/2026"
+        - "applicable from 1 January 2026"
+        """
+        import re
+        
+        if not content:
+            return None
+        
+        # Patterns français
+        patterns = [
+            r"s'applique\s+(?:à partir\s+)?du\s+(\d{1,2}(?:er)?\s+\w+\s+\d{4})",
+            r"entre en vigueur\s+(?:le\s+)?(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})",
+            r"applicable\s+(?:à compter\s+)?du\s+(\d{1,2}(?:er)?\s+\w+\s+\d{4})",
+            r"date d'application\s*:\s*(\d{1,2}[/.-]\d{1,2}[/.-]\d{4})",
+            # Patterns anglais
+            r"applies from\s+(\d{1,2}\s+\w+\s+\d{4})",
+            r"entry into force\s*:\s*(\d{1,2}\s+\w+\s+\d{4})",
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, content, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        
+        return None
+    
+    def _extract_relevant_excerpt(self, content: str, max_length: int = 500) -> str:
+        """
+        Extrait un extrait pertinent du document.
+        
+        Cherche les passages les plus significatifs (articles, définitions, etc.)
+        """
+        if not content:
+            return ""
+        
+        # Nettoyer le contenu
+        content = content.strip()
+        
+        # Chercher des sections importantes
+        important_markers = [
+            "Article 1",
+            "Objet et champ d'application",
+            "Définitions",
+            "Le présent règlement",
+            "La présente directive",
+            "Les États membres",
+            "Les importateurs",
+        ]
+        
+        for marker in important_markers:
+            idx = content.find(marker)
+            if idx != -1:
+                # Extraire à partir de ce point
+                excerpt = content[idx:idx + max_length]
+                # Couper proprement à la fin d'une phrase
+                last_period = excerpt.rfind('.')
+                if last_period > max_length // 2:
+                    excerpt = excerpt[:last_period + 1]
+                return excerpt.strip()
+        
+        # Fallback: premiers caractères
+        excerpt = content[:max_length]
+        last_period = excerpt.rfind('.')
+        if last_period > max_length // 2:
+            excerpt = excerpt[:last_period + 1]
+        
+        return excerpt.strip() + "..." if len(content) > max_length else excerpt.strip()
     
     def _calculate_global_business_interruption(
         self,
@@ -1058,15 +1554,260 @@ class Agent2:
         affected_sites: List[Dict],
         affected_suppliers: List[Dict],
         criticality_results: Dict,
-        weather_risk_summary: Dict = None  # NOUVEAU: données météo
-    ) -> List[str]:
+        weather_risk_summary: Dict = None,
+        risk_projections: List[Dict] = None
+    ) -> Dict:
         """
-        Génère des recommandations détaillées et actionnables
+        Génère un rapport complet détaillé avec 7 sections via LLM
         
-        Recommandations structurées par :
-        - Urgence (court terme vs moyen/long terme)
-        - Type d'action (surveillance, mitigation, contingence)
-        - Entités concernées (sites, fournisseurs)
+        NOUVEAU: Retourne un dict avec les 7 sections + recommendations
+        
+        Returns:
+            Dict avec: {
+                "recommendations": [...],
+                "context_and_stakes": "...",
+                "affected_entities_details": "...",
+                "financial_analysis": "...",
+                "timeline": "...",
+                "prioritization_matrix": "...",
+                "do_nothing_scenario": "...",
+                "model_used": "gpt-4o-mini"
+            }
+        """
+        event_type = document.get('event_type')
+        event_title = document.get('title', 'Événement')
+        
+        # Essayer le LLM d'abord
+        if self.llm_reasoning.llm_available:
+            try:
+                llm_result = self._generate_llm_recommendations(
+                    document, affected_sites, affected_suppliers, 
+                    criticality_results, weather_risk_summary, risk_projections
+                )
+                if llm_result:
+                    return llm_result  # Retourne TOUT (7 sections + recommendations)
+            except Exception as e:
+                print(f"⚠️ LLM detailed report failed, using fallback: {e}")
+        
+        # Fallback: templates (seulement recommendations)
+        fallback_recommendations = self._generate_fallback_recommendations(
+            document, affected_sites, affected_suppliers, 
+            criticality_results, weather_risk_summary
+        )
+        
+        return {
+            "recommendations": fallback_recommendations,
+            "context_and_stakes": None,
+            "affected_entities_details": None,
+            "financial_analysis": None,
+            "timeline": None,
+            "prioritization_matrix": None,
+            "do_nothing_scenario": None,
+            "model_used": "fallback"
+        }
+    
+    def _generate_llm_recommendations(
+        self,
+        document: Dict,
+        affected_sites: List[Dict],
+        affected_suppliers: List[Dict],
+        criticality_results: Dict,
+        weather_risk_summary: Dict,
+        risk_projections: List[Dict]
+    ) -> Dict:
+        """
+        Génère un rapport complet détaillé via le LLM (7 sections)
+        
+        NOUVEAU: Retourne un dict avec toutes les sections, pas juste recommendations
+        NOUVEAU: Utilise gpt-4o-mini pour économiser les coûts
+        """
+        # Construire le prompt avec toutes les données BI
+        prompt = self._build_recommendations_prompt(
+            document, affected_sites, affected_suppliers,
+            criticality_results, weather_risk_summary, risk_projections
+        )
+        
+        try:
+            # Utiliser gpt-4o-mini pour les rapports détaillés (économies de coûts)
+            recommendations_model = "gpt-4o-mini" if self.llm_reasoning.llm_provider == "openai" else self.llm_reasoning.model
+            
+            if self.llm_reasoning.llm_provider == "openai":
+                response = self.llm_reasoning.client.chat.completions.create(
+                    model=recommendations_model,  # gpt-4o-mini au lieu de gpt-4o
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.3,
+                    max_tokens=8192  # Augmenté pour les 7 sections
+                )
+                content = response.choices[0].message.content.strip()
+            else:
+                response = self.llm_reasoning.client.messages.create(
+                    model=recommendations_model,
+                    max_tokens=8192,
+                    temperature=0.3,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                content = response.content[0].text.strip()
+            
+            # Nettoyer le JSON
+            if content.startswith("```json"):
+                content = content[7:]
+            if content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            
+            result = json.loads(content.strip())
+            
+            # Ajouter le modèle utilisé dans le résultat
+            result["_model_used"] = recommendations_model
+            
+            return result  # Retourner TOUT le résultat (7 sections)
+            
+        except Exception as e:
+            print(f"⚠️ LLM detailed report generation failed: {e}")
+            return None
+    
+    def _build_recommendations_prompt(
+        self,
+        document: Dict,
+        affected_sites: List[Dict],
+        affected_suppliers: List[Dict],
+        criticality_results: Dict,
+        weather_risk_summary: Dict,
+        risk_projections: List[Dict]
+    ) -> str:
+        """
+        Construit un prompt AMÉLIORÉ pour générer un rapport d'analyse complet et détaillé
+        avec 7 sections obligatoires
+        """
+        event_type = document.get('event_type', 'inconnu')
+        event_subtype = document.get('event_subtype', '')
+        event_title = document.get('title', 'Événement')
+        event_content = document.get('content', 'N/A')[:3000]  # Augmenté de 500 à 3000 chars
+        
+        # Résumer les impacts BI des projections
+        bi_summary = []
+        if risk_projections:
+            for proj in risk_projections:
+                if proj.get('is_concerned') and proj.get('business_impact_details'):
+                    bi = proj['business_impact_details']
+                    bi_summary.append({
+                        "entity": proj.get('entity_name'),
+                        "type": proj.get('entity_type'),
+                        "risk_score": proj.get('risk_score', 0),
+                        "business_interruption_score": proj.get('business_interruption_score', 0),
+                        "daily_impact_eur": bi.get('total_daily_impact_eur', 0),
+                        "is_sole_supplier": bi.get('is_sole_supplier', False),
+                        "stock_coverage_days": bi.get('stock_coverage_days', 0),
+                        "switch_time_days": bi.get('switch_time_days', 0),
+                        "affected_customers": [c.get('customer_name') for c in bi.get('affected_customers', [])][:3]
+                    })
+        
+        # Calculer les métriques globales
+        total_daily_impact = sum(item.get('daily_impact_eur', 0) for item in bi_summary)
+        total_annual_impact = total_daily_impact * 365 if total_daily_impact > 0 else 0
+        sole_suppliers_count = sum(1 for item in bi_summary if item.get('is_sole_supplier'))
+        critical_entities = [item for item in bi_summary if item.get('risk_score', 0) >= 70]
+        
+        # Identifier les entités les plus critiques (top 5)
+        top_entities = sorted(bi_summary, key=lambda x: x.get('daily_impact_eur', 0), reverse=True)[:5]
+        
+        prompt = f"""Tu es un expert senior en gestion des risques supply chain pour Hutchinson (équipementier automobile/aéronautique).
+
+Tu dois produire un RAPPORT D'ANALYSE COMPLET ET DÉTAILLÉ pour aider les décideurs à comprendre l'impact d'un événement.
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 ÉVÉNEMENT ANALYSÉ
+═══════════════════════════════════════════════════════════════════════════════
+
+TYPE: {event_type.upper()}
+SOUS-TYPE: {event_subtype or 'N/A'}
+TITRE: {event_title}
+
+DESCRIPTION:
+{event_content}
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 IMPACT MESURÉ SUR HUTCHINSON
+═══════════════════════════════════════════════════════════════════════════════
+
+ENTITÉS AFFECTÉES:
+- Sites Hutchinson: {len(affected_sites)}
+- Fournisseurs: {len(affected_suppliers)}
+- Fournisseurs UNIQUES (sole suppliers): {sole_suppliers_count}
+- Entités CRITIQUES (score ≥ 70): {len(critical_entities)}
+
+IMPACT FINANCIER ESTIMÉ:
+- Impact quotidien: {total_daily_impact:,.0f}€/jour
+- Impact annuel projeté: {total_annual_impact:,.0f}€/an
+
+TOP 5 ENTITÉS LES PLUS IMPACTÉES:
+{json.dumps(top_entities, indent=2, ensure_ascii=False)}
+
+RISQUES MÉTÉO (si applicable):
+- Entités avec alertes: {weather_risk_summary.get('entities_with_alerts', 0) if weather_risk_summary else 0}
+- Alertes totales: {weather_risk_summary.get('total_alerts', 0) if weather_risk_summary else 0}
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 TON OBJECTIF - 7 SECTIONS OBLIGATOIRES
+═══════════════════════════════════════════════════════════════════════════════
+
+GÉNÈRE un rapport structuré en 7 sections :
+
+1. CONTEXTE ET ENJEUX : Explique l'événement en langage clair et ses implications pour Hutchinson
+2. ENTITÉS AFFECTÉES (liste complète, pas de troncature)
+3. ANALYSE FINANCIÈRE DÉTAILLÉE (impacts directs + coûts de mitigation + ROI)
+4. RECOMMANDATIONS PRIORITAIRES (actionnables avec budget et ROI)
+5. TIMELINE DES ACTIONS (vue chronologique)
+6. MATRICE DE PRIORISATION (impact × urgence)
+7. SCÉNARIO "NE RIEN FAIRE" (conséquences de l'inaction)
+
+CONSIGNES CRITIQUES:
+- LISTER TOUTES les entités (pas de "... et X autres")
+- CHIFFRER tous les impacts en euros
+- DÉTAILLER chaque recommandation (actions concrètes étape par étape)
+- CALCULER le ROI de chaque action
+- NOMMER des responsables suggérés
+- DÉCRIRE le scénario d'inaction sur 3 horizons temporels
+
+RÉPONDS UNIQUEMENT EN JSON:
+{{
+  "context_and_stakes": "Contexte et enjeux en langage clair (3-5 paragraphes)",
+  "affected_entities_details": "Liste COMPLÈTE de toutes les entités avec détails (aucune troncature)",
+  "financial_analysis": "Analyse financière détaillée (impacts + mitigation + ROI)",
+  "recommendations": [
+    {{
+      "id": 1,
+      "title": "Titre de l'action",
+      "urgency": "IMMEDIATE|HIGH|MEDIUM|LOW",
+      "timeline": "30 jours",
+      "owner": "Directeur Achats",
+      "budget_eur": 590000,
+      "context": "Contexte et justification",
+      "risk_if_no_action": "Risque si on ne fait rien",
+      "concrete_actions": "Actions étape par étape",
+      "expected_impact": "Impact attendu",
+      "roi": "6.9x",
+      "priority_score": 95
+    }}
+  ],
+  "timeline": "Timeline visuelle des actions (semaine 1-2, mois 1, etc.)",
+  "prioritization_matrix": "Matrice de priorisation impact×urgence",
+  "do_nothing_scenario": "Scénario inaction (court/moyen/long terme)"
+}}
+"""
+        return prompt
+    
+    def _generate_fallback_recommendations(
+        self,
+        document: Dict,
+        affected_sites: List[Dict],
+        affected_suppliers: List[Dict],
+        criticality_results: Dict,
+        weather_risk_summary: Dict = None
+    ) -> List[Dict]:
+        """
+        Génère des recommandations templates (fallback si LLM non disponible)
         """
         recommendations = []
         event_type = document.get('event_type')
@@ -1267,10 +2008,15 @@ class Agent2:
         document: Dict,
         entity: Dict,
         entity_type: str,
-        risk_score: float
+        risk_score: float,
+        business_impact: Dict = None,
+        supplier_relationships: List[Dict] = None,
+        sites: List[Dict] = None
     ) -> str:
         """
         Génère un raisonnement pour expliquer le score de risque d'une entité
+        
+        AMÉLIORÉ: Utilise le LLM pour analyse en cascade si disponible
         
         Returns:
             Texte explicatif
@@ -1278,14 +2024,150 @@ class Agent2:
         event_type = document.get('event_type')
         entity_name = entity.get('name')
         
-        if event_type == "climatique":
-            return f"{entity_name} est concerné par l'événement climatique en raison de sa proximité géographique. Score de risque : {risk_score:.1f}/100."
-        elif event_type == "reglementaire":
-            return f"{entity_name} est concerné par la réglementation en raison de son secteur d'activité et/ou produits. Score de risque : {risk_score:.1f}/100."
-        elif event_type == "geopolitique":
-            return f"{entity_name} est concerné par l'événement géopolitique en raison de sa localisation dans un pays affecté. Score de risque : {risk_score:.1f}/100."
+        # Si LLM disponible et données BI présentes, faire analyse en cascade
+        if self.llm_reasoning.llm_available and business_impact:
+            try:
+                # Préparer le contexte enrichi pour le LLM
+                context = self._prepare_llm_context(
+                    entity, entity_type, business_impact, 
+                    supplier_relationships or [], sites or []
+                )
+                
+                # Appeler le LLM pour analyse en cascade
+                llm_result = self.llm_reasoning.analyze_cascade_impact(
+                    event=document,
+                    affected_entity=entity,
+                    entity_type=entity_type,
+                    relationships=supplier_relationships or [],
+                    context=context
+                )
+                
+                # Construire le raisonnement à partir de la réponse LLM
+                return self._format_llm_reasoning(llm_result, entity_name, risk_score)
+                
+            except Exception as e:
+                print(f"⚠️ LLM reasoning failed, using fallback: {e}")
         
-        return f"Score de risque : {risk_score:.1f}/100."
+        # Fallback : raisonnement template
+        return self._generate_fallback_reasoning(document, entity, entity_type, risk_score, business_impact)
+    
+    def _prepare_llm_context(
+        self,
+        entity: Dict,
+        entity_type: str,
+        business_impact: Dict,
+        supplier_relationships: List[Dict],
+        sites: List[Dict]
+    ) -> Dict:
+        """
+        Prépare le contexte enrichi avec les données BI pour le LLM
+        """
+        context = {
+            # Données Business Interruption
+            "total_daily_impact_eur": business_impact.get("total_daily_impact_eur", 0),
+            "daily_revenue_loss_eur": business_impact.get("daily_revenue_loss_eur", 0),
+            "customer_penalties_per_day_eur": business_impact.get("customer_penalties_per_day_eur", 0),
+            "stock_coverage_days": business_impact.get("stock_coverage_days", 0),
+            "switch_time_days": business_impact.get("switch_time_days", 0),
+            "is_sole_supplier": business_impact.get("is_sole_supplier", False),
+            "affected_customers": business_impact.get("affected_customers", []),
+        }
+        
+        if entity_type == "supplier":
+            # Ajouter les sites impactés en aval
+            context["affected_sites"] = business_impact.get("affected_sites", [])
+            context["criticality_score"] = entity.get("criticality_score", 5)
+        else:
+            # Pour un site, ajouter le recovery time
+            context["recovery_time_days"] = business_impact.get("recovery_time_days", 7)
+            context["daily_production_units"] = entity.get("daily_production_units", 0)
+        
+        return context
+    
+    def _format_llm_reasoning(self, llm_result: Dict, entity_name: str, risk_score: float) -> str:
+        """
+        Formate la réponse du LLM en texte de raisonnement
+        """
+        reasoning_parts = []
+        
+        # Niveau de risque global
+        risk_level = llm_result.get("overall_risk_level", "MOYEN")
+        reasoning_parts.append(f"🎯 NIVEAU DE RISQUE: {risk_level} (Score: {risk_score:.1f}/100)")
+        
+        # Analyse d'impact
+        impact = llm_result.get("impact_assessment", {})
+        if impact:
+            prob = impact.get("impact_probability", 0)
+            duration = impact.get("estimated_impact_duration_days", 0)
+            reasoning_parts.append(f"\n📊 PROBABILITÉ D'IMPACT: {prob*100:.0f}%")
+            reasoning_parts.append(f"⏱️ DURÉE ESTIMÉE: {duration} jours")
+        
+        # Analyse en cascade
+        cascade = impact.get("cascade_analysis", {})
+        if cascade:
+            days_until = cascade.get("days_until_disruption", 0)
+            downstream = cascade.get("affected_downstream_entities", [])
+            financial = cascade.get("financial_impact_estimate_eur", 0)
+            
+            reasoning_parts.append(f"\n🔗 ANALYSE EN CASCADE:")
+            reasoning_parts.append(f"   - Délai avant disruption: {days_until} jours")
+            if downstream:
+                reasoning_parts.append(f"   - Entités impactées en aval: {', '.join(downstream[:5])}")
+            if financial:
+                reasoning_parts.append(f"   - Impact financier estimé: {financial:,.0f}€")
+            
+            prod_impact = cascade.get("production_impact", "")
+            if prod_impact:
+                reasoning_parts.append(f"   - Impact production: {prod_impact}")
+            
+            customer_impact = cascade.get("customer_impact", "")
+            if customer_impact:
+                reasoning_parts.append(f"   - Impact clients: {customer_impact}")
+        
+        # Raisonnement LLM
+        llm_reasoning = llm_result.get("risk_reasoning", "")
+        if llm_reasoning:
+            reasoning_parts.append(f"\n💡 ANALYSE: {llm_reasoning}")
+        
+        return "\n".join(reasoning_parts)
+    
+    def _generate_fallback_reasoning(
+        self,
+        document: Dict,
+        entity: Dict,
+        entity_type: str,
+        risk_score: float,
+        business_impact: Dict = None
+    ) -> str:
+        """
+        Génère un raisonnement template (fallback si LLM non disponible)
+        """
+        event_type = document.get('event_type')
+        entity_name = entity.get('name')
+        
+        reasoning = ""
+        
+        if event_type == "climatique":
+            reasoning = f"{entity_name} est concerné par l'événement climatique en raison de sa proximité géographique."
+        elif event_type == "reglementaire":
+            reasoning = f"{entity_name} est concerné par la réglementation en raison de son secteur d'activité et/ou produits."
+        elif event_type == "geopolitique":
+            reasoning = f"{entity_name} est concerné par l'événement géopolitique en raison de sa localisation dans un pays affecté."
+        else:
+            reasoning = f"{entity_name} est potentiellement concerné par l'événement."
+        
+        reasoning += f" Score de risque : {risk_score:.1f}/100."
+        
+        # Ajouter les données BI si disponibles
+        if business_impact:
+            total_impact = business_impact.get("total_daily_impact_eur", 0)
+            if total_impact > 0:
+                reasoning += f"\n💰 Impact financier estimé: {total_impact:,.0f}€/jour"
+            
+            if business_impact.get("is_sole_supplier"):
+                reasoning += "\n⚠️ ATTENTION: Fournisseur unique - risque critique de rupture supply chain"
+        
+        return reasoning
     
     # ========================================
     # Utilitaires

@@ -6,9 +6,10 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import AgentDashboard from './pages/AgentDashboard';
 import SupplierAnalysis from './pages/SupplierAnalysis';
+import AdminPanel from './pages/AdminPanel';
 import { User } from './types';
 
-type PageType = 'landing' | 'login' | 'register' | 'dashboard' | 'agent' | 'supplier-analysis';
+type PageType = 'landing' | 'login' | 'register' | 'dashboard' | 'agent' | 'supplier-analysis' | 'admin';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageType>('landing');
@@ -52,6 +53,9 @@ const App: React.FC = () => {
       )}
       {currentPage === 'supplier-analysis' && user && (
         <SupplierAnalysis onBack={() => setCurrentPage('dashboard')} />
+      )}
+      {currentPage === 'admin' && user && (
+        <AdminPanel onBack={() => setCurrentPage('dashboard')} />
       )}
     </div>
   );

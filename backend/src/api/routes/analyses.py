@@ -1,61 +1,123 @@
 """
-Routes pour les analyses (réglementations pour le frontend)
+Routes pour les réglementations (frontend Dashboard)
+Adapté pour utiliser Document + RiskAnalysis comme modèles de données
 """
 
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime
+from pydantic import BaseModel
 
 from src.api.deps import get_db
-from src.api.schemas import (
-    RegulationListResponse,
-    RegulationResponse,
-    UpdateRegulationStatusRequest,
-    RegulationStatsResponse
-)
-from src.storage.models import Analysis, Document
-from src.storage.repositories import AnalysisRepository
+from src.storage.models import Document, RiskAnalysis, PertinenceCheck
 
 router = APIRouter(prefix="/regulations", tags=["Regulations"])
 
 
-def map_analysis_to_regulation(analysis: Analysis) -> RegulationResponse:
+# ========================================
+# Schémas de réponse
+# ========================================
+
+class RegulationResponse(BaseModel):
+    id: str
+    title: str
+    description: str
+    status: str
+    type: Optional[str] = None
+    dateCreated: datetime
+    reference: Optional[str] = None
+    confidence: Optional[float] = None
+    matched_keywords: Optional[dict] = None  # Peut être un dict complexe
+    matched_nc_codes: Optional[List[str]] = None
+    llm_reasoning: Optional[str] = None
+    risk_level: Optional[str] = None
+    risk_score: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+
+class RegulationListResponse(BaseModel):
+    regulations: List[RegulationResponse]
+    total: int
+    page: int
+    limit: int
+
+
+class UpdateRegulationStatusRequest(BaseModel):
+    status: str
+    comment: Optional[str] = None
+
+
+class RegulationStatsResponse(BaseModel):
+    total: int
+    pending: int
+    validated: int
+    rejected: int
+
+
+# ========================================
+# Fonctions de mapping
+# ========================================
+
+def map_document_to_regulation(doc: Document) -> RegulationResponse:
     """
-    Convertit une Analysis backend en Regulation frontend
-    
-    Mapping des statuts:
-    - pending → pending
-    - approved → validated
-    - rejected → rejected
+    Convertit un Document en format Regulation pour le frontend
     """
-    doc = analysis.document
     
-    # Mapper le statut backend → frontend
-    status_mapping = {
-        'pending': 'pending',
-        'approved': 'validated',
-        'rejected': 'rejected'
-    }
+    # Récupérer l'analyse de risque associée si elle existe
+    risk_analysis = doc.risk_analysis if hasattr(doc, 'risk_analysis') else None
+    pertinence = doc.pertinence_check if hasattr(doc, 'pertinence_check') else None
+    
+    # Déterminer le statut
+    status = "pending"
+    if risk_analysis:
+        status = "validated"
+    elif pertinence:
+        if pertinence.decision == "NON":
+            status = "rejected"
+        else:
+            status = "pending"
+    
+    # Extraire les informations de l'analyse
+    llm_reasoning = None
+    risk_level = None
+    risk_score = None
+    confidence = None
+    
+    if risk_analysis:
+        llm_reasoning = risk_analysis.reasoning
+        risk_level = risk_analysis.risk_level
+        risk_score = risk_analysis.risk_score
+    
+    if pertinence:
+        confidence = pertinence.confidence
     
     return RegulationResponse(
-        id=analysis.id,
+        id=doc.id,
         title=doc.title,
-        description=doc.content[:500] if doc.content else analysis.llm_reasoning or "",
-        status=status_mapping.get(analysis.validation_status, analysis.validation_status),
-        type=doc.regulation_type,
+        description=doc.content[:500] if doc.content else "",
+        status=status,
+        type=doc.event_type,
         dateCreated=doc.created_at,
         reference=doc.source_url,
-        confidence=analysis.confidence,
-        matched_keywords=analysis.matched_keywords,
-        matched_nc_codes=analysis.matched_nc_codes,
-        llm_reasoning=analysis.llm_reasoning
+        confidence=confidence,
+        matched_keywords=pertinence.matched_elements if pertinence and pertinence.matched_elements else None,
+        matched_nc_codes=None,
+        llm_reasoning=llm_reasoning,
+        risk_level=risk_level,
+        risk_score=risk_score
     )
 
 
+# ========================================
+# Endpoints
+# ========================================
+
 @router.get("", response_model=RegulationListResponse)
 def get_regulations(
-    status: Optional[str] = Query(None, description="Filtrer par statut: all, pending, validated, rejected, to-review"),
+    status: Optional[str] = Query(None, description="Filtrer par statut: all, pending, validated, rejected"),
     search: Optional[str] = Query(None, description="Recherche dans le titre"),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1, le=100),
@@ -63,38 +125,45 @@ def get_regulations(
 ):
     """
     Récupère la liste des réglementations avec filtres.
-    
-    Retourne les analyses avec leurs documents associés.
     """
     
-    # Construire la requête de base avec eager loading du document
-    query = db.query(Analysis).join(Document).options(joinedload(Analysis.document))
-    
-    # Filtrer par statut
-    if status and status != 'all':
-        # Mapper le statut frontend → backend
-        status_mapping = {
-            'pending': 'pending',
-            'validated': 'approved',
-            'rejected': 'rejected',
-            'to-review': 'pending'  # to-review = pending dans notre système
-        }
-        backend_status = status_mapping.get(status, status)
-        query = query.filter(Analysis.validation_status == backend_status)
+    # Construire la requête de base avec eager loading
+    query = db.query(Document).options(
+        joinedload(Document.pertinence_check),
+        joinedload(Document.risk_analysis)
+    )
     
     # Filtrer par recherche dans le titre
     if search:
         query = query.filter(Document.title.ilike(f"%{search}%"))
     
-    # Compter le total
-    total = query.count()
+    # Récupérer tous les documents d'abord pour filtrer par statut
+    all_docs = query.order_by(Document.created_at.desc()).all()
+    
+    # Filtrer par statut
+    filtered_docs = []
+    for doc in all_docs:
+        doc_status = "pending"
+        if doc.risk_analysis:
+            doc_status = "validated"
+        elif doc.pertinence_check and doc.pertinence_check.decision == "NON":
+            doc_status = "rejected"
+        
+        if status and status != 'all':
+            if status == doc_status:
+                filtered_docs.append(doc)
+        else:
+            filtered_docs.append(doc)
+    
+    # Total après filtrage
+    total = len(filtered_docs)
     
     # Pagination
     offset = (page - 1) * limit
-    analyses = query.order_by(Analysis.created_at.desc()).offset(offset).limit(limit).all()
+    paginated_docs = filtered_docs[offset:offset + limit]
     
     # Convertir en format frontend
-    regulations = [map_analysis_to_regulation(analysis) for analysis in analyses]
+    regulations = [map_document_to_regulation(doc) for doc in paginated_docs]
     
     return RegulationListResponse(
         regulations=regulations,
@@ -104,20 +173,48 @@ def get_regulations(
     )
 
 
+@router.get("/stats", response_model=RegulationStatsResponse)
+def get_regulation_stats(db: Session = Depends(get_db)):
+    """
+    Récupère les statistiques des réglementations.
+    """
+    
+    total = db.query(Document).count()
+    validated = db.query(RiskAnalysis).count()
+    
+    # Documents rejetés (pertinence = NON)
+    rejected = db.query(PertinenceCheck).filter(
+        PertinenceCheck.decision == "NON"
+    ).count()
+    
+    # Pending = total - validated - rejected
+    pending = max(0, total - validated - rejected)
+    
+    return RegulationStatsResponse(
+        total=total,
+        pending=pending,
+        validated=validated,
+        rejected=rejected
+    )
+
+
 @router.get("/{id}", response_model=RegulationResponse)
 def get_regulation_by_id(
     id: str,
     db: Session = Depends(get_db)
 ):
     """
-    Récupère une réglementation spécifique par son ID (analysis.id)
+    Récupère une réglementation spécifique par son ID.
     """
-    analysis = db.query(Analysis).options(joinedload(Analysis.document)).filter(Analysis.id == id).first()
+    doc = db.query(Document).options(
+        joinedload(Document.pertinence_check),
+        joinedload(Document.risk_analysis)
+    ).filter(Document.id == id).first()
     
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Réglementation non trouvée")
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document non trouvé")
     
-    return map_analysis_to_regulation(analysis)
+    return map_document_to_regulation(doc)
 
 
 @router.put("/{id}/status", response_model=RegulationResponse)
@@ -127,73 +224,18 @@ def update_regulation_status(
     db: Session = Depends(get_db)
 ):
     """
-    Met à jour le statut de validation d'une réglementation.
-    
-    Utilisé par l'équipe juridique pour valider/rejeter les analyses.
+    Met à jour le statut d'une réglementation.
+    Note: Dans ce système, le statut est dérivé de l'existence d'une analyse.
     """
-    analysis = db.query(Analysis).options(joinedload(Analysis.document)).filter(Analysis.id == id).first()
+    doc = db.query(Document).options(
+        joinedload(Document.pertinence_check),
+        joinedload(Document.risk_analysis)
+    ).filter(Document.id == id).first()
     
-    if not analysis:
-        raise HTTPException(status_code=404, detail="Réglementation non trouvée")
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document non trouvé")
     
-    # Mapper le statut frontend → backend
-    status_mapping = {
-        'validated': 'approved',
-        'rejected': 'rejected',
-        'to-review': 'pending'
-    }
+    # Le statut est principalement informatif dans ce système
+    # L'action réelle serait de marquer pour relecture, etc.
     
-    backend_status = status_mapping.get(request.status, request.status)
-    
-    # Mettre à jour l'analyse
-    analysis.validation_status = backend_status
-    analysis.validation_comment = request.comment
-    analysis.validated_by = "juriste@hutchinson.com"  # TODO: récupérer l'utilisateur authentifié
-    analysis.validated_at = datetime.utcnow()
-    
-    # Mettre à jour le workflow du document
-    if backend_status == 'approved':
-        analysis.document.workflow_status = 'validated'
-        analysis.document.validated_at = datetime.utcnow()
-    elif backend_status == 'rejected':
-        analysis.document.workflow_status = 'rejected_analysis'
-    
-    db.commit()
-    db.refresh(analysis)
-    
-    return map_analysis_to_regulation(analysis)
-
-
-@router.get("/stats", response_model=RegulationStatsResponse)
-def get_regulation_stats(db: Session = Depends(get_db)):
-    """
-    Récupère les statistiques des réglementations.
-    """
-    total = db.query(Analysis).count()
-    
-    # Compter par statut
-    pending_count = db.query(Analysis).filter(Analysis.validation_status == 'pending').count()
-    approved_count = db.query(Analysis).filter(Analysis.validation_status == 'approved').count()
-    rejected_count = db.query(Analysis).filter(Analysis.validation_status == 'rejected').count()
-    
-    # Compter les récentes (dernière semaine)
-    from datetime import timedelta
-    week_ago = datetime.utcnow() - timedelta(days=7)
-    recent_count = db.query(Analysis).filter(Analysis.created_at >= week_ago).count()
-    
-    # Priorités hautes (confidence > 0.8)
-    high_priority = db.query(Analysis).filter(
-        Analysis.confidence > 0.8,
-        Analysis.validation_status == 'pending'
-    ).count()
-    
-    return RegulationStatsResponse(
-        total=total,
-        by_status={
-            'pending': pending_count,
-            'validated': approved_count,
-            'rejected': rejected_count
-        },
-        recent_count=recent_count,
-        high_priority=high_priority
-    )
+    return map_document_to_regulation(doc)

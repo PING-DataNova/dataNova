@@ -1,0 +1,1024 @@
+Ce que je peux vous proposer, c'est de faire un petit tour rapidement des livrables.
+Moi, j'ai le CDC, j'ai un document sur les données et un fichier Excel.
+C'est bien ça, plus évidemment l'application sur laquelle vous êtes en train de travailler.
+Oui, c'est ça.
+Ok, ça marche.
+Donc, malheureusement, je n'ai pas pu vous filer les informations, je l'ai absenté.
+Dès ce que j'ai compris, Guillaume, c'est que pour ce sujet de risque réglementaire,
+moi, j'aurais demandé de faire la projection par rapport à la solution.
+Il y a deux choses.
+La première, c'est sur les sites Hutchinson, pour lesquels on devait donner quelques exemples du MDM.
+Guillaume, le nom du site, l'adresse, l'entité juridique, tout ça.
+Et après, une deuxième projection sur un exemple de fournisseur.
+Mais l'exemple du site est beaucoup plus parlant pour nous,
+parce qu'en cas de risque, on va dire réglementaire ou lié à la météo ou autre,
+c'est plus facile de croiser par rapport au site Hutchinson.
+Oui.
+Donc, Guillaume, est-ce que tu peux, s'il te plaît, dans le fichier Excel qui était attaché,
+dans lequel il y a le site ID, le nom du site, le pays, la région,
+les coordonnées GPS, secteur d'activité, nombre d'employés, produits fabriqués,
+est-ce que tu peux leur renseigner 3, 4 ou 5 lignes en partant du MDM,
+comme avec le HUS, après au mur, en termes de colonne ?
+J'ai manqué de temps ce week-end pour revenir.
+Je retrouve le mail avec la pièce jointe.
+Oui, si tu veux, je peux te l'envoyer.
+Je te l'envoie un instant.
+OK.
+Donc, pendant que Guillaume regarde le fichier Excel avec les infos-sites qu'on va vous donner,
+est-ce que vous pouvez nous faire un petit tour très limpide sur les évolutions
+que vous avez apportées au cahier des charges, au delta par rapport à ce qu'on s'était élu la dernière fois,
+et après, par rapport à la réalisation, c'est-à-dire l'implémentation de la solution sur laquelle vous êtes en train de travailler ?
+OK.
+Alors...
+En gros, depuis la semaine, on s'était élu la semaine dernière, oui.
+Donc, en gros, en une semaine, on se compte les sprints que vous avez pu réaliser.
+Je vois le travail qui a été fait sur le cahier des charges, la préparation des données.
+Donc, moi, je serais intéressé de voir qu'est-ce que vous avez réalisé pendant cette semaine.
+OK.
+Donc, si je reprends mes notes,
+on a parlé du cahier des charges à mettre à jour avec les paramétrages de PAP.
+Donc ça, je pense que c'est ce que vous avez fait.
+On a parlé d'indiquer dans le cahier des charges les éléments de budget, délai, qualité, pour être complet.
+En plus, on a parlé un peu du RACI, et je l'ai lu dans le cahier des charges.
+Oui.
+Et aujourd'hui, on devait faire un point avec la partie réalisation, l'avancement sur la partie applicative,
+parce que là, il ne reste quasiment plus beaucoup de temps.
+Aujourd'hui, c'est le jeudi pour la restitution.
+C'est ça.
+Allez, c'est à vous.
+Pardon ?
+Pardon.
+OK.
+Du coup, on va vous faire une petite démo.
+C'est ce qu'on a mis en place.
+Non, le cahier des charges.
+Le cahier des charges, OK.
+Du coup, au niveau du cahier de charge, on a ajouté notamment le raci et les différents points sur lesquels on a abordé.
+On a revu notre architecture pour intégrer les deux scénarios dont on a parlé.
+On a une partie, un premier scénario où les équipes acharnées vont recevoir la notification dans laquelle il y aura un lien sur le rapport mis en place suite à une analyse des risques.
+Et le deuxième scénario où nous avons la possibilité que l'utilisateur se connaisse à la plateforme et puisse lancer une recherche, par exemple une analyse sur un fournisseur précis donné pour voir les différents risques que l'utilisateur pourrait avoir en travaillant avec ce fournisseur.
+Ce qu'on a fait, c'est qu'on a prévu dans notre architecture une architecture multi-agents avec trois agents principaux.
+Nous avons un premier agent qui a en entrée les différentes sources, par exemple les sites officiels sur lesquels nous allons récupérer les réglementations et les différents sites pour récupérer les données météorologiques et géopolitiques.
+Actuellement, dans ce qu'on a réalisé, on a d'abord mis en place la partie risques réglementaires et risques climatiques liés à la météo.
+Dans notre base de données, on a un site, le site Eurolet, sur lequel on a les différentes lois liées à l'Europe.
+Excusez-moi, est-ce que c'est possible qu'on enregistre la session ?
+Oui, c'est possible.
+Ok, ça marche.
+Je vais enregistrer un petit moment.
+C'est bon ?
+Oui, parfait.
+Vous nous attendez toujours ?
+Oui, je vous entends. J'étais à l'architecture avec les différents agents et comment vous les avez orchestrés.
+Le premier agent a en entrée les sources, c'est-à-dire que dans notre architecture actuellement, on utilise le site Eurolet, sur lequel on a toutes les réglementations et les lois en Europe.
+Et sur ce site-là, on passe par l'API de ce site-là, on requiert cette API, on fait une recherche par mots-clés en fonction des différentes matières premières que l'entreprise utilise dans ses processus.
+Sur cette API-là, on récupère toutes les réglementations qui sont relatives à un matériau donné.
+Ensuite, toutes ces données sont stockées dans la base de données.
+Donc, nous avons un premier LLM qui est intégré au premier agent, qui va faire une analyse croisée, sémantique, avec les données de l'entreprise, notamment les différents sites de l'entreprise,
+et les différentes données relatives à leurs fournisseurs, pour voir si les différentes lois qui ont été récupérées sont présentes.
+Est-ce que vous avez documenté les sources dans le cahier des gens ou pas ?
+Je suis en train de regarder la section avec le flux de données d'architecture.
+Je ne crois pas que l'agent 1, la gestion, récupère les données de loi et les données internes de Chinson, mais vous avez parlé d'un site en particulier, il a été référencé ou pas ?
+Non, je ne l'ai pas.
+Ce sera bien de mettre les sources pour aussi justifier pourquoi vous avez fait ce choix.
+Parce que ce type de sites web, si vous vous rappelez, je vous ai parlé des sites web de l'Union Européenne, qui sont souvent bien faits,
+parce que c'est la facilité aussi de ces sites, parce qu'ils exposent une API qui facilite le data crunching ou le scrapping des données sur le web.
+Donc ça, il faut le mettre dans le cahier des gens, c'est un prérequis important.
+Oui, c'est pratiquement ça.
+Oui, du coup, je continue.
+Donc, le premier agent, on lui a intégré un LLM
+qui récupère dans la base de données
+les différentes lois qu'on a récupérées sur le site officiel
+et croise ces données avec les données de l'entreprise,
+c'est-à-dire ces différents sites
+et aussi les données de leurs fournisseurs
+et détermine si telle loi,
+par exemple une loi IS,
+est pertinemment applicable à Utilzone ou pas.
+Donc, nous avons trois cas.
+Le premier cas, ce n'est pas applicable,
+donc on rejette la loi.
+Les deux autres cas, c'est soit applicable,
+oui, ou partiellement.
+Donc, toutes les lois qui sont applicables,
+oui et partiellement,
+sont envoyées vers un second agent
+qui également lui a intégré un LLM
+qui va faire une analyse de risque
+beaucoup plus approfondie que le premier
+pour vraiment décrire l'impact
+que pourrait avoir cette loi-là
+sur les différents processus d'Utilzone.
+Une fois que cette analyse est faite,
+le LLM associe à cette analyse un score de pertinence,
+un score de confiance,
+qui est ensuite évalué par un troisième LLM
+pour vérifier si l'analyse que les deux premiers LLM ont faite
+sont pertinentes,
+en se basant notamment en vérifiant
+si les deux premiers agents ont bien cité les sources,
+les différents passages qui l'ont permis de dire
+par exemple qu'il ne faut pas utiliser telle matière,
+mais l'entreprise utilise telle matière,
+ou par exemple qu'il ne faut pas importer de telle façon,
+mais l'entreprise fait ça.
+Du coup, cette loi-là s'applique à l'entreprise.
+Donc, le LLM Jug a pour rôle de juger la pertinence
+et la qualité de ce que les deux premiers LLM
+ont sorti comme rapport.
+Donc, en fonction du score que le LLM Juge va donner
+au rapport sorti passé des premiers LLM,
+on aura soit ce à quoi on a pensé pour le moment,
+c'est trois cas possibles,
+c'est-à-dire qu'on a un score qui est soit très faible,
+qui est inférieur à 7,
+et du coup, on considère que cette loi-là
+n'est pas vraiment très applicable à l'entreprise.
+Du coup, on ne garde pas ça en mesure d'un projet.
+On a les deux autres cas.
+Un cas où le score est très élevé,
+donc directement le rapport est validé
+et une notification est envoyée aux équipes à charge.
+Le troisième cas, c'est si le score est dans une moyenne donnée
+entre 8,5 et 7,
+il est entre très faible et très fort.
+Là, on envoie toujours un mail à l'équipe à charge,
+mais on précise dans le mail qu'il faut faire revoir cette analyse
+potentiellement par une SP pour vraiment valider
+que l'analyse est bonne ou pas.
+Donc ça, c'est le premier cas.
+Le deuxième cas, c'est qu'en tant qu'utilisateur,
+vous pouvez vous connecter sur une interface,
+vous remplissez les informations sur un fournisseur donné
+et puis vous lancez une analyse.
+Derrière, le système va refaire le même travail.
+Il va analyser les différents impacts,
+les différents risques qui sont liés à ce fournisseur-là
+et projeter ça sur l'utilisateur pour voir
+si l'utilisateur travaille par exemple avec ce fournisseur,
+quels sont les différents risques auxquels il pourrait être exposé.
+Là, j'ai parlé du processus pour les lois réglementaires,
+mais c'est le même processus avec, par exemple,
+les données météorologiques, dans le sens où la source...
+Ici, on utilise une API OpenMétéo,
+où on récupère toutes les informations météorologiques, climatiques,
+relatives à la localisation des sites d'utilisateurs
+et des sites de leur fournisseur.
+En récupérant ça, on fait aussi l'analyse de risque derrière
+pour voir comment est-ce que les prévisions météorologiques
+ou les conditions climatiques vont potentiellement impacter
+tous les processus de supply chain avec Hutchinson.
+Donc tout ça est mis dans le rapport final.
+qui est envoyé à l'équipe acharnée.
+Très bien.
+Et Golson, vous n'avez pas oublié ce qu'on s'était dit la dernière fois,
+qui était que cette application a tellement de potentiel
+que je vous ai demandé de catégoriser les risques et les sources
+pour les rendre paramétrables dans l'application,
+parce que demain, par exemple, on peut identifier un autre type de risque
+qu'on ne connaissait pas.
+Par exemple, en 2020, on a découvert le risque Covid,
+qu'il y a un an avant, on ne savait pas.
+Et donc, c'est en double, on découvre un nouveau risque.
+On va le paramétrer dans l'application.
+On peut paramétrer des sources d'informations
+qui permettent d'alimenter ce risque ou d'analyser ce risque.
+Et à partir de là, on roule un type de risque
+avec des sources d'informations qui soient intermédiaires.
+Oui, c'est ça.
+Et à partir de là, ces éléments viennent se rajouter au rapport
+par la mécanique que vous avez décrite.
+Pourquoi on fait ça ?
+Parce que la notion de risque, c'est quelque chose qui n'est pas statique.
+Les sources d'informations peuvent évoluer, d'accord ?
+Il y en a qui se créent, il y en a qui s'arrêtent.
+Et donc, pour que l'application reste, on va dire,
+à un niveau très élevé de ce qu'elle apporte,
+il faut que l'application puisse juste la paramétrer,
+qu'on ne soit pas obligé de rentrer avec du code source,
+que ce soit du paramétrage.
+Après, ce que j'attends, c'est quelque chose de simple,
+à un niveau relativement simple, rajouter une typologie de risque,
+rajouter une source d'informations,
+et tout est pris dans le workflow que vous avez défini.
+Ça, vous l'avez bien pris en compte pendant le sprint cette semaine ?
+Oui, on l'a bien pris en compte.
+Super.
+Oui, très bien.
+Mais déjà, on l'a bien pris en compte,
+le processus derrière ne devrait pas changer dans le sens où,
+lorsqu'on détecte un nouveau risque,
+dans la base de données,
+on aura de nouvelles sources par rapport à ce risque-là,
+et puis, on va récupérer les données et refaire la même analyse.
+Dans notre base de données, on a des champs qui décrivent le type de risque,
+c'est-à-dire que, soit c'est un risque réglementaire,
+risque climatique, risque géopolitique.
+Dans les données, c'est défini.
+Et du coup, derrière aussi, avec le LLM,
+lorsqu'il veut faire l'analyse,
+lorsqu'il récupère les données,
+en fonction du type de risque et des données qui sont derrière,
+il sait exactement comment faire son analyse
+pour que dans le rapport, cela soit bien détaillé.
+Donc, pour ce qu'elle est à présent, il ne devrait pas y avoir de problème.
+On l'a bien pris en compte.
+Je ne suis pas sûre qu'elle est là.
+Qui m'entend ?
+Toi.
+Oui.
+Ok, parfait.
+Pour cette partie-là, c'est qui ?
+Sur les aspects budget, coût d'aide,
+je suis toujours dans les points qu'on a.
+Je vais être censuré, c'est-à-dire que ça n'a pas été fait.
+Non, mais après, il faut juste me dire,
+est-ce que cette partie-là a été intégrée ou pas ?
+Cette partie-là a été intégrée,
+mais j'avoue qu'on a été un peu…
+pas forcément très en profondeur.
+Je n'ai pas bien compris là,
+parce que j'ai un peu peur autour de moi.
+Cette partie-là, vous n'avez pas eu le temps ou vous avez fait tout ?
+On voulait dire qu'on n'a pas été très précis.
+On a été…
+Enfin, on a souvent employé des pochettes.
+On s'est vraiment basé sur nous actuellement.
+Si, par exemple, c'est une équipe de six comme nous
+qui devrait travailler sur le projet,
+ce qui devrait être utilisé comme matériel et autres,
+avec les coûts derrière, les coûts qu'on pourrait leur appliquer.
+Mais c'est vraiment une estimation des coûts.
+Oui, mais c'est déjà très bien.
+Là, en gros, vous avez fait la partie matérielle,
+l'usage des RGN.
+Au niveau des ressources humaines,
+ce que je vous conseille,
+c'est de faire quelque chose de beaucoup plus simple.
+Ne pas ramener au salaire,
+parce que les salaires, c'est quelque chose qui évolue.
+On peut pas ramener au salaire en province,
+à Paris, en France, à l'étranger, peu de variants.
+Au niveau des ressources humaines,
+mettez juste le nombre de jours hommes
+nécessaire par typologie,
+puis on appliquera des taux journaliers.
+Ça, ça donnera tout de suite un budget au lieu de salaire,
+parce qu'il se trouve que nous,
+on fera ce projet avec de la prestation en atteinte.
+Et il va vous manquer une partie importante,
+qui est, est-ce que certaines sources vont être payantes ?
+Par exemple, des API météo payantes,
+ou des API payantes,
+parce que ça, c'est pas exclu,
+qu'on ait des données de qualité,
+mais qu'il va falloir acheter.
+ou sous-script.
+Guillaume, tu m'arrêtes si je dis des bêtises.
+Alors sur la partie API, pour la météo, on a déjà en interne.
+Oui.
+Après, ça dépend du niveau de détail qui est demandé par rapport à ce use case.
+En tout cas, ici, ce qui les intéresse, ce n'est pas le passé, c'est le futur.
+Donc ils sont sur le forecast.
+Et ils descendent au niveau de granularité jusqu'à la position GPS.
+Il y a un site, un minimum sur un site.
+Ça, on l'a.
+C'est s'il y avait besoin des données de pression, du taux d'humidité ou ce genre de choses.
+Mais si c'est juste la météo, globalement, c'est pas mal.
+Je pense que c'est plutôt la météo au sens risque.
+Ce qui va les intéresser, ce n'est pas la température, mais c'est s'il y a une alerte météo.
+Par exemple, en France, les niveaux, est-ce que c'est orange ou rouge ?
+Est-ce qu'il y a une tempête avec des vents forts ?
+Ils vont analyser presque le texte de l'alerte météo pour voir si ça constitue un risque.
+Mais pas la météo au sens risque.
+En tout cas, ma remarque par rapport au budget, c'est que si vous avez des API payantes,
+même si demain il y a des sources payantes, on n'exclut pas que ça vienne s'ajouter au budget.
+Parce que la data, ça peut s'acheter aussi.
+Donc ça, c'est parfait.
+Et sur la partie délai, vous avez mis quelque chose par rapport au jalon projet ?
+On est parti du principe que le jalon, c'est la période qui nous a été attribuée, c'est-à-dire le vendredi normalement.
+D'accord.
+Que vous avez découpé, j'imagine, il y a une partie specification, une partie build,
+de construction de la solution, une partie peut-être de test et mise en place de la solution.
+Donc là, la partie délai, vous l'avez formalisé.
+Comment vous avez découpé votre délai planning ?
+J'ai structuré un casse-prêt.
+Très bien.
+1, 2, 3, 4.
+Ok.
+Il faudrait peut-être concrétiser les dates.
+Oui, c'est très bien, mais ça convient parce qu'on est sur un délai très court.
+Oui.
+On est sur un délai très court.
+Ok.
+Et sur la partie qualité, vous pouvez aller sur la partie test ?
+La partie qualité, ici.
+Voilà, super.
+La partie qualité est pertinente.
+D'accord, c'est un consommaire, mais très clairement, il y a une partie explicabilité
+parce qu'elle est importante.
+D'accord ?
+Oui.
+Il y a un mécanisme d'explicabilité parce que si vous sortez un risque, il va falloir
+expliquer à l'utilisateur comment on est arrivé à ce risque.
+Oui, c'est ça.
+Il va falloir aussi des tests, sans le faire, mais il va falloir imaginer des tests, des
+scénarios de tests de validation avec les H1, les métiers, qui vont nous valider que
+les modèles qui ont été implémentés, les risques et le rapport vont être vraiment
+correspondant à leurs besoins.
+Oui.
+Parce que si vous faites des rapports et que les métiers ou l'utilisateur prouvent
+que le rapport n'est pas adéquat, c'est-à-dire que l'application ne sera pas utilisable.
+Donc, on appelle ça des tests d'acceptance.
+Oui.
+Donc, il va falloir formaliser des scénarios et des tests d'acceptance qui vous permettent
+de vérifier que les modèles que vous utilisez, les algorithmes sont explicables.
+C'est-à-dire que l'utilisateur vous dit que c'est très intéressant cette alerte,
+mais est-ce que vous pouvez nous dire comment le modèle est arrivé à cette conclusion.
+Donc, ça, il va falloir que vous le cheminez.
+Et deuxièmement, il va falloir formaliser des tests avec des documents où l'utilisateur
+dit oui, je valide que ce type de rapport, ce type d'alerte, ce contenu est conforme
+par rapport à mon attente.
+Donc, une sorte de checklist de tests, c'est ça ?
+Exactement, oui.
+Alors, dans les tests, vous avez vu ça à l'école, il y a les tests unitaires,
+les tests d'intégration, les tests de montée en charge.
+Donc, ça, c'est des tests plutôt applicatifs.
+Et après, vous avez un autre type de test.
+Vous avez les tests utilisateurs.
+Ils permettent de répondre au user story, ou répondre à l'attente de l'utilisateur.
+Donc, là, ce n'est pas des tests.
+Ce sont des tests qui permettent à ce que l'utilisateur valide le fonctionnement de l'application selon ce qui était décrit dans le cahier des charges.
+On les a bien précisé dans la partie test du cahier des charges.
+Oui, c'est la tête d'accepteur, c'est un utilisateur.
+Et puis, c'est principalement ça.
+Maintenant, on va vous faire une petite démo deux secondes.
+Allez, c'est parti.
+Par rapport à la démo, vous avez utilisé des données factrices ?
+Ou comment vous avez fait pour la liste des sites ?
+Ce sont des données factrices.
+Factrices, ok.
+Tom et moi, vous avez fait tourner toute l'application en local ?
+Oui, c'est ça.
+Je vois localhost 3000.
+Donc, tout tourne en local et la partie LLM est en API ?
+Oui, c'est ça, en API.
+Parfait.
+Déjà, ça c'est la page d'accueil.
+Là, il y a des affichages un peu moqués pour la plupart.
+L'une des choses dont on a intérêt, c'est la partie analyse des risques par un utilisateur de façon ponctuelle.
+Donc, vous avez la possibilité...
+Donc, c'est l'utilisateur qui rentre un fournisseur et le système analyse.
+Oui, il rentre un fournisseur, il ajoute quelques données principales, des codings par rapport aux différents matériaux.
+Il sélectionne un taux de criticité.
+Est-ce qu'il est un fournisseur en 1, en 2 ? Est-ce qu'il est monosource ?
+On va dire qu'il est important.
+Volumes annuels, très bien.
+Les prix, les volumes financiers.
+Alors, qu'est-ce qui se passe ici derrière le bouton ?
+Le système a pris les données du fournisseur.
+Qu'est-ce qu'il a fait ?
+Le système qu'il a pris, d'abord, il est allé voir dans la base de données.
+Il a récupéré dans les données de l'entreprise.
+Dans ce cas-là, on donne déjà les secteurs, c'est-à-dire le code NC.
+Là, j'ai choisi l'aluminium, le matériel.
+Du coup, il prend cette donnée-là, qui va recruter l'API du site officiel qu'on utilise pour les réglementations EUROLES.
+Il va recruter cette API.
+Il recherche toutes les réglementations via ces deux mots-clés-là.
+Et il récupère principalement les réglementations consolidées.
+Parce qu'étant donné que les réglementations sont mises à jour à chaque fois,
+il y a des documents consolidés où on a toutes les modifications de la loi depuis qu'elle a été mise en place.
+On récupère toutes ces lois-là, leurs documents consolidés.
+Et cela est enregistré dans la base de données.
+Ensuite, le deuxième agent.
+Oui, par contre, c'est contextualisé ou pas ?
+Je vois par exemple, ici, le point identique.
+Ça concerne l'aluminium exposé originé in the People's Republic of China.
+Est-ce que là, le modèle prend déjà ça comme étant de tirage commercial concerné par la Chine ?
+Est-ce que ça, c'est contextualisé ou il prend juste avec les mots-clés liés, par exemple, à l'aluminium ou au métal ?
+Non, dans un premier temps, il ne prend que l'aluminium et le métal.
+C'est dans l'analyse que, dans la seconde analyse…
+Dans un premier temps, je ne récupère que les données.
+C'est dans l'analyse maintenant que le LLM prend en compte le fait que le fournisseur est à tel endroit, à tel endroit.
+D'accord. Et après, il applique la géographie.
+Exactement.
+Et il applique la géographie. Il fait son analyse.
+Derrière, il y a aussi le LLM qui va analyser la pertinence de ce qu'il a dit pour ressortir le rapport.
+Alors, il y a un point positif que je vois à l'écran.
+C'est qu'à chaque fois, vous mettez la source.
+Oui.
+C'est-à-dire qu'il y a les briques.
+avec le niveau de braille médium tout ça, et vous mettez la source, donc l'utilisateur
+il peut cliquer sur la source pour aller voir effectivement, et là on voit effectivement
+c'est des tartines, de l'article et de la Côte d'Ivoire, et donc là il y a effectivement
+c'est une très très bonne alternative que d'aller lire ça et de résumer, exactement,
+du coup vous avez aussi les alertes météo, très bien, donc ça c'est ce qu'il y a en
+bas, donc l'eau, l'eau, l'eau météo, mécanique, et après il y a la recommande,
+donc ça c'est la synthèse, vérifier la conformité, le cycle de détecter, anticiper
+les six alertes météo, prévoir le stroke, trois semaines, ok, très bien, du coup potentiellement
+la partie, l'analyse, ceux qui retournent, comment ils font l'analyse, on va revoir
+un peu plus, pour que ça soit beaucoup plus, beaucoup plus explicite et plus, plus poussé
+quoi, ça veut dire, ça donne à votre son ici ce que tu viens de faire sur un fournisseur
+à la demande, on peut imaginer que l'application s'y alla à la liste de tous les fournisseurs,
+d'aller appliquer ce même algorithme sur l'ensemble de la base fournisseur en prenant
+évidemment les fournisseurs les plus critiques au début, et sortir les rapports, analyser
+les recommandations et proposer ça à l'utilisateur avec un rapport bien ou un document qui lui
+permet de l'appliquer dans les résultats, on est d'accord ou pas ?
+Oui, c'est ça, oui c'est ça, c'est à peu près l'idée, oui.
+J'ai quelques petites questions là par rapport à la démo, là dans la liste des articles
+qui remontent, ils sont tous liés à des dérégulations autour de la Chine, c'est
+parce que le fournisseur il est chinois ou le site concerné il est chinois ?
+Ce que je pense, bon je ne suis pas sûr, mais normalement s'il ne fait que des trucs par
+rapport à la Chine, potentiellement c'est relative au fait que peut-être par rapport
+à l'importation, peut-être la matière est souvent importée via la Chine, du coup comme
+les lois qui sont par exemple sur le site Eurolest, ce sont des lois qui sont relatives
+spécifiquement à l'Europe, on ne s'en va beaucoup plus faire une analyse par rapport à ce qui
+rentre de l'Europe, donc potentiellement, mais c'est à voir.
+Donc on va se pencher sur ça pour avoir une réponse qui est certaine.
+Ok, d'accord, deuxième question par rapport aux événements, je vois qu'il y a des,
+sur les articles, il y a des articles qui datent de 2017-2021, c'est des régulations plutôt
+anciennes, est-ce qu'on prévoit dans les filtres de recherche qu'on limite la période historique,
+parce que là je ne suis pas certain que 2017, on s'intéresse encore.
+C'est dur, vérifier que ces lois sont toujours en vigueur, vérifier qu'elles vont rentrer en vigueur
+ou elles sont en vigueur. Oui, c'est ça, maintenant, bon là par exemple dans la démo, ce que j'avais
+fait c'est que j'ai limité, j'ai récupéré tout que les lois dans la date de publication
+et après 2000, donc on peut filtrer en fonction de, peut-être se limiter peut-être à 2015-2020
+et là on va récupérer toutes ces données-là. Non, je pense que ce n'est pas tant la date,
+parce qu'on peut avoir une loi qui date de 2000 et qui est toujours en activité,
+on peut encore avoir un projet de loi qui sortira en 2017, en fait il faut en priorité tester les
+lois qui sont en place, c'est-à-dire qui sont en vigueur avant qu'il ne soit l'orage et qui nous
+exposent à un risque et après il faut aller regarder les projets de lois qui potentiellement
+peuvent nous impacter, mais qui sont du coup récents, mais je pense que ça c'est du paramétrage
+sur les motifs de recherche, sur le PROMPT qui peut être utilisé pour le signage des lois,
+mais ça je pense que c'est quelque chose qu'on pourra retravailler avec le métier, de dire
+quel est le scope, quels sont les critères de recherche sur les textes de lois, et par quoi on
+commence, est-ce qu'on commence par les lois applicables et appliquées, puis après on commence
+par les projets de lois qui ont potentiellement un impact sur les lois qui sont en vigueur.
+l'application dans le court terme et après on part sur les autres lois en faisant des filtres mais
+effectivement il faut commencer par les lois qui sont déjà en vigueur, il n'y a pas d'excuses, on est déjà éligible, c'est arrêté.
+De toute façon moi j'avais limité à 2000 parce que je voulais pas récupérer toutes les infos,
+c'était trop le document, du coup j'avais limité mais comme vous le dites, c'est paramétrable, on peut revoir comment la...
+Et c'est un autre chose parce que moi c'est un méga prompt derrière, c'est comment ça marche.
+Bon oui, il y a un prompt derrière mais par exemple pour récupérer les dates de publication,
+souvent dans le document, au début du document, la date est inscrite, donc moi je lis le début du document et je récupère,
+je détecte la date dedans directement pour faire mon analyse. Mais le prompt, il y a un prompt derrière qui est solide.
+Donc ça c'est le premier use case sur... Excuse-moi Guillaume, peut-être que t'avais pas fini tes questions.
+J'avais encore deux questions, une concernant la partie météo, les prévisions vont jusqu'à...
+Donc c'est d'aujourd'hui à J-15, J-16 c'est ça ?
+Bon, j'utilise l'API OpenMétéo et sur l'API OpenMétéo, on a la possibilité d'avoir jusqu'à 16 jours de prévision.
+Du coup, c'est pour ça que là c'est 16 jours. Par contre, si c'est une autre API qui donne plus ou moins, ça va s'adapter normalement.
+Parce qu'au niveau des prévisions, vous avez un délai supérieur, vous préférez qu'on l'adopte ?
+Non, c'était juste pour... J'ai pas eu le temps de voir toutes les dates, mais c'était pour être sûr qu'on était bien par rapport à la date d'aujourd'hui.
+Et la dernière question que j'avais, c'est tout à la fin au niveau des recommandations.
+Par rapport aux alertes météo, comment vous calculez le stock de sécurité préconisé à 2-3 semaines ?
+Le stock de sécurité là, c'est par rapport aux données de l'entreprise en gros.
+Si on a la possibilité, par exemple, le LLM a accès aussi à des données de stockage, c'est-à-dire des stocks.
+Il pourrait dire, prévenir pour ce stock là étant donné que c'est critique et qu'il y a plus beaucoup, il faut potentiellement prévoir emprunter plus tôt pour ne pas être en recueil de stock.
+Il y a beaucoup plus d'instructions comme ça.
+Donc l'information, elle est récupérée des données de l'entreprise.
+Sachant que, en mettant les données cotermes du fournisseur, déjà est-ce que c'est l'équilibre ou est-ce que c'est nous qui allons chercher ?
+Et deux, on pourra donner une indication sur nos consommations moyennes chez ce fournisseur et nos stocks.
+Et à partir de là, peut-être on peut demander au modèle de dire, en fonction de tout ça, est-ce que tu peux estimer le risque sur les stocks ?
+Il y aura un événement de météo, la coupure, elle sera de combien de temps ?
+Ou alors c'est un événement sur le site du fournisseur de partir sur l'hypothèse, le site est fermé ou dégardé pendant un jour, une semaine, deux semaines ?
+Et quel est l'impact par rapport au rate si le fournisseur livre X unités par jour ou par semaine ?
+C'est-à-dire si le site est fermé une semaine, tout ce stock là va manquer à la perte si tu veux.
+Donc là, peut-être que c'est quelque chose qui est un peu plus touchy quand on pourra travailler avec les collègues.
+Oui, avec la supply, il y a des règles.
+Il y a des règles, oui.
+Parce que trois semaines de stock, à mon avis, ça fait un grand CD, surtout sur la partie autour.
+Oui, mais je veux dire, l'idée, les modes de diamant sur l'inverse, ça peut avoir un impact sur les stocks.
+Après, quelle est la mécanique de calculer ça ?
+Il faut affiner le calcul et peut-être proposer aussi d'autres recommandations.
+Surtout si c'est basé sur un risque fournisseur, il y a peut-être des fournisseurs alternatifs.
+Oui, exactement.
+Dans la recommandation, c'est du multisource de proposer à notre fournisseur qu'il ne soit pas dans la zone à risque.
+Ok.
+Donc ça, c'est des évolutions, des trucs à prendre en compte.
+Oui, c'est des évolutions, mais l'idée, elle est là.
+Du coup, je reviens. T'as fini, Guillaume ?
+Oui, merci.
+Donc ça, c'est le scénario, c'est nous qui donnons au fournisseur.
+Oui, ça, c'est le scénario, c'est nous qui donnons au fournisseur.
+J'aimerais bien qu'on aille sur le scénario où c'est la notif qui vient à l'équipe.
+Le scénario où c'est la notif qui vient, on ne l'a pas encore bien présenté sur le dashboard,
+mais l'idée c'est quand on est au niveau de la page d'accueil, les différents risques,
+notamment réglementaire, climat, géographique, et qu'on puisse voir les rapports générés
+une fois l'analyse faite de façon automatique sur le Tinson et ses fournisseurs,
+qu'on puisse voir ça ici avec potentiellement des dashboards, une carte sur les différents sites,
+peut-être avec des couleurs pour montrer la criticité.
+Globalement, ça se lit comment ? J'ai un peu de mal à lire l'appli.
+Là, on a sur la page d'accueil un système de notif avec la cloche.
+Là, je vois que j'ai deux événements. J'ai lancé l'agent, un analyse fournisseur.
+Est-ce que tu peux nous faire un tour de l'application ? J'ai un peu de mal à comprendre.
+Ici, dans un premier temps, on aura par exemple un graphe par rapport à la gravité moyenne
+des différents fournisseurs de Tinson en général.
+Puisque, comme on fait l'analyse automatique et programmée, le système va faire l'analyse très souvent.
+Ici, on aura une sorte de gravité moyenne pour montrer l'évolution progressive par rapport au climat.
+Ce qui évolue en moyenne, ce qu'on remarque.
+Qu'est-ce qu'on verra sur ce graphe ? On verra les sites de Tinson, les fournisseurs,
+ceux qui ont un risque élevé, qui remontent ? Vous avez déjà une idée de ce que vous allez remonter ?
+On n'a pas encore une idée claire de comment on va disposer, présenter le rapport final avec tous les risques.
+De façon vraiment claire, pour qu'un utilisateur qui ne maîtrise pas forcément puisse se retrouver.
+Je vais vous donner une indication. Quand on parle de risque, ce qui est important, ce n'est pas le risque, mais l'impact.
+Si ce risque est avéré, qu'est-ce qui se passe ? Vous pouvez l'imaginer que c'est une matrice 2 sur 2.
+Vous avez les niveaux de risque, faible, moyen et fort. Et vous avez les impacts, faible, moyen et fort.
+Ce qui va nous intéresser, c'est la partie en haut à droite, c'est-à-dire risque fort, impact fort.
+C'est cette partie-là qui va me materialiser. Tous les jours, je lance des analyses qui me remontent sous forme de points.
+Soit les fournisseurs, soit les sites qui remontent en risque fort, impact fort, avec un lien qui câble ou un point avec la taille du point.
+Définir la taille du risque ou de l'impact. Et quand je clique, j'arrive sur l'analyse.
+Ça fait comme une cartographie des risques. C'est-à-dire que tous les jours, si ce budget se met à jour,
+parce qu'il y a eu l'analyse la veille, avec tous les événements, ça permet à l'utilisateur, quand il arrive,
+d'aller tout de suite voir cette partie-là qui, tous les matins, évolue.
+Il va cliquer sur les petites bulles et après, il rentre dans la partie de détail.
+Après, si vous trouvez que c'est compliqué, on va proposer autre chose.
+On a imaginé deux scénarios. C'est l'utilisateur qui dit, je veux évaluer le risque de tel site, de telle fournisseur.
+Ça, c'est ce que vous avez montré. Et il y a le deuxième scénario, c'est le système qui analyse de manière globale
+et au sort, le top 5, le top 10 des risques par rapport à un événement, une actualité.
+Et cette partie-là, je la reprends.
+Du coup, cette partie-là, on va avoir beaucoup plus l'approfondi.
+Par contre, on y a pensé, mais...
+Tout ça, c'est des données bloquées, en fait.
+C'est pas...
+Pour vous expliquer l'interface que vous voyez, nous avons imaginé une interface qui puisse nous permettre de visualiser tout ce qui va être récolté par les agents.
+Si vous ne voyez pas très clair, c'est normal parce qu'on a eu quelques coupures au niveau de notre emploi du temps la semaine dernière.
+L'école avait organisé des choses, etc. et on n'avait pas beaucoup de temps pour ça.
+On fait de l'intégration continue et là, il y a eu un petit problème pour se connecter à la base de données.
+On compte se pencher là-dessus pour la joindre.
+Après, ce n'est pas grave, je sais que vous avez des contraintes.
+Moi, je veux juste comprendre la logique de l'application.
+C'est-à-dire, si demain, nous, on est amené à continuer ce travail, juste comprendre quelle était la philosophie de l'application.
+Parce que sur la gauche, on voit trois menus réglementaires, climat, géopolitique.
+Donc ça, c'est les typologies de risque.
+Elle est là aujourd'hui, c'est-à-dire que demain, si je définis une nouvelle classe de risque, autre, ça peut apparaître.
+Et donc pour chacune, si vous allez parler sur climat ou géopolitique, ça fait quelque chose ou pas ?
+Non, ça ne change pas grand-chose, c'est juste peut-être l'ordre va changer.
+Ok, c'est encore implémenté.
+Et là, pareil, sur le 28% de risque détecté ce mois, si on revient à la 27 jours ou 90 jours, est-ce que ça change quelque chose ou pas ?
+Non.
+C'est vraiment mon pied.
+Non, non, c'est trop le baffichage pour l'interface principale.
+Et en termes d'analyse, il n'y a que la partie « je saisis un fournisseur », « analyse fournisseur ».
+Est-ce que vous avez implémenté l'autre scénario, « s'analyse de manière globale » ?
+Oui, actuellement, on a implémenté ça.
+On a les données dans le bac.
+C'est juste qu'au niveau de l'interface, on ne sait pas encore, bien entendu, comment présenter ces données-là.
+C'est pour ça que pour le moment, on a des données moquées.
+Mais sinon, derrière, l'implémentation de l'analyse globale est déjà faite sur les risques réglementaires et climatiques.
+Et quand vous dites que l'analyse est faite, c'est-à-dire que vous allez l'implémenter ?
+Quel est l'impact sur l'application elle-même ?
+En gros, j'ai fait l'analyse globale en l'entendant directement dans le bac, avec les lignes de code.
+Et je récupère les données d'analyse, c'est-à-dire le rapport EG, les informations, une fois que l'élément est analysé, les risques.
+Du coup, seulement qu'au niveau du front-end, on n'affiche pas encore ces informations-là.
+Juste pour comprendre, par rapport aux menus qui sont sur la gauche, l'affichage à droite, dans la zone blanche, on voit que ça change le titre.
+Inventaire des menaces, réglementation, climat, géopolitique.
+C'est l'ensemble de la page qui est liée au menu de gauche ?
+C'est toute la page qui est liée à la partie réglementation, dans ce qu'on voit ?
+Ou c'est simplement une partie de la page qui commence à inventer des menaces, réglementation ?
+En principe, c'est pensé pour que tout ce qui est affiché, une fois qu'on a cliqué, sur une typologie en particulier, concerne que la typologie en question.
+D'accord.
+On se met dans le contexte de la typologie de risque.
+Parce que si je suis dans le réglementaire, tout ce qui est affiché à droite, ça concerne le réglementaire.
+Et donc si je fais une analyse fournisseur, je fais en même temps une analyse réglementaire.
+Par contre, tout ce qui est en haut, c'est un peu comme une vidéo.
+Donc j'ai un peu de mal à l'insuliner.
+Pardon, on n'a pas bien entendu.
+Là, on est sur les risques réglementaires.
+Donc ça affiche 28%.
+Quand je clique sur l'analyse fournisseur, là, Bob Watson a renseigné des infos d'un fournisseur.
+Il a avancé.
+Ça a cherché des risques réglementaires et des risques météo.
+Alors qu'on est sur les risques réglementaires.
+Voilà.
+J'espère que je vous ai bien compris, mais quand on fait une analyse fournisseur, c'est par rapport à un fournisseur en particulier.
+Ça veut dire que sur le fournisseur, je dois avoir aussi les risques géopolitiques.
+Oui, c'est juste que pour le moment, on n'a pas encore priorisé pour l'instant.
+J'aurais pu manquer le truc de mettre « risques géopolitiques » à venir comme une sourde.
+Enfin, je ne sais pas.
+Pour que ça marche.
+Et du coup, je comprends mieux.
+Et du coup, lancer l'agent, ça fait quoi ?
+Lancer l'agent, on l'a mis là, mais on n'a pas encore branché les données réelles à ça.
+En gros, c'est pour, potentiellement, si tu as une analyse qui a été faite aujourd'hui,
+et que tu veux relancer cette analyse-là, tu peux juste la relancer.
+En gros, la même analyse globale, tu peux la relancer.
+D'accord.
+Il y a un scénario que je ne mérite pas d'attendre.
+Soit c'est une analyse à la demande sur un fournisseur pour un site de Jensen.
+Soit l'analyse se fait par un agent ou un ensemble d'agents sur l'ensemble des données qu'on a mis dans notre base,
+à savoir nos données fournisseurs, nos données Jensen.
+Et on obtient un rapport avec une cartographie des risques associés à cette base.
+Cette partie-là, je ne sais pas comment ça marche.
+Comment tu vas étudier ça ?
+Là, je viens de vous envoyer le fichier que Guillaume a renseigné pour les sites Jensen.
+Donc, on vous a donné 4-5 sites.
+Ces sites-là, si je veux tous les jours analyser les risques, comment je fais dans l'application ?
+Est-ce que c'est là la gravité moyenne ? Enfin, comment ça ressemble ?
+Dans l'inventaire des bananes. Enfin, j'ai compris la logique.
+En fait, il manquerait une sorte de menu où on a une synthèse globale de Jensen
+qui nous donne l'analyse, mais sans rentrer peut-être dans le détail à ce niveau-là,
+mais au moins un premier niveau d'analyse de l'ensemble des types de risques pour les sites Jensen.
+Oui, alors là, c'est bien fait. On a trois catégories réglementaires qui marchent géopolitiques.
+Quand je fais dans la réglementaire, je peux voir le top 10 des risques réglementaires,
+les sites de Jensen concernés et les fournisseurs concernés.
+Et ça, c'est représenté. Après, je clique. Par exemple, je dis que je suis intéressé par le site 1.
+Je clique et je vais dans le détail. Mais c'est l'application qui me donne la synthèse des risques
+sur l'ensemble des sites. Et c'est moi qui choisis lequel aller consulter.
+Et l'approche inverse, c'est moi qui travaille sur un fournisseur en particulier
+ou je travaille sur les risques d'un site en particulier. Je vais lui dire là, maintenant,
+tout de suite, est-ce que tu peux m'analyser ce site ou ce fournisseur avec les données connues à date ?
+Et ça, c'est ce que vous avez montré. Et pour moi, les deux scénarios sont complémentaires.
+Et l'impact, si tu veux faire le top des risques, je suppose que l'important, si c'est comme tu disais,
+c'est d'abord l'impact associé. L'impact, tu le mesures par rapport sur le chiffre d'affaires.
+Sur le chiffre d'affaires, les infos qui ont été recueillies. Tu peux revenir sur l'analyse conditionnelle.
+En fait, on a identifié des attributs, par exemple, qui sont la géographie, donc le pays, le lieu, tout ça.
+Les éléments financiers, par exemple, si c'était un site de Chinson, quel est le chiffre d'affaires
+journalier, le nombre de pièces produites par jour, le nombre de personnes travaillant sur le site.
+Et avec ça, si tu dis, il y a un risque, par exemple, météo, le site doit être fermé pendant trois jours,
+et pas tout de suite, tu peux imaginer le nombre de personnes qui vont être au chômage technique,
+le nombre de pièces non produites pendant les trois jours et donc leur impact en chiffre d'affaires,
+livraison, client, ainsi de suite. C'est ça l'impact.
+Oui, donc là, c'est-à-dire qu'il nous faut, parce que si on veut faire le lien avec le fournisseur,
+il nous faut presque mettre les bombes pour savoir quels sont les produits finis, éventuellement les volumes associés
+de produits finis par rapport aux matières premières.
+Oui, ça, si tu veux faire le lien entre fournisseur et client, mais ne serait-ce que si tu veux faire l'impact...
+c'est-à-dire il m'alimente avec telle matière et cette matière et les clés pour livrer
+tel client. Et après, si le site s'arrête, de dire que c'est quoi les top 3 clients
+critiques. Sinon, on s'arrête pendant trois jours, il se trouve qu'on n'a pas assez
+de stock de sécurité pour couvrir. Mais ça, c'est des données d'entrée.
+Mais l'idée, ça reste toujours là même. C'est-à-dire grâce à un risque ou un ensemble
+de risques, j'ai un impact ou des impacts. Et j'essaie de détecter le risque le plus
+élevé associé à l'impact le plus élevé. Il faut qu'on prévoit, qu'on mette dans
+la boucle la supply, parce que c'est pour ces informations principalement, je pense.
+Tout à fait, oui. Mais dans l'architecture de l'application, il y a vraiment deux approches.
+Je fais une approche, je recherche les risques et les impacts à la demande. Donc, c'est
+moi qui m'intéresse à un fournisseur ou à un site. Et le système me génère un
+rapport. Et la deuxième approche, qui est presque la principale, c'est que le système
+tourne, il va scanner des éléments d'info, il va les croiser avec les deux données qui
+sont la base fournisseur et la base site Hutchinson, et il va ressortir des risques et un potentiel
+impact avec l'échelle du plus haut au plus bas. Et c'est l'utilisateur qui dit, moi
+je suis intéressé par les sites en France, les fournisseurs du métal en France. Et c'est
+pour ça que je parlais tout à l'heure, Guillaume, de PIAI, c'est-à-dire que ces
+risques-là sont agrégés. Et après, l'utilisateur, il dit, moi je suis acheteur métal région
+Europe, donc je vais m'intéresser forcément aux fournisseurs qui correspondent à cette
+catégorie et je vais ressortir ce sang qui est au niveau de risque le plus épais. Tu
+vois ou pas ? Il va filtrer un gruau. Et donc ces deux approches, il y en a une que je
+trouve, enfin que je vois, celle-là. L'autre, je ne l'ai pas vue. Où le système est
+censé scanner et ressortir ces risques-là de manière absolue. Ça, je ne l'ai pas
+vue, non en plus. Et je ne sais pas si vous avez au moins fait une conception sur le
+papier de dire comment on présente les données ou pas. Une conception comment on présente
+les données ? Non. Qu'est-ce que vous voulez dire par là ? Une maquette ? Vous pouvez
+revenir dans le document d'architecture. Je vais vous l'expliquer dans le document
+d'architecture. En fait, on va la remonter là où il y a l'architecture, là sur le
+front jaune. Voilà, ici, on va mettre en grand l'architecture. Donc vous voyez que
+votre plan d'architecture de l'application, il est basé sur une logique à base d'agents
+qui est commune et deux sources de données. Une source de données interne, donc les
+sites, les fournisseurs, et une source de données externe qui s'envoie. Les données
+qu'on vient chercher sur l'interne. Donc en sortie de l'application, on a imaginé
+deux scénarios, deux use cases. Le premier use case, l'utilisateur demande pour un
+fournisseur, pour un site, d'avoir le rapport final. Et ça, c'est ce que vous avez montré
+pour la partie fournisseur, mais je pense qu'il faut faire l'équivalent pour le site
+utilisateur. Et il va vous manquer le deuxième scénario qui est, l'utilisateur ne demande
+rien du tout. C'est le système qui va analyser l'ensemble des sources avec la logique des
+agents sur la base des sites et fournisseurs, qui va sortir un rapport ou un ensemble d'éléments
+de rapport et qui va les envoyer en notification par mail ou sous forme visuelle à l'écran
+pour que l'utilisateur va aller chercher. Sans que l'utilisateur demande pour un fournisseur
+particulier, puisque la valeur de l'application, c'est qu'elle, le matin, comme aux infos,
+elle vient vous dire, tiens, il se passe quelque chose à talons droits et ça impacte un fournisseur.
+Ce n'est pas vous, l'utilisateur, qui cherchez l'information. C'est l'information qui vient
+à vous. Ce scénario, je ne l'ai pas vu.
+Là, tu parles de ce qu'on voit dans le logement de validation humaine ?
+Non, c'est le rapport final, notification e-mail. C'est de dire, l'utilisateur, il se
+connecte à l'appli et c'est l'appli qui lui dit, ce matin, j'ai analysé un certain
+nombre de données, donc des sources, des lois, tout ça. J'ai analysé des sites et
+des fournisseurs Hutchinson et j'ai trouvé les risques suivants. Le top 10 des risques
+avec les impacts, c'est le site chevillé, parce qu'il y a un risque, je ne sais pas,
+de vie forte sur le site avec l'inondation et donc ce site risque d'être fermé pendant
+trois jours. J'ai trouvé des fournisseurs, dans le sud de la France, il y a eu un écoulement
+de terrain et ce fournisseur est devant un, sur la partie chez lui, machin.
+informations-là qui viennent à toi. C'est pas toi qui vas la provoquer, c'est pas toi
+qui vas chercher par conditions. C'est l'application qui va te dire, j'ai analysé et voici les
+résultats. Et après toi, tu tries dans ces résultats par filtre pour aller chercher
+les résultats qui t'intéressent. Parce que j'ai l'ami ici, tous les matins, il y a 500
+notifications de risques. Toi, tu vas aller dire, moi je m'intéresse uniquement au site
+Intel, où je m'intéresse à telle région, où je m'intéresse à tel fournisseur, etc.
+Il faudrait presque que ça soit un filtre enregistrable par session utilisateur.
+Exact. Si on imagine que les équipes supply, achats, juridiques, ils sont par exemple 30
+personnes qui se connectent à cette appli. Une personne de l'équipe juridique qui s'occupe
+du Sibam, elle, elle va dire, moi je m'intéresse juste au risque Sibam en France. Elle fait
+ses filtres, elle les enregistre. Elle va pas s'intéresser au fournisseur, elle va pas
+s'intéresser au site Hutchinson. Un acheteur ou un responsable d'un compte fournisseur
+clé, il va s'intéresser à ce fournisseur-là. Donc chacun, il va venir consommer.
+Les résultats en fonction de son angle d'attaque. Mais l'appli, elle, elle est globale. Elle
+amène tous ses éléments tous les jours parce qu'elle fait le travail. Et ce scénario,
+je l'ai pris. Alors, question pour vous, l'équipe Projet. Est-ce que c'est parce que vous n'avez
+pas compris ce scénario-là que je viens d'expliquer ou est-ce que vous n'avez pas eu le temps avec
+ce que vous avez expliqué à la session, vous avez eu des petits soucis la semaine dernière,
+tout ça ? Vous avez bien compris ce scénario ?
+On l'a bien compris et on a bien fixé un compte et on l'a prévu. Seulement,
+comme je vous l'ai dit, on n'a pas fini d'implémenter certaines choses. Et parfois,
+l'affichage ne se fait pas en fait sur l'interface. C'est pour ça que vous n'arrivez pas à visualiser.
+On en est désolés. Non, ne soyez pas désolés. Je voulais juste m'assurer. Est-ce que c'est un
+problème de compréhension ? Ah oui, oui. C'est prévu, c'est prévu.
+Est-ce que c'est un problème de temps ? Donc c'est un problème de temps.
+Oui, c'est plus ça. C'est de contre-temps dans l'implémentation.
+Est-ce que vous avez estimé le temps qu'il vous faut pour finir ? Parce que c'est plusieurs
+temps. C'est à peu près là. Le logiciel, il tient là-dessus.
+On n'a pas vraiment estimé le temps qu'il fallait pour finir.
+Disons qu'on a vu. Enfin, on a essayé de le voir.
+Je vais poser la question autrement. Parce que d'ici jeudi, vous aurez fini d'implémenter
+cette partie-là. Je suis désolé, je suis un raccourci.
+Oui, alors c'est prévu. C'est prévu. Même si ça va, vous nous demandez de travailler
+des heures extra chez nous. Moi, j'ai rien à dire, moi j'ai rien à dire.
+C'est juste parce qu'à la fin du projet, il y aura ce scénario de dater la peine.
+Je ne vous demande pas de travailler la nuit, attention.
+On compte bien aller au bout de nos objectifs.
+Ok, très bien, super. Donc, si vous revenez à la question, ce scénario où vous allez
+travailler pour l'implémenter, le côté paramétrable de l'application, je ne l'ai pas vu non plus.
+Où est-ce que vous comptez dans l'application ? Est-ce que c'est dans des fichiers de paramétrage
+type github, config, yaml, ou est-ce que ce sera dans une interface d'administration
+où je viens rajouter une source, un riz, une appli ? Comment vous avez prévu de faire
+les choses ? C'est la deuxième option.
+Oui. Avant une interface d'administration.
+On avait pensé à ça et on voulait en fait vous en parler lors de ce point, parce que
+c'est vrai que c'est quelque chose qu'on n'avait pas abordé lors du dernier point.
+C'est pas parlant, c'est pas parlant.
+Donc, il y a bien, pour ne serait-ce déterminer les rôles qui puissent accéder à l'interface,
+etc., il y a bien un administrateur qui va gérer tout ça, n'est-ce pas ?
+Exactement, oui. Et l'administrateur, donc, il accède à une vue qui lui permet de faire
+des actions que le visiteur standard ne sait pas faire, à savoir rajouter une source
+d'information, de dire « tiens, j'ai trouvé un nouveau site web qui donne les risques
+légaux en France, donc je rajoute tout. » Et donc, du coup, ça rajoute à la surface
+de scan là où l'agent a jugé qu'il y en a qui permet de…
+aller chercher les informations. Et comme je disais tout à l'heure, dans une phase 2,
+peut-être imaginer de rajouter une typologie de risque qui vient agrémenter le rapport d'analyse.
+C'est-à-dire là, on est sur les risques réglementaires, les risques météo. Demain,
+par exemple, si on voit que les risques sanitaires deviennent des risques très récurrents,
+par exemple, les problèmes de grippe, le COVID, les maladies infectieuses, tout ça,
+est-ce qu'on peut se rajouter ces risques-là comme étant une catégorie de risque et on va
+aller chercher par exemple la source, par exemple, sur l'OMS, l'Organisation mondiale de santé,
+de dire on va aller scruter aussi toutes les alertes d'épidémies et ainsi de suite. Et ça,
+c'est du paramétrage, on n'est pas obligé de changer le logiciel. On rajoute une catégorie
+de risque, on rajoute les sources et on fait la même logique, c'est-à-dire je vais exposer
+mes sources par rapport à mes sites, mes fournisseurs et j'applique la logique des agents
+du début jusqu'à la fin, jusqu'à restituer les rapports. Du coup, on va essayer d'implémenter
+tout ça. Je suis conscient qu'on est lundi, jeudi, j'allais finir. Ce que je vous demande c'est,
+si vous pensez que c'est faisable à travers juste de la conception graphique et après vous
+documenter dans le cahier des charges, faites-le. Si vous voyez que c'est trop court, au moins
+mettez-le dans la spec, le titre, l'application est censée faire ceci, cela et après. On verra
+si on continue ou si on travaille sur ce projet-là. Mais notez-le comme étant quelque chose qui faisait
+partie du cahier des charges, qui faisait partie de la structure. Très bien. Je pense qu'une priorité,
+selon moi, la priorité du niveau 1, c'est de finir la user story principale sur laquelle
+obtient cette application. C'est le fait que cette application lance de manière autonome,
+à fréquence régulière, les agents. Elle fait l'analyse sur, depuis les sources et en projection
+sur les sites téléphoniqueurs et elle produit des rapports d'analyse prêts à l'emploi. Alors,
+après, si les filtres ne sont pas encore tous actifs, ça je pense que c'est des choses que
+nous on saura faire à travers des rapports PIA ou en tout cas que l'application puisse orchestrer,
+par exemple, de se lancer une fois par jour, de lancer tout le système d'agents sur l'ensemble
+des sources de manière itérative et produire les rapports, les stocker et après les restituer dans
+l'application. Alors, si vous n'avez pas le temps de les restituer à l'écran avec l'affichage
+graphique, je ne pense pas que nous saurons le faire, mais au moins qu'il y ait la mécanique
+d'orchestration qui permet, en moins d'une fois par jour, de manière paramétrée, de dire combien
+de fois l'utilisateur souhaite ou l'administrateur souhaite lancer l'analyse. Je souhaite lancer une
+fois par semaine, une fois par jour, deux fois par jour, toutes les heures et ainsi de suite.
+D'accord ? Sans moins, il faut que cette logique soit orchestrée dans l'appli. Le résultat de
+l'analyse soit récupéré sous forme de rapport et stocké pour qu'il puisse être restitué à
+l'utilisateur. Et après, l'utilisateur fait sa recherche avec un mode de recherche qui dit,
+vois-donc tous les rapports qui ont été ressortis, je cherche uniquement sur tel
+point de vue. Ça, à la rigueur, nous ne saurons le faire. Mais au moins, il y a le système qui
+permet de lancer les analyses en automatique. Alors, par exemple, on vous a donné un fichier
+Excel, je me sers de l'envoyer sur 7-8 sites qui parcourent l'ensemble des sites et fait
+l'analyse sur l'ensemble des sites. Si on vous donne, pareil, une liste de 10 fournisseurs,
+que vous puissiez faire systématiquement l'analyse sur les 10 fournisseurs. Si demain,
+je saisis encore 150 fournisseurs, l'analyse est faite sur les 150 fournisseurs. Et en fait,
+c'est ça ce qui est problématique dans l'entreprise, c'est l'effet des chaînes. C'est-à-dire que nous,
+on peut toujours prendre quelqu'un et lui dire, tiens, tu prends tel site ou tel truc et tu fais
+une analyse, il va mettre 4 heures, il va céder de copilote, il va sortir en rapport. Par contre,
+si j'ai une base fournisseur où il y a 16 000 fournisseurs et j'ai 90 sites, je fais l'analyse
+tous les jours sur l'ensemble, ça, il ne pourra pas. À part l'automatiser, il ne pourra pas.
+C'est impossible. Humainement, c'est impossible. Puisqu'on est intéressé plus par le résultat,
+pas par la mécanique. T'es allé tous les jours scruter toutes les données.
+On s'imagine la quantité de données à manipuler.
+Donc c'est cette mécanique-là qui nous intéresse, c'est l'automatisation, l'escalade des données et la restitution pour qu'on ait dans la base 2 sites ou 50 ou 100 systèmes qui fonctionnent à l'endroit.
+C'est clair ou pas ?
+Est-ce qu'il serait possible d'avoir, étant donné que de base le travail était fait manuellement, est-ce qu'il est possible d'avoir un exemple de rapport qui a déjà été fait sur un risque donné à partir d'une source spécifique ?
+Je ne sais pas. On a un rapport type. Je pense que ça s'est fait dans le temps de manière hétérogène. Je ne pense pas qu'il y ait un rapport type.
+On s'est peut-être fait la demande en contexte précis.
+Si vous appelez les données, nous on peut agir après sur le prompt pour reformater le rapport en PDF, mettre les sections introduction, risque, analyse, impact, etc.
+Mais ça, ce n'est pas trop un problème une fois qu'on a la matière. Nous, on sera à faire de la bonne représentation en travaillant avec les métiers.
+Vous voulez avoir quoi dans le rapport ? Combien de sections, les codes couleurs, ce que vous voulez sous forme de tableau, sous forme de texte, avec les niveaux de risque, les couleurs rouge, orange, jaune.
+Nous, ce qu'il nous manque, c'est cette partie centrale qu'on voit à l'écran avec les agents et la partie orchestration pour que les agents puissent dans une base de données et lancent les analyses de manière automatique.
+C'est cette partie-là qui est importante, la partie mondiale.
+Ça, c'est l'AP1. La partie où il y a le workflow de validation humaine, je ne l'ai pas vu dans l'appli, c'est quelque chose que tu leur avais demandé ou ça peut être fait plus tard dans une prochaine release ?
+Ce qu'on a convenu dans le projet, c'est d'implémenter le principe d'humaniser le prix et ne pas avoir une application autonome 100% qui peut avoir des risques d'hallucination.
+Et donc l'équipe projet a imaginé ce workflow dans lequel, en dessous d'un certain score, elle demande la validation à une personne ou à un ensemble de personnes qui sont paramétrées, de dire, avant de diffuser un rapport, je vais d'abord le valider avant que ce rapport devienne consultant et éligible.
+Donc ça, c'était le principe, ce qu'on avait imaginé avec l'équipe. Après, en termes d'implémentation, je vous laisse me dire sur cette partie-là, validation humaine, est-ce que vous avez implémenté quelque chose à ce stade ou pas encore ?
+Vous avez imaginé au moins un statut. Par exemple, le rapport sort, il est stocké, il est au statut à approuver et après il y a un workflow qui se déclenche, une fois que l'utilisateur le valide, le rapport passe au statut à publier ou publiable et à partir de là, il apparaît dans la partie recherche. Vous avez implémenté quelque chose ou pas sur cette partie ?
+Sur cette partie, comme dans la recherche statut, en fonction du score, on a un champ qui est rempli pour dire que le rapport est en review, c'est-à-dire qu'on le voit par une personne respectée.
+C'est lorsque cette personne aura validé le rapport que ça va passer en mode approuvé et pourra aller vers l'équipe.
+Ça veut dire que dans l'appli, il y a au moins un écran où on voit tous les rapports qui sont en statut prévu ou validé et cette personne qui se connecte, déjà il faut qu'elle sache qu'elle a 15 rapports à valider. Comment avez-vous imaginé le fait que cette personne soit notifiée ? Est-ce que vous envoyez des e-mails ?
+J'avoue qu'on n'y a pas trop réfléchi. Par rapport à ça, j'ai une autre question. Dans le sens où, par exemple, le site sur lequel je récupère des lois, il y a des centaines de lois.
+Donc si, par exemple, nous avons 100 lois qui sont prévues pour une validation humaine,
+Le fait que, par exemple, le système fait l'analyse chaque jour,
+bon, chaque jour il n'y aura pas forcément des lois qui vont être mises à jour,
+mais ça peut quand même constituer un goulot d'étranglement dans le sens où
+il peut y avoir plusieurs lois à revoir le plus vite possible,
+mais comme l'utilisateur ou la personne qui travaille sur la validation humaine
+n'est pas forcément disponible ou la rapidité d'analyse n'est pas forcément la même que l'ordinateur,
+du coup, ça peut constituer un goulot d'étranglement.
+Bon, j'avoue que moi, on n'y a pas pensé vraiment à comment on pourrait régler ce problème.
+Peut-être revoir le score qui...
+Je pense qu'il faut l'automatiser, c'est-à-dire que des lois qui ne sont pas encore en application,
+il faut leur donner un poids de pondération plus faible par rapport aux lois qui sont en place, d'accord ?
+Donc ça, il faut le rendre paramétrable et c'est les médecins qui disent
+à quel point un projet de loi peut influencer l'analyse versus une loi qui est déjà là et qui peut s'appliquer.
+On ne peut pas mélanger avec...
+J'ai constitué un rapport de l'analyse permettant de dire que j'ai un risque fort
+avec un pacte fort sur tel fournisseur ou tel site.
+Et ce rapport, parce que j'ai obtenu un score dans la partie architecture,
+j'ai un score entre 7 et 8.
+Je dis, ah, du coup, ce rapport-là, il va passer dans un statut à valider et qui va le valider ?
+Il faut une personne ou un groupe de personnes qui va devoir lire ce rapport et dire,
+oui, le contenu est relevant, le contenu est fiable.
+Non, le contenu n'est pas fiable, donc ce rapport ne sera pas diffusé à large échelle.
+C'est cette partie-là qui me manque.
+C'est de dire, je suis passé dans la branche de droite, je déclenche un workflow,
+le rapport reste au statut à valider par l'humain, donc il n'est pas visible.
+Soit l'humain le valide dans les 24-48 heures, s'il ne le valide pas, je lui envoie une relance,
+donc je lui envoie un email de rappel jusqu'à ce qu'il le valide.
+Mais pendant ce temps-là, ce rapport-là est considéré comme caduque.
+Après, j'imagine que si on refait l'analyse le lendemain, ce rapport-là, il évolue.
+Il y a peut-être de nouveaux éléments, donc il serait à valider avec la nouvelle version.
+Donc peut-être qu'il faut versionner les rapports, je ne sais pas.
+En tout cas, il faut leur donner quelque chose qui dit, je t'ai demandé hier de valider un truc,
+tu n'as pas validé, il n'est plus d'actualité, il y a de nouveautés dedans,
+donc est-ce que tu veux bien valider une nouvelle version ?
+Donc ça, il faut imaginer un scénario simple de validation.
+Et si on passe à gauche, donc si le score est très fort au-delà de 8,5 ou 9,
+je dis, il n'y a pas besoin de validation humaine, je mets juste une mention sur le rapport.
+Ce rapport a été généré automatiquement par des agents, il y a un an.
+On n'a pas fait l'objet d'une validation humaine et on le diffuse,
+donc la personne qui le lit, elle est au courant que ce rapport a été généré automatiquement par un lien.
+D'accord ?
+Mais dès lors que vous mettez le petit losange avec validation humaine,
+il faut matérialiser dans l'application le côté workflow, soit par un nombre de mails,
+soit par un écran qui permet quand l'utilisateur se connecte,
+on lui dit que vous avez 5 tâches à effectuer, il y a 5 rapports à valider,
+et donc tant qu'il ne fait pas ces rapports, ils seront bloqués, ils ne seront pas publiés.
+Mais ça du coup, il faut le documenter dans l'application,
+parce que ça fait partie de votre architecture.
+Oui.
+C'est pas… On a un titre que quand vous mettez LLM1, pertinence, LLM2, LLM…
+Oui.
+Ça, c'est des choses que vous avez implémentées dans le code.
+Quand vous mettez validation humaine, ça devient une composante de l'application
+qui réagit des statuts de rapport, d'envoi de mail, de gestion de workflow.
+Si le workflow ne se… Comme on disait tout à l'heure,
+Watson, si la personne ne clique pas, elle est absente, qu'est-ce qu'on fait ?
+On fait de la délégation.
+Après, le rapport final, quand il est approuvé, quand vous l'envoyez par email,
+à qui c'est ?
+Donc il y a encore un peu de travail sur cette partie-là.
+Du coup, ça… Je pense que dans le schéma de l'architecture,
+il y a quelques petites mises à jour à faire parce qu'on peut très bien ne pas valider.
+C'est l'humain qui doit décider.
+Il peut très bien ne pas valider.
+Donc là, ça serait dans les rejets.
+Et je me pose une question.
+Le score, il est global ou il est par catégorie de risque ?
+Le score, il est global.
+C'est-à-dire que… Bon, le score, il est global.
+D'accord.
+Il faudra peut-être imaginer qu'on ait une validation partielle parce qu'on peut très bien avoir un risque météo
+sur lequel on est sûr de la fiabilité, mais un risque géopolitique sur lequel la fiabilité est peut-être beaucoup plus faible,
+ce qui induirait un score peut-être global entre 7 et 8,4.
+Mais il faudrait qu'on puisse valider le fait qu'il y a un risque météo avéré et qu'il y a un risque géopolitique à rejeter.
+Je n'ai pas bien compris. En gros, avoir un score en fonction du risque et un score global, c'est ça ?
+C'est la question que je me posais. Est-ce que le score qui est donné, c'est en fonction de l'ensemble des composantes de risque
+ou est-ce que c'est un score par catégorie de risque ?
+Je pense que c'est par catégorie de risque. Pour chaque risque, il sera un score. Il ne va pas mélanger.
+D'accord, ok.
+Parce qu'il est adapté à la typologie de risque.
+D'accord, d'accord. Ok, ça marche.
+Il nous reste 30 minutes. Je vous propose qu'on se focalise sur les actions et next step jusqu'à jeudi.
+Ça marche.
+Et les priorités.
+Dans les priorités, c'est de mettre à jour ce schéma d'architecture avec les choses en mettant en évidence ce qui est implémenté d'ici jeudi,
+ce qui reste à implémenter dans une phase 2.
+Comme ça, on le sait. D'accord ?
+Ce que je vous propose, c'est de mettre l'effort sur le scénario principal qui est l'application Solance,
+elle scanne les sources et elle sort des analyses. D'accord ?
+La partie workflow, vous pouvez la mettre en évidence.
+Ça, ça va demander beaucoup de travail.
+Donc, deux choses. Mettre à jour l'architecture.
+Ça, ça ne va pas vous donner beaucoup de temps. C'est une régulière.
+À l'image de ce qu'on vient de se dire, ne mettez à jour aucun document d'architecture parce que c'est important.
+Si on veut continuer après.
+Et deuxièmement, travailler sur le scénario, qui est la partie analyse globale.
+Sur la partie fournisseurs, vous pouvez faire 5, 6, 10 fiches fournisseurs dans la base.
+Au même titre que ce qu'a fait Hudson tout à l'heure.
+Vous pouvez prendre un dans le métal, un dans le plastique.
+5, 6 fournisseurs et systématiser l'analyse sur les X sites qu'on vient de vous colloquer par Excel.
+Les X fournisseurs, vous sortez l'analyse avec, comme ce que je vous ai dit, le risque versus impact.
+Partez du principe qu'il n'y a pas besoin de validation.
+Pour l'instant, on fera cette partie validation avec le score dans une v2.
+Ce que je veux, c'est que le système envoie ou met à dispo quand même des analyses de risques au format PDM.
+Avec la mention tout en haut, ce rapport a été généré à X% par une IA.
+Donc ça, c'est très important.
+Et le jour où on mettra les workflows, on rajoutera la mention.
+Ce rapport a été validé par le sujet.
+Pour montrer que ça a été évalué par les fournisseurs.
+Ok, ça marche.
+Ça vous va comme forme de démarche jusqu'à jeudi ?
+Oui.
+Moi, j'ai juste une question pour confirmation.
+Donc la recette, vous souhaitez ça pour jeudi, c'est ça ? Pas pour vendredi ?
+Nous, oui, le jeudi, on verra.
+Déjà, il faut que je trouve le créneau pour que je sois disponible.
+Et après, nous, limite, on pourra prendre ce travail et le faire valider en interne.
+Parce que moi et Guillaume, on fait partie de l'équipe digitale.
+Nous, on n'est pas des acheteurs, on n'est pas l'équipe juridique.
+Donc on pourra prendre les inputs et faire valider à nos collègues et revenir vers vous avec une restitution.
+Des points positifs, des points à travailler.
+Sachant que vous, de toute façon, le projet se termine là, fin de semaine.
+Ce sera plus.
+Pour vous donner une évaluation un petit peu de ce qui a été fait et ce qu'il reste à faire.
+Très bien.
+En tout cas, jusqu'à présent, bravo.
+La CAFA, c'est sympa.
+On sent qu'il y a eu un gros, gros travail derrière,
+malgré le fait que vous soyez pas à plein temps sur ce sujet-là.
+Donc bravo, en tout cas.
+Merci.
+Merci.
+Moi, je vous dis à l'ordre, qui va envoyer les invitations pour lundi ?
+C'est l'heure.
+C'est ?
+20h.
+Bon, ça, c'est à confirmer avec vous.
+Je sais pas si c'est à nous, l'équipe.
+J'ai voulu t'appeler Fado.
+D'accord.
+Oui.
+C'est à confirmer avec madame de Beauce.
+Si c'est nous aussi, c'est vous.
+Merci beaucoup.
+Merci.
+Bonne journée.
+On s'en va ?
+C'est bon ?
+C'est bon ?
+C'est bon ?
+Attends.
+Pause, pause, pause.
+Comment ?
+Ils ont combattu.
+Il est revenu, il a enregistré.
+T'as un dernier commentaire, là.
+Il a été enregistré.
+Je sais pas.
+Le seul, il a été pourmaté.
+Il bombadait.
+On va faire un point, si c'est fait.
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...
+...

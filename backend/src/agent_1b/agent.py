@@ -29,7 +29,6 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
-from anthropic import Anthropic
 from dotenv import load_dotenv
 
 # Charger les variables d'environnement
@@ -142,16 +141,27 @@ class Agent1B:
     Détermine si un événement concerne Hutchinson et identifie les entités affectées.
     """
     
-    def __init__(self, anthropic_api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None):
         """
         Initialise l'Agent 1B
         
         Args:
-            anthropic_api_key: Clé API Anthropic (optionnel, utilise variable d'env par défaut)
+            api_key: Clé API (optionnel, utilise variable d'env par défaut)
         """
-        api_key = anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
-        self.anthropic_client = Anthropic(api_key=api_key)
-        logger.info("agent_1b_initialized")
+        self.llm_provider = os.getenv("LLM_PROVIDER", "anthropic").lower()
+        
+        if self.llm_provider == "openai":
+            from openai import OpenAI
+            api_key = api_key or os.getenv("OPENAI_API_KEY")
+            self.client = OpenAI(api_key=api_key)
+            self.model = "gpt-4o-mini"  # ou "gpt-4o" pour meilleure qualité
+            logger.info("agent_1b_initialized", provider="openai", model=self.model)
+        else:
+            from anthropic import Anthropic
+            api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
+            self.client = Anthropic(api_key=api_key)
+            self.model = "claude-sonnet-4-20250514"
+            logger.info("agent_1b_initialized", provider="anthropic", model=self.model)
     
     def check_pertinence(
         self,
@@ -451,14 +461,24 @@ Contenu: {(document.content or document.summary or "")[:3000]}
 Réponds UNIQUEMENT avec le JSON, sans texte avant ou après."""
 
         try:
-            response = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=1000,
-                temperature=0.0,
-                messages=[{"role": "user", "content": prompt}]
-            )
-            
-            response_text = response.content[0].text.strip()
+            if self.llm_provider == "openai":
+                # Appel OpenAI
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.0,
+                    max_tokens=1000
+                )
+                response_text = response.choices[0].message.content.strip()
+            else:
+                # Appel Anthropic
+                response = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=1000,
+                    temperature=0.0,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                response_text = response.content[0].text.strip()
             
             # Parser le JSON
             if "```json" in response_text:

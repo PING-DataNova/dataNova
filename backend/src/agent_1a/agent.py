@@ -5,7 +5,7 @@ Collecte les documents réglementaires depuis EUR-Lex :
 - Approche par DOMAINES (Option 3 - CDC) : collecte générique sans filtrage métier
 - Approche par MOT-CLÉ (legacy) : recherche ciblée par réglementation
 
-L'Agent 1A collecte et stocke. L'Agent 1B filtre la pertinence.
+L'Agent 1A collecte et stocke. L'Agent 1B filtre la pertinence et classifie.
 """
 
 import asyncio
@@ -21,8 +21,20 @@ from .tools.scraper import search_eurlex, search_eurlex_by_domain, load_eurlex_d
 from .tools.document_fetcher import fetch_document
 from .tools.pdf_extractor import extract_pdf_content
 from .tools.weather import OpenMeteoClient, Location
+from .data_sources import (
+    is_source_enabled,
+    get_source_config,
+    update_source_fetch_status,
+    increment_source_documents_count,
+    should_collect_from_source
+)
 
 logger = structlog.get_logger()
+
+
+# ========================================
+# SCÉNARIO 1 : COLLECTE AUTOMATIQUE COMPLÈTE (conforme CDC)
+# ========================================
 
 
 # ========================================
@@ -64,6 +76,17 @@ async def run_agent_1a_full_collection(
         company_profile=company_profile_path,
         use_database=use_database
     )
+    
+    # ====================================================================
+    # V2 : VÉRIFICATION DE LA SOURCE EUR-LEX (table DataSource)
+    # ====================================================================
+    if not should_collect_from_source("eurlex"):
+        logger.info("eurlex_source_disabled", action="skipping_collection")
+        return {
+            "status": "skipped",
+            "message": "EUR-Lex source is disabled by admin",
+            "eurlex_enabled": False
+        }
     
     # ====================================================================
     # ÉTAPE 1 : CHARGER LE PROFIL ENTREPRISE ET EXTRAIRE LES MOTS-CLÉS
@@ -208,6 +231,8 @@ async def run_agent_1a_full_collection(
                         content=content,
                         summary=title,
                         status="new",
+                        workflow_status="raw",  # Agent 1A: statut initial
+                        regulation_type=None,  # Sera classifié par Agent 1B
                         extra_metadata={
                             "celex_id": celex,
                             "matched_keyword": keyword,
@@ -448,13 +473,16 @@ async def run_agent_1a_full_collection(
 
 def _extract_keywords_from_profile(profile: Dict) -> List[str]:
     """
-    Extrait les mots-clés pertinents pour EUR-Lex depuis le profil entreprise.
+    Extrait les mots-clés MÉTIER pertinents pour EUR-Lex depuis le profil entreprise.
+    
+    IMPORTANT: On n'extrait PAS les noms de réglementations (CBAM, REACH, CSRD, etc.)
+    car la classification des réglementations est faite par l'Agent 1B.
     
     Catégories extraites :
     - Matériaux (caoutchouc, élastomères, acier, aluminium...)
-    - Codes NC/HS
-    - Secteurs d'activité
-    - Réglementations surveillées (CBAM, EUDR, CSRD...)
+    - Codes NC/HS (tarifs douaniers)
+    - Secteurs d'activité (automotive, aerospace...)
+    - Produits (sealing, hoses, joints...)
     """
     keywords = set()
     
@@ -515,40 +543,29 @@ def _extract_keywords_from_profile(profile: Dict) -> List[str]:
         if code:
             keywords.add(code)
     
-    # 4. Réglementations surveillées
-    regulatory = profile.get("regulatory_intelligence", {})
+    # 4. Produits fabriqués
+    products = profile.get("products", company.get("products", []))
+    if isinstance(products, list):
+        for product in products:
+            if isinstance(product, str):
+                keywords.add(product.lower())
+            elif isinstance(product, dict):
+                name = product.get("name", "")
+                if name:
+                    keywords.add(name.lower())
     
-    # CBAM
-    cbam = regulatory.get("cbam", {})
-    if cbam:
-        keywords.add("CBAM")
-        keywords.add("carbon border")
-    
-    # EUDR
-    eudr = regulatory.get("eudr", {})
-    if eudr:
-        keywords.add("EUDR")
-        keywords.add("deforestation")
-    
-    # CSRD
-    csrd = regulatory.get("csrd", {})
-    if csrd:
-        keywords.add("CSRD")
-        keywords.add("sustainability reporting")
-    
-    # Trade defense
-    trade_defense = regulatory.get("trade_defense_and_sanctions", {})
-    if trade_defense:
-        keywords.add("anti-dumping")
-        keywords.add("countervailing")
-    
-    # 5. Mots-clés génériques importants
+    # 5. Mots-clés métier génériques (secteurs, pas réglementations)
     keywords.add("automotive")
     keywords.add("aerospace")
     keywords.add("elastomer")
     keywords.add("sealing")
-    keywords.add("emissions")
-    keywords.add("carbon")
+    keywords.add("rubber")
+    keywords.add("hoses")
+    keywords.add("joints")
+    
+    # NOTE: On n'ajoute PAS les noms de réglementations ici !
+    # CBAM, EUDR, CSRD, REACH, anti-dumping sont des TYPES de réglementation
+    # qui seront classifiés par l'Agent 1B après collecte.
     
     # Nettoyer et filtrer
     clean_keywords = []
@@ -600,6 +617,18 @@ async def run_agent_1a_by_domain(
         max_age_days=max_age_days,
         max_documents=max_documents
     )
+    
+    # ====================================================================
+    # V2 : VÉRIFICATION DE LA SOURCE EUR-LEX (table DataSource)
+    # ====================================================================
+    if not should_collect_from_source("eurlex"):
+        logger.info("eurlex_source_disabled", action="skipping_domain_collection")
+        return {
+            "status": "skipped",
+            "mode": "domain",
+            "message": "EUR-Lex source is disabled by admin",
+            "eurlex_enabled": False
+        }
     
     try:
         from src.storage.database import get_session
@@ -814,16 +843,17 @@ async def run_agent_1a_by_domain(
                     if publication_date is None:
                         publication_date = doc.publication_date
                     
-                    # Sauvegarder avec regulation_type = "TO_CLASSIFY" (sera classé par Agent 1B)
+                    # Sauvegarder avec workflow_status = "raw" (Agent 1B classifiera)
                     saved_doc, status = repo.upsert_document(
                         source_url=url,
                         hash_sha256=file_hash,
                         title=doc.title,
                         content=content.text,
                         nc_codes=[nc.code for nc in content.nc_codes],
-                        regulation_type="TO_CLASSIFY",  # L'Agent 1B classifiera
+                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=publication_date,
-                        document_metadata=metadata
+                        document_metadata=metadata,
+                        workflow_status="raw"  # Agent 1A: statut initial
                     )
                     saved_count += 1
                     
@@ -1133,16 +1163,17 @@ async def run_agent_1a(
                     if publication_date is None:
                         publication_date = doc.publication_date
                     
-                    # Sauvegarder
+                    # Sauvegarder (Agent 1B classifiera le type)
                     saved_doc, status = repo.upsert_document(
                         source_url=url,
                         hash_sha256=file_hash,
                         title=doc.title,
                         content=content.text,
                         nc_codes=[nc.code for nc in content.nc_codes],
-                        regulation_type=keyword,
+                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=publication_date,
-                        document_metadata=metadata
+                        document_metadata=metadata,
+                        workflow_status="raw"  # Agent 1A: statut initial
                     )
                     saved_count += 1
                     
@@ -1481,7 +1512,6 @@ async def run_agent_1a_combined(
                             'tables': len(content.tables),
                             'file_path': file_path
                         }
-                        regulation_type = 'CBAM'  # EUR-Lex documents are CBAM-related
                         nc_codes = [nc.code for nc in content.nc_codes]  # Extraire les codes NC
                         pub_date = doc.publication_date  # EurlexDocument utilise publication_date, pas date
                     else:  # cbam
@@ -1493,20 +1523,20 @@ async def run_agent_1a_combined(
                             'pages': content.page_count,
                             'file_path': file_path
                         }
-                        regulation_type = 'CBAM'
                         nc_codes = [nc.code for nc in content.nc_codes]  # Extraire les codes NC
                         pub_date = getattr(doc, 'date', None)
                     
-                    # Sauvegarder avec upsert_document
+                    # Sauvegarder avec upsert_document (Agent 1B classifiera)
                     saved_doc, status = repo.upsert_document(
                         source_url=url,
                         hash_sha256=file_hash,
                         title=doc.title,
                         content=content.text,  # Attribut text, pas .get('text')
                         nc_codes=nc_codes,
-                        regulation_type=regulation_type,
+                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=pub_date,
-                        document_metadata=metadata
+                        document_metadata=metadata,
+                        workflow_status="raw"  # Agent 1A: statut initial
                     )
                     saved_count += 1
                     
@@ -1594,8 +1624,6 @@ async def run_agent_1a_multi_sectors(
     Returns:
         dict: Résultat avec statistiques et documents traités
     """
-    from .tools.scraper import detect_regulation
-    
     logger.info(
         "agent_1a_multi_sectors_started",
         sectors=sectors,
@@ -1833,14 +1861,6 @@ async def run_agent_1a_multi_sectors(
                     with open(file_path, 'rb') as f:
                         file_hash = hashlib.sha256(f.read()).hexdigest()
                     
-                    # Détecter la réglementation depuis le titre
-                    regulation_type = detect_regulation(doc.title, content.text)
-                    
-                    # Stats par réglementation
-                    if regulation_type not in regulation_stats:
-                        regulation_stats[regulation_type] = 0
-                    regulation_stats[regulation_type] += 1
-                    
                     # Préparer les métadonnées
                     metadata = {
                         'source': 'eurlex',
@@ -1867,16 +1887,17 @@ async def run_agent_1a_multi_sectors(
                     if publication_date is None:
                         publication_date = doc.publication_date
                     
-                    # Sauvegarder avec la réglementation détectée
+                    # Sauvegarder (Agent 1B classifiera le type de réglementation)
                     saved_doc, status = repo.upsert_document(
                         source_url=url,
                         hash_sha256=file_hash,
                         title=doc.title,
                         content=content.text,
                         nc_codes=[nc.code for nc in content.nc_codes],
-                        regulation_type=regulation_type,  # CBAM, EUDR, CSRD, etc.
+                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=publication_date,
-                        document_metadata=metadata
+                        document_metadata=metadata,
+                        workflow_status="raw"  # Agent 1A: statut initial
                     )
                     saved_count += 1
                     
@@ -1885,7 +1906,6 @@ async def run_agent_1a_multi_sectors(
                         title=doc.title[:50],
                         status=status,
                         doc_id=saved_doc.id,
-                        regulation=regulation_type,
                         sector=sector
                     )
                     
@@ -2293,16 +2313,17 @@ async def run_agent_1a_from_profile(
                         "status": doc.status
                     }
                     
-                    # Sauvegarder avec upsert_document
+                    # Sauvegarder avec upsert_document (Agent 1B classifiera)
                     saved_doc, status = repo.upsert_document(
                         source_url=item["url"],
                         hash_sha256=file_hash,
                         title=doc.title,
                         content=content.text[:50000] if content.text else "",
                         nc_codes=[nc.code for nc in content.nc_codes[:100]] if content.nc_codes else [],
-                        regulation_type="TO_CLASSIFY",  # Agent 1B classifiera
+                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=doc.publication_date,
-                        document_metadata=metadata
+                        document_metadata=metadata,
+                        workflow_status="raw"  # Agent 1A: statut initial
                     )
                     
                     saved_count += 1
@@ -2403,67 +2424,75 @@ async def run_agent_1a_weather(
     )
     
     # ====================================================================
-    # ÉTAPE 1 : CHARGEMENT DES SITES
+    # V2 : VÉRIFICATION DE LA SOURCE OPENMETEO (table DataSource)
     # ====================================================================
-    logger.info("step_1_loading_sites")
-    
-    if sites_config_path is None:
-        sites_config_path = Path(__file__).parent.parent.parent / "config" / "sites_locations.json"
-    else:
-        sites_config_path = Path(sites_config_path)
-    
-    if not sites_config_path.exists():
-        logger.error("sites_config_not_found", path=str(sites_config_path))
+    if not should_collect_from_source("openmeteo"):
+        logger.info("openmeteo_source_disabled", action="skipping_collection")
         return {
-            "status": "error",
-            "error": f"Sites config not found: {sites_config_path}"
+            "status": "skipped",
+            "message": "OpenMeteo source is disabled by admin",
+            "openmeteo_enabled": False
         }
     
-    with open(sites_config_path, "r", encoding="utf-8") as f:
-        sites_data = json.load(f)
+    # ====================================================================
+    # ÉTAPE 1 : CHARGEMENT DES SITES (DEPUIS BDD)
+    # ====================================================================
+    logger.info("step_1_loading_sites_from_db")
     
+    from src.storage.database import SessionLocal
+    from src.storage.models import HutchinsonSite, Supplier
+    
+    db = SessionLocal()
     locations = []
     
-    # Sites Hutchinson
-    for site in sites_data.get("hutchinson_sites", []):
-        locations.append(Location(
-            site_id=site["site_id"],
-            name=site["name"],
-            city=site["city"],
-            country=site["country"],
-            latitude=site["latitude"],
-            longitude=site["longitude"],
-            site_type=site.get("site_type", "manufacturing"),
-            criticality=site.get("criticality", "normal"),
-        ))
+    try:
+        # Charger les sites Hutchinson depuis la BDD
+        hutchinson_sites = db.query(HutchinsonSite).filter(HutchinsonSite.active == True).all()
+        for site in hutchinson_sites:
+            if site.latitude and site.longitude:
+                locations.append(Location(
+                    site_id=site.id,
+                    name=site.name,
+                    city=site.city or "Unknown",
+                    country=site.country,
+                    latitude=site.latitude,
+                    longitude=site.longitude,
+                    site_type="manufacturing",
+                    criticality=site.strategic_importance or "normal",
+                ))
+        
+        logger.info("hutchinson_sites_loaded", count=len(hutchinson_sites), with_coords=len(locations))
+        
+        # Charger les fournisseurs depuis la BDD
+        suppliers = db.query(Supplier).filter(Supplier.active == True).all()
+        suppliers_count = 0
+        for supplier in suppliers:
+            if supplier.latitude and supplier.longitude:
+                locations.append(Location(
+                    site_id=supplier.id,
+                    name=supplier.name,
+                    city=supplier.city or "Unknown",
+                    country=supplier.country,
+                    latitude=supplier.latitude,
+                    longitude=supplier.longitude,
+                    site_type="supplier",
+                    criticality="normal",
+                ))
+                suppliers_count += 1
+        
+        logger.info("suppliers_loaded", count=len(suppliers), with_coords=suppliers_count)
+        
+    finally:
+        db.close()
     
-    # Fournisseurs
-    for supplier in sites_data.get("suppliers", []):
-        locations.append(Location(
-            site_id=supplier["site_id"],
-            name=supplier["name"],
-            city=supplier["city"],
-            country=supplier["country"],
-            latitude=supplier["latitude"],
-            longitude=supplier["longitude"],
-            site_type="supplier",
-            criticality=supplier.get("criticality", "normal"),
-        ))
+    if not locations:
+        logger.warning("no_sites_with_coordinates")
+        return {
+            "status": "error",
+            "error": "No sites or suppliers with coordinates found in database"
+        }
     
-    # Ports
-    for port in sites_data.get("ports", []):
-        locations.append(Location(
-            site_id=port["site_id"],
-            name=port["name"],
-            city=port["city"],
-            country=port["country"],
-            latitude=port["latitude"],
-            longitude=port["longitude"],
-            site_type="port",
-            criticality=port.get("criticality", "high"),
-        ))
-    
-    logger.info("step_1_completed", sites_count=len(locations))
+    logger.info("step_1_completed", total_locations=len(locations))
     
     # ====================================================================
     # ÉTAPE 2 : RÉCUPÉRATION DES PRÉVISIONS MÉTÉO
@@ -2733,16 +2762,19 @@ async def run_agent_1a_for_supplier(
                         doc_hash = hashlib.sha256(source_url.encode()).hexdigest()
                     
                     # Créer l'entrée dans la table documents
+                    doc_title = doc_info.get("title", "")
                     new_doc = Document(
-                        title=doc_info.get("title", "")[:500],
+                        title=doc_title[:500],
                         source_url=source_url[:1000] if source_url else "",
                         event_type="regulation",
                         event_subtype=doc_info.get("document_type", "EUR-LEX"),
                         publication_date=None,  # TODO: parser la date
                         hash_sha256=doc_hash,  # Hash du fichier ou de l'URL
                         content=content,
-                        summary=doc_info.get("title", ""),
+                        summary=doc_title,
                         status="new",
+                        workflow_status="raw",  # Agent 1A: statut initial
+                        regulation_type=None,  # Sera classifié par Agent 1B
                         extra_metadata={
                             "celex_id": doc_info.get("celex_id"),
                             "matched_keyword": doc_info.get("matched_keyword"),

@@ -11,6 +11,10 @@ Décisions du Judge:
 - Score < 7.0 → REJECT (Archiver)
 """
 
+# Charger les variables d'environnement en premier
+from dotenv import load_dotenv
+load_dotenv()
+
 import asyncio
 import structlog
 from typing import Dict, List, TypedDict, Optional, Literal
@@ -24,6 +28,9 @@ from src.agent_1a.tools.weather import OpenMeteoClient, Location
 from src.agent_1b.agent import Agent1B
 from src.agent_2.agent import Agent2
 from src.llm_judge.judge import Judge
+
+# Import notifications
+from src.notifications.notification_service import NotificationService
 
 # Imports storage
 from src.storage.database import get_session
@@ -259,6 +266,10 @@ class PINGState(TypedDict):
     needs_review: List[Dict]  # Score 7.0-8.4
     rejected: List[Dict]  # Score < 7.0
     
+    # Notifications
+    notifications_sent: List[Dict]  # Notifications envoyées
+    notifications_skipped: List[Dict]  # Notifications ignorées (rejected)
+    
     # Métadonnées
     company_profile: Optional[Dict]
     sites: List[Dict]
@@ -319,7 +330,13 @@ def load_company_data(company_name: str) -> Dict:
                     "latitude": s.latitude,
                     "longitude": s.longitude,
                     "site_type": s.sectors[0] if s.sectors else None,
-                    "strategic_importance": s.strategic_importance
+                    "strategic_importance": s.strategic_importance,
+                    # Business Interruption data
+                    "daily_revenue": s.daily_revenue,
+                    "daily_production_units": s.daily_production_units,
+                    "safety_stock_days": s.safety_stock_days,
+                    "recovery_time_days": s.ramp_up_time_days,  # ramp_up_time_days dans le modèle
+                    "key_customers": s.key_customers or []
                 }
                 for s in sites
             ],
@@ -333,7 +350,14 @@ def load_company_data(company_name: str) -> Dict:
                     "city": s.city,
                     "latitude": s.latitude,
                     "longitude": s.longitude,
-                    "criticality": s.financial_health
+                    "criticality": s.financial_health,
+                    # Business Interruption data
+                    "annual_purchase_volume": s.annual_purchase_volume,
+                    "average_stock_at_hutchinson_days": s.average_stock_at_hutchinson_days,
+                    "switch_time_days": s.switch_time_days,
+                    "criticality_score": s.criticality_score,
+                    "alternative_supplier_id": s.alternative_supplier_id,
+                    "ramp_up_time_days": s.qualification_time_days  # qualification_time_days dans le modèle
                 }
                 for s in suppliers
             ],
@@ -343,7 +367,12 @@ def load_company_data(company_name: str) -> Dict:
                     "hutchinson_site_id": r.hutchinson_site_id,
                     "supplier_id": r.supplier_id,
                     "relationship_type": "supplier",
-                    "criticality": r.criticality
+                    "criticality": r.criticality,
+                    # Business Interruption data
+                    "daily_consumption_value": r.daily_consumption_value,
+                    "stock_coverage_days": r.stock_coverage_days,
+                    "contract_penalties_per_day": r.contract_penalties_per_day,
+                    "is_sole_supplier": r.is_sole_supplier
                 }
                 for r in relationships
             ]
@@ -573,7 +602,7 @@ def save_risk_analysis(document: Dict, pertinence_result: Dict, risk_analysis: D
             supply_chain_impact=_map_risk_level_to_impact(risk_analysis.get("overall_risk_level", "Moyen")),
             recommendations=reco_text,
             reasoning=reasoning,
-            llm_model=risk_analysis.get("analysis_metadata", {}).get("llm_model", "claude-sonnet-4-5-20250929"),
+            llm_model=risk_analysis.get("analysis_metadata", {}).get("llm_model", "gpt-4o"),
             llm_tokens=risk_analysis.get("analysis_metadata", {}).get("llm_tokens"),
             processing_time_ms=risk_analysis.get("analysis_metadata", {}).get("processing_time_ms"),
             analysis_metadata=json.dumps(extra_data, ensure_ascii=False)
@@ -968,6 +997,12 @@ def node_agent_2(state: PINGState) -> PINGState:
         doc_start_time = time.time()
         
         try:
+            logger.info(
+                "agent_2_analyzing_document",
+                doc_id=doc["id"][:8],
+                title=doc.get("title", "")[:60]
+            )
+            
             # Agent 2 analyse le document
             risk_analysis, risk_projections = agent_2.analyze(
                 document=doc,
@@ -980,6 +1015,77 @@ def node_agent_2(state: PINGState) -> PINGState:
             # NOUVEAU : Sauvegarder le RiskAnalysis en BDD
             risk_analysis_id = save_risk_analysis(doc, pertinence_result, risk_analysis)
             risk_analysis["id"] = risk_analysis_id
+            
+            logger.info(
+                "agent_2_risk_computed",
+                doc_id=doc["id"][:8],
+                risk_level=risk_analysis.get("overall_risk_level"),
+                risk_score=risk_analysis.get("risk_score", 0),
+                affected_sites=len(risk_analysis.get("affected_sites", [])),
+                affected_suppliers=len(risk_analysis.get("affected_suppliers", []))
+            )
+            
+            # ================================================================
+            # AFFICHAGE DÉTAILLÉ DE L'ANALYSE AGENT 2
+            # ================================================================
+            print("\n" + "=" * 70)
+            print(f"📊 ANALYSE DÉTAILLÉE - {doc.get('title', 'Document')[:50]}")
+            print("=" * 70)
+            
+            # Score et niveau de risque
+            print(f"\n🎯 SCORE DE RISQUE: {risk_analysis.get('risk_score', 0)}/100")
+            print(f"   Niveau: {risk_analysis.get('overall_risk_level', 'N/A')}")
+            
+            # Section 1: Contexte et enjeux
+            context = risk_analysis.get("context_and_stakes")
+            if context:
+                print(f"\n📋 1. CONTEXTE ET ENJEUX:")
+                print(f"   {context[:500]}..." if len(str(context)) > 500 else f"   {context}")
+            
+            # Section 2: Entités affectées
+            entities = risk_analysis.get("affected_entities_details")
+            if entities:
+                print(f"\n🏭 2. ENTITÉS AFFECTÉES:")
+                print(f"   {entities[:400]}..." if len(str(entities)) > 400 else f"   {entities}")
+            
+            # Section 3: Analyse financière
+            financial = risk_analysis.get("financial_analysis")
+            if financial:
+                print(f"\n💰 3. ANALYSE FINANCIÈRE:")
+                print(f"   {financial[:500]}..." if len(str(financial)) > 500 else f"   {financial}")
+            
+            # Section 4: Recommandations
+            recommendations = risk_analysis.get("recommendations", [])
+            if recommendations:
+                print(f"\n✅ 4. RECOMMANDATIONS ({len(recommendations)}):")
+                for i, rec in enumerate(recommendations[:3], 1):
+                    if isinstance(rec, dict):
+                        print(f"   {i}. {rec.get('title', rec.get('action', 'N/A'))}")
+                        print(f"      Priorité: {rec.get('priority', 'N/A')} | ROI: {rec.get('roi', 'N/A')}")
+                    else:
+                        print(f"   {i}. {str(rec)[:100]}")
+                if len(recommendations) > 3:
+                    print(f"   ... et {len(recommendations) - 3} autres recommandations")
+            
+            # Section 5: Timeline
+            timeline = risk_analysis.get("timeline")
+            if timeline:
+                print(f"\n📅 5. TIMELINE:")
+                print(f"   {timeline[:300]}..." if len(str(timeline)) > 300 else f"   {timeline}")
+            
+            # Section 6: Matrice de priorisation
+            matrix = risk_analysis.get("prioritization_matrix")
+            if matrix:
+                print(f"\n📊 6. MATRICE DE PRIORISATION:")
+                print(f"   {matrix[:300]}..." if len(str(matrix)) > 300 else f"   {matrix}")
+            
+            # Section 7: Scénario sans action
+            do_nothing = risk_analysis.get("do_nothing_scenario")
+            if do_nothing:
+                print(f"\n⚠️ 7. SCÉNARIO SANS ACTION:")
+                print(f"   {do_nothing[:400]}..." if len(str(do_nothing)) > 400 else f"   {do_nothing}")
+            
+            print("\n" + "=" * 70)
             
             # NOUVEAU : Sauvegarder les projections de risque par entité
             projections_count = save_risk_projections(doc["id"], risk_projections)
@@ -1161,6 +1267,140 @@ def node_llm_judge(state: PINGState) -> PINGState:
     return state
 
 
+def node_notification(state: PINGState) -> PINGState:
+    """
+    Node Notification : Envoie des alertes email selon le niveau de risque
+    
+    - CRITIQUE/ELEVE (APPROVE): Notification immédiate
+    - MOYEN (REVIEW): Notification pour validation humaine
+    - FAIBLE (REJECT): Archivage, pas de notification
+    """
+    import time
+    start_time = time.time()
+    logger.info("node_notification_started")
+    state["current_step"] = "notification"
+    
+    # Initialiser le service (dry_run=True par défaut)
+    notification_service = NotificationService(dry_run=True)
+    
+    notifications_sent = []
+    notifications_skipped = []
+    
+    # Traiter les documents approuvés (notification immédiate)
+    for item in state.get("approved", []):
+        doc = item["document"]
+        risk_analysis = item["risk_analysis"]
+        pertinence_result = item.get("pertinence_result", {})
+        judge_eval = item.get("judge_evaluation", {})
+        
+        try:
+            result = notification_service.notify_risk_analysis(
+                document=doc,
+                risk_analysis=risk_analysis,
+                pertinence_result=pertinence_result
+            )
+            
+            notifications_sent.append({
+                "document_id": doc.get("id"),
+                "title": doc.get("title", "")[:50],
+                "risk_level": result.get("risk_level"),
+                "recipients_count": result.get("recipients_count"),
+                "status": result.get("status"),
+                "category": "APPROVE"
+            })
+            
+            logger.info(
+                "notification_sent_approve",
+                doc_id=doc.get("id"),
+                risk_level=result.get("risk_level"),
+                recipients=result.get("recipients_count")
+            )
+            
+        except Exception as e:
+            logger.error("notification_error", doc_id=doc.get("id"), error=str(e))
+            state["errors"].append(f"Notification (doc {doc.get('id')}): {str(e)}")
+    
+    # Traiter les documents en review (notification pour validation)
+    for item in state.get("needs_review", []):
+        doc = item["document"]
+        risk_analysis = item["risk_analysis"]
+        pertinence_result = item.get("pertinence_result", {})
+        
+        try:
+            result = notification_service.notify_risk_analysis(
+                document=doc,
+                risk_analysis=risk_analysis,
+                pertinence_result=pertinence_result
+            )
+            
+            notifications_sent.append({
+                "document_id": doc.get("id"),
+                "title": doc.get("title", "")[:50],
+                "risk_level": result.get("risk_level"),
+                "recipients_count": result.get("recipients_count"),
+                "status": result.get("status"),
+                "category": "REVIEW"
+            })
+            
+            logger.info(
+                "notification_sent_review",
+                doc_id=doc.get("id"),
+                risk_level=result.get("risk_level"),
+                recipients=result.get("recipients_count")
+            )
+            
+        except Exception as e:
+            logger.error("notification_error", doc_id=doc.get("id"), error=str(e))
+            state["errors"].append(f"Notification (doc {doc.get('id')}): {str(e)}")
+    
+    # Les documents rejetés ne reçoivent pas de notification
+    for item in state.get("rejected", []):
+        doc = item["document"]
+        notifications_skipped.append({
+            "document_id": doc.get("id"),
+            "title": doc.get("title", "")[:50],
+            "reason": "Score trop faible - Archivé"
+        })
+    
+    # Stocker les résultats dans le state
+    state["notifications_sent"] = notifications_sent
+    state["notifications_skipped"] = notifications_skipped
+    
+    exec_time = int((time.time() - start_time) * 1000)
+    log_execution(
+        agent_name="notification",
+        status="success",
+        execution_time_ms=exec_time,
+        extra_metadata={
+            "sent_count": len(notifications_sent),
+            "skipped_count": len(notifications_skipped)
+        }
+    )
+    
+    # Afficher le résumé
+    print("\n" + "=" * 70)
+    print("📧 RÉSUMÉ DES NOTIFICATIONS")
+    print("=" * 70)
+    print(f"✅ Notifications envoyées: {len(notifications_sent)}")
+    for notif in notifications_sent:
+        print(f"   • {notif['category']} - {notif['risk_level']} - {notif['title']}")
+        print(f"     Destinataires: {notif['recipients_count']} | Status: {notif['status']}")
+    
+    if notifications_skipped:
+        print(f"\n⏭️  Notifications ignorées: {len(notifications_skipped)}")
+        for skip in notifications_skipped:
+            print(f"   • {skip['title']} - {skip['reason']}")
+    print("=" * 70 + "\n")
+    
+    logger.info(
+        "node_notification_completed",
+        sent=len(notifications_sent),
+        skipped=len(notifications_skipped)
+    )
+    
+    return state
+
+
 def node_end_no_pertinent(state: PINGState) -> PINGState:
     """Node de fin quand aucun document n'est pertinent"""
     state["current_step"] = "completed_no_pertinent"
@@ -1205,6 +1445,7 @@ def create_ping_workflow() -> StateGraph:
     workflow.add_node("agent_1b", node_agent_1b)
     workflow.add_node("agent_2", node_agent_2)
     workflow.add_node("llm_judge", node_llm_judge)
+    workflow.add_node("notification", node_notification)
     workflow.add_node("end_no_pertinent", node_end_no_pertinent)
     workflow.add_node("end_success", node_end_success)
     
@@ -1226,7 +1467,8 @@ def create_ping_workflow() -> StateGraph:
     )
     
     workflow.add_edge("agent_2", "llm_judge")
-    workflow.add_edge("llm_judge", "end_success")
+    workflow.add_edge("llm_judge", "notification")
+    workflow.add_edge("notification", "end_success")
     workflow.add_edge("end_no_pertinent", END)
     workflow.add_edge("end_success", END)
     
@@ -1280,6 +1522,8 @@ def run_ping_workflow(
         "approved": [],
         "needs_review": [],
         "rejected": [],
+        "notifications_sent": [],
+        "notifications_skipped": [],
         "company_profile": None,
         "sites": [],
         "suppliers": [],

@@ -1,8 +1,12 @@
+import { config } from '../config/app.config';
+
 // Configuration de l'API
 const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  // En dev, utilise le proxy Vite: /api → localhost:8000/api
+  // En prod, utilise l'URL complète
+  BASE_URL: config.apiUrl ? `${config.apiUrl}/api` : '/api',
   TIMEOUT: parseInt(import.meta.env.VITE_API_TIMEOUT || '10000'),
-  DEBUG: import.meta.env.VITE_DEBUG === 'true',
+  DEBUG: config.debug,
 };
 
 // Headers par défaut

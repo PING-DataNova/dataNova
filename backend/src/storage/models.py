@@ -117,6 +117,8 @@ class Document(Base):
 class HutchinsonSite(Base):
     """
     Sites de production Hutchinson (80-90 sites)
+    
+    Colonnes Business Interruption ajoutées pour calcul d'impact réel.
     """
     __tablename__ = "hutchinson_sites"
     
@@ -141,6 +143,30 @@ class HutchinsonSite(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # =========================================================================
+    # COLONNES BUSINESS INTERRUPTION (ajoutées pour calcul d'impact financier)
+    # =========================================================================
+    
+    # PRODUCTION - Données journalières
+    daily_revenue = Column(Float, nullable=True)  # CA journalier en euros
+    daily_production_units = Column(Integer, nullable=True)  # Pièces produites par jour
+    production_capacity_utilization = Column(Float, nullable=True)  # Taux d'utilisation (0-100%)
+    
+    # STOCKS - Couverture en jours
+    raw_material_stock_days = Column(JSON, nullable=True)  # {"caoutchouc": 30, "plastique": 15}
+    finished_goods_stock_days = Column(Integer, nullable=True)  # Jours de stock produits finis
+    safety_stock_days = Column(Integer, nullable=True)  # Stock de sécurité global (jours)
+    
+    # CLIENTS - Impact downstream
+    key_customers = Column(JSON, nullable=True)  # [{"name": "Renault", "revenue_share": 0.3, "penalty_per_day": 5000}]
+    customer_contracts_penalties = Column(Float, nullable=True)  # Pénalités moyennes/jour en euros
+    
+    # FLEXIBILITÉ - Capacité de repli
+    backup_production_sites = Column(JSON, nullable=True)  # {"produit_A": ["site_2", "site_3"]}
+    ramp_up_time_days = Column(Integer, nullable=True)  # Temps pour transférer production ailleurs
+    can_work_overtime = Column(Boolean, default=True)  # Peut faire des heures sup
+    max_overtime_capacity_percent = Column(Float, nullable=True)  # Capacité max avec heures sup (+20%, +30%...)
+    
     # Relations
     supplier_relationships = relationship("SupplierRelationship", back_populates="hutchinson_site")
 
@@ -148,6 +174,8 @@ class HutchinsonSite(Base):
 class Supplier(Base):
     """
     Fournisseurs d'Hutchinson
+    
+    Colonnes Business Interruption ajoutées pour calcul d'impact réel.
     """
     __tablename__ = "suppliers"
     
@@ -170,16 +198,43 @@ class Supplier(Base):
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # =========================================================================
+    # COLONNES BUSINESS INTERRUPTION (ajoutées pour calcul d'impact financier)
+    # =========================================================================
+    
+    # VOLUMES RÉELS
+    annual_purchase_volume = Column(Float, nullable=True)  # Montant achats annuel réel en euros
+    daily_delivery_value = Column(Float, nullable=True)  # Valeur livrée par jour en euros
+    
+    # STOCKS CHEZ HUTCHINSON
+    average_stock_at_hutchinson_days = Column(Integer, nullable=True)  # Stock moyen chez Hutchinson (jours)
+    
+    # CONTINGENCE - Fournisseur backup
+    alternative_supplier_id = Column(String, ForeignKey("suppliers.id"), nullable=True)  # Fournisseur backup qualifié
+    switch_time_days = Column(Integer, nullable=True)  # Délai pour basculer sur backup (jours)
+    qualification_time_days = Column(Integer, nullable=True)  # Temps pour qualifier nouveau fournisseur
+    
+    # CAPACITÉ DE RÉPONSE
+    can_increase_capacity = Column(Boolean, default=False)  # Peut augmenter sa capacité
+    max_capacity_increase_percent = Column(Float, nullable=True)  # Augmentation max possible (%)
+    lead_time_express_days = Column(Integer, nullable=True)  # Délai en mode express
+    
+    # CRITICITÉ GLOBALE
+    criticality_score = Column(Integer, nullable=True)  # Score de criticité 1-10 (10 = irremplaçable)
+    
     # Relations
     supplier_relationships = relationship(
         "SupplierRelationship",
         foreign_keys="SupplierRelationship.supplier_id",
         back_populates="supplier"
     )
+    alternative_supplier = relationship("Supplier", remote_side=[id], foreign_keys=[alternative_supplier_id])
 
 class SupplierRelationship(Base):
     """
     Relations entre sites Hutchinson et fournisseurs
+    
+    Colonnes Business Interruption ajoutées pour calcul d'impact réel.
     """
     __tablename__ = "supplier_relationships"
     
@@ -199,6 +254,34 @@ class SupplierRelationship(Base):
     active = Column(Boolean, default=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # =========================================================================
+    # COLONNES BUSINESS INTERRUPTION (ajoutées pour calcul d'impact financier)
+    # =========================================================================
+    
+    # CONSOMMATION RÉELLE
+    daily_consumption_value = Column(Float, nullable=True)  # Consommation journalière en euros
+    daily_consumption_units = Column(Integer, nullable=True)  # Consommation journalière en unités
+    
+    # STOCK SPÉCIFIQUE À CETTE RELATION
+    stock_coverage_days = Column(Integer, nullable=True)  # Couverture stock actuelle (jours)
+    min_stock_days = Column(Integer, nullable=True)  # Stock minimum requis (jours)
+    max_stock_days = Column(Integer, nullable=True)  # Stock maximum (capacité stockage)
+    
+    # IMPACT CONTRACTUEL
+    contract_penalties_per_day = Column(Float, nullable=True)  # Pénalités si rupture (euros/jour)
+    contract_bonus_per_day = Column(Float, nullable=True)  # Bonus si livraison anticipée (euros/jour)
+    
+    # COMMANDES
+    minimum_order_quantity = Column(Float, nullable=True)  # Quantité min commande
+    minimum_order_value = Column(Float, nullable=True)  # Valeur min commande (euros)
+    lead_time_normal_days = Column(Integer, nullable=True)  # Délai normal
+    lead_time_urgent_days = Column(Integer, nullable=True)  # Délai urgence (avec surcoût)
+    urgent_delivery_surcharge_percent = Column(Float, nullable=True)  # Surcoût livraison urgente (%)
+    
+    # PRODUCTION IMPACTÉE
+    production_lines_dependent = Column(JSON, nullable=True)  # ["ligne_1", "ligne_2"] dépendantes
+    percent_site_production_dependent = Column(Float, nullable=True)  # % de la prod du site dépendante
     
     # Relations
     hutchinson_site = relationship("HutchinsonSite", back_populates="supplier_relationships")
@@ -262,6 +345,15 @@ class RiskAnalysis(Base):
     llm_tokens = Column(Integer, nullable=True)
     processing_time_ms = Column(Integer, nullable=True)
     analysis_metadata = Column(JSON, nullable=True)
+    
+    # Sections détaillées du rapport (ajoutées 2026-02-04)
+    context_and_stakes = Column(Text, nullable=True)  # Section 1: Contexte et enjeux
+    affected_entities_details = Column(Text, nullable=True)  # Section 2: Liste complète entités
+    financial_analysis = Column(Text, nullable=True)  # Section 3: Analyse financière
+    timeline = Column(Text, nullable=True)  # Section 5: Timeline des actions
+    prioritization_matrix = Column(Text, nullable=True)  # Section 6: Matrice de priorisation
+    do_nothing_scenario = Column(Text, nullable=True)  # Section 7: Scénario inaction
+    recommendations_model = Column(String(50), nullable=True)  # Modèle utilisé pour recommandations
     
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     
@@ -644,3 +736,29 @@ class SupplierAnalysis(Base):
 # Alias pour compatibilité avec les routes API existantes
 Analysis = PertinenceCheck
 ImpactAssessment = RiskAnalysis
+
+
+# ============================================================================
+# DATA SOURCES - Sources de données configurables
+# ============================================================================
+
+class DataSource(Base):
+    """
+    Sources de données configurables pour l'Agent 1A
+    Permet d'activer/désactiver des sources via l'API admin
+    """
+    __tablename__ = "data_sources"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String(100), nullable=False, unique=True)  # EUR-Lex, OpenMeteo, ACLED, etc.
+    description = Column(Text, nullable=True)
+    source_type = Column(String(50), nullable=False)  # api, scraper, file
+    risk_type = Column(String(50), nullable=True)  # regulatory, climate, geopolitical, sanitary
+    base_url = Column(String(500), nullable=True)
+    api_key_env_var = Column(String(100), nullable=True)  # Nom de la variable d'env pour l'API key
+    config = Column(JSON, nullable=True)  # Configuration spécifique à la source
+    is_active = Column(Boolean, default=True)
+    priority = Column(Integer, default=0)  # Ordre de priorité
+    
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)

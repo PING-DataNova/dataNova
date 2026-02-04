@@ -17,6 +17,15 @@
       "employee_count": 850,
       "annual_production_value": 45000000.0,
       "strategic_importance": "fort",
+      "daily_revenue": 180000.0,
+      "daily_production_units": 48000,
+      "safety_stock_days": 14,
+      "recovery_time_days": 21,
+      "key_customers": [
+        {"name": "Toyota Thailand", "revenue_share_pct": 45, "penalty_per_day_eur": 15000, "contract_type": "JIT"},
+        {"name": "Honda Thailand", "revenue_share_pct": 30, "penalty_per_day_eur": 10000, "contract_type": "Standard"},
+        {"name": "Airbus Helicopters", "revenue_share_pct": 25, "penalty_per_day_eur": 25000, "contract_type": "Critical"}
+      ],
       "extra_metadata": {
         "main_customers": ["Toyota Thailand", "Honda Thailand", "Airbus Helicopters"],
         "production_capacity_units_per_year": 12000000,
@@ -42,6 +51,16 @@
       "employee_count": 320,
       "annual_production_value": 15000000.0,
       "strategic_importance": "critique",
+      "daily_revenue": 60000.0,
+      "daily_production_units": 50,
+      "safety_stock_days": 30,
+      "recovery_time_days": 14,
+      "key_customers": [
+        {"name": "Hutchinson Internal", "revenue_share_pct": 40, "penalty_per_day_eur": 5000, "contract_type": "Internal"},
+        {"name": "Airbus", "revenue_share_pct": 25, "penalty_per_day_eur": 20000, "contract_type": "R&D Partnership"},
+        {"name": "Safran", "revenue_share_pct": 20, "penalty_per_day_eur": 15000, "contract_type": "R&D Partnership"},
+        {"name": "Renault", "revenue_share_pct": 15, "penalty_per_day_eur": 8000, "contract_type": "Standard"}
+      ],
       "extra_metadata": {
         "main_customers": ["Hutchinson Internal", "Airbus", "Safran", "Renault"],
         "research_budget_eur": 8000000,
@@ -67,6 +86,16 @@
       "employee_count": 1200,
       "annual_production_value": 95000000.0,
       "strategic_importance": "critique",
+      "daily_revenue": 380000.0,
+      "daily_production_units": 100000,
+      "safety_stock_days": 10,
+      "recovery_time_days": 7,
+      "key_customers": [
+        {"name": "BMW", "revenue_share_pct": 35, "penalty_per_day_eur": 50000, "contract_type": "JIT"},
+        {"name": "Mercedes-Benz", "revenue_share_pct": 30, "penalty_per_day_eur": 45000, "contract_type": "JIT"},
+        {"name": "Audi", "revenue_share_pct": 20, "penalty_per_day_eur": 35000, "contract_type": "JIT"},
+        {"name": "Volkswagen", "revenue_share_pct": 15, "penalty_per_day_eur": 25000, "contract_type": "Standard"}
+      ],
       "extra_metadata": {
         "main_customers": ["BMW", "Mercedes-Benz", "Audi", "Volkswagen"],
         "production_capacity_units_per_year": 25000000,
@@ -92,6 +121,15 @@
       "employee_count": 450,
       "annual_production_value": 28000000.0,
       "strategic_importance": "moyen",
+      "daily_revenue": 112000.0,
+      "daily_production_units": 32000,
+      "safety_stock_days": 7,
+      "recovery_time_days": 5,
+      "key_customers": [
+        {"name": "Fiat Poland", "revenue_share_pct": 40, "penalty_per_day_eur": 12000, "contract_type": "Standard"},
+        {"name": "Volkswagen Poznań", "revenue_share_pct": 35, "penalty_per_day_eur": 15000, "contract_type": "JIT"},
+        {"name": "Opel", "revenue_share_pct": 25, "penalty_per_day_eur": 8000, "contract_type": "Standard"}
+      ],
       "extra_metadata": {
         "main_customers": ["Fiat Poland", "Volkswagen Poznań", "Opel"],
         "production_capacity_units_per_year": 8000000,
@@ -117,6 +155,16 @@
       "employee_count": 980,
       "annual_production_value": 72000000.0,
       "strategic_importance": "fort",
+      "daily_revenue": 288000.0,
+      "daily_production_units": 72000,
+      "safety_stock_days": 20,
+      "recovery_time_days": 14,
+      "key_customers": [
+        {"name": "SAIC Motor", "revenue_share_pct": 30, "penalty_per_day_eur": 35000, "contract_type": "JIT"},
+        {"name": "Geely", "revenue_share_pct": 25, "penalty_per_day_eur": 28000, "contract_type": "Standard"},
+        {"name": "BYD", "revenue_share_pct": 25, "penalty_per_day_eur": 30000, "contract_type": "JIT"},
+        {"name": "NIO", "revenue_share_pct": 20, "penalty_per_day_eur": 22000, "contract_type": "Standard"}
+      ],
       "extra_metadata": {
         "main_customers": ["SAIC Motor", "Geely", "BYD", "NIO"],
         "production_capacity_units_per_year": 18000000,
@@ -142,6 +190,15 @@
       "employee_count": 650,
       "annual_production_value": 38000000.0,
       "strategic_importance": "moyen",
+      "daily_revenue": 152000.0,
+      "daily_production_units": 40000,
+      "safety_stock_days": 15,
+      "recovery_time_days": 10,
+      "key_customers": [
+        {"name": "General Motors", "revenue_share_pct": 40, "penalty_per_day_eur": 18000, "contract_type": "JIT"},
+        {"name": "Ford Mexico", "revenue_share_pct": 35, "penalty_per_day_eur": 15000, "contract_type": "Standard"},
+        {"name": "Nissan Mexicana", "revenue_share_pct": 25, "penalty_per_day_eur": 12000, "contract_type": "Standard"}
+      ],
       "extra_metadata": {
         "main_customers": ["General Motors", "Ford Mexico", "Nissan Mexicana"],
         "production_capacity_units_per_year": 10000000,
@@ -167,6 +224,16 @@
       "employee_count": 780,
       "annual_production_value": 125000000.0,
       "strategic_importance": "critique",
+      "daily_revenue": 500000.0,
+      "daily_production_units": 1800,
+      "safety_stock_days": 30,
+      "recovery_time_days": 45,
+      "key_customers": [
+        {"name": "Airbus", "revenue_share_pct": 45, "penalty_per_day_eur": 150000, "contract_type": "Critical"},
+        {"name": "Safran", "revenue_share_pct": 25, "penalty_per_day_eur": 80000, "contract_type": "Critical"},
+        {"name": "Dassault Aviation", "revenue_share_pct": 20, "penalty_per_day_eur": 60000, "contract_type": "Defense"},
+        {"name": "Thales", "revenue_share_pct": 10, "penalty_per_day_eur": 40000, "contract_type": "Defense"}
+      ],
       "extra_metadata": {
         "main_customers": ["Airbus", "Safran", "Dassault Aviation", "Thales"],
         "production_capacity_units_per_year": 450000,
@@ -193,6 +260,16 @@
       "employee_count": 920,
       "annual_production_value": 68000000.0,
       "strategic_importance": "fort",
+      "daily_revenue": 272000.0,
+      "daily_production_units": 60000,
+      "safety_stock_days": 21,
+      "recovery_time_days": 10,
+      "key_customers": [
+        {"name": "General Motors", "revenue_share_pct": 30, "penalty_per_day_eur": 40000, "contract_type": "JIT"},
+        {"name": "Ford", "revenue_share_pct": 28, "penalty_per_day_eur": 38000, "contract_type": "JIT"},
+        {"name": "Stellantis", "revenue_share_pct": 22, "penalty_per_day_eur": 30000, "contract_type": "Standard"},
+        {"name": "Tesla", "revenue_share_pct": 20, "penalty_per_day_eur": 45000, "contract_type": "Critical"}
+      ],
       "extra_metadata": {
         "main_customers": ["General Motors", "Ford", "Stellantis", "Tesla"],
         "production_capacity_units_per_year": 15000000,
@@ -218,6 +295,10 @@
       "company_size": "ETI",
       "certifications": ["ISO 9001", "ISO 14001", "REACH", "FSC"],
       "financial_health_score": 0.75,
+      "annual_purchase_volume_eur": 6000000,
+      "average_stock_at_hutchinson_days": 14,
+      "switch_time_days": 30,
+      "criticality_score": 9,
       "extra_metadata": {
         "founded_year": 1985,
         "employee_count": 450,
@@ -243,6 +324,10 @@
       "company_size": "Grand groupe",
       "certifications": ["ISO 9001", "ISO 14001", "IATF 16949", "ISO 50001"],
       "financial_health_score": 0.90,
+      "annual_purchase_volume_eur": 8000000,
+      "average_stock_at_hutchinson_days": 30,
+      "switch_time_days": 60,
+      "criticality_score": 8,
       "extra_metadata": {
         "founded_year": 1952,
         "employee_count": 3500,
@@ -267,6 +352,10 @@
       "company_size": "PME",
       "certifications": ["ISO 9001", "IATF 16949"],
       "financial_health_score": 0.65,
+      "annual_purchase_volume_eur": 2000000,
+      "average_stock_at_hutchinson_days": 10,
+      "switch_time_days": 90,
+      "criticality_score": 10,
       "extra_metadata": {
         "founded_year": 2003,
         "employee_count": 180,
@@ -291,6 +380,10 @@
       "company_size": "Grand groupe",
       "certifications": ["ISO 9001", "ISO 14001", "IATF 16949", "ISO 13485", "RoHS", "REACH"],
       "financial_health_score": 0.85,
+      "annual_purchase_volume_eur": 6000000,
+      "average_stock_at_hutchinson_days": 20,
+      "switch_time_days": 120,
+      "criticality_score": 8,
       "extra_metadata": {
         "founded_year": 1998,
         "employee_count": 8500,
@@ -315,6 +408,10 @@
       "company_size": "ETI",
       "certifications": ["ISO 9001", "ISO 14001", "REACH", "ISO 45001"],
       "financial_health_score": 0.80,
+      "annual_purchase_volume_eur": 3000000,
+      "average_stock_at_hutchinson_days": 45,
+      "switch_time_days": 21,
+      "criticality_score": 5,
       "extra_metadata": {
         "founded_year": 1975,
         "employee_count": 650,
@@ -339,6 +436,10 @@
       "company_size": "ETI",
       "certifications": ["ISO 9001", "IATF 16949"],
       "financial_health_score": 0.70,
+      "annual_purchase_volume_eur": 4000000,
+      "average_stock_at_hutchinson_days": 25,
+      "switch_time_days": 45,
+      "criticality_score": 6,
       "extra_metadata": {
         "founded_year": 1990,
         "employee_count": 1200,
@@ -362,6 +463,10 @@
       "company_size": "Grand groupe",
       "certifications": ["ISO 9001", "ISO 14001", "API", "NSF"],
       "financial_health_score": 0.88,
+      "annual_purchase_volume_eur": 3500000,
+      "average_stock_at_hutchinson_days": 60,
+      "switch_time_days": 14,
+      "criticality_score": 3,
       "extra_metadata": {
         "founded_year": 1968,
         "employee_count": 2800,
@@ -386,6 +491,10 @@
       "company_size": "Grand groupe",
       "certifications": ["ISO 9001", "ISO 14001", "FSC"],
       "financial_health_score": 0.72,
+      "annual_purchase_volume_eur": 1000000,
+      "average_stock_at_hutchinson_days": 21,
+      "switch_time_days": 10,
+      "criticality_score": 4,
       "extra_metadata": {
         "founded_year": 1975,
         "employee_count": 5200,
@@ -410,6 +519,10 @@
       "company_size": "Grand groupe",
       "certifications": ["ISO 9001", "AS9100", "NADCAP"],
       "financial_health_score": 0.45,
+      "annual_purchase_volume_eur": 10000000,
+      "average_stock_at_hutchinson_days": 90,
+      "switch_time_days": 540,
+      "criticality_score": 10,
       "extra_metadata": {
         "founded_year": 1959,
         "employee_count": 3800,
@@ -436,6 +549,10 @@
       "company_size": "ETI",
       "certifications": ["ISO 9001", "AS9100", "EN 9100"],
       "financial_health_score": 0.82,
+      "annual_purchase_volume_eur": 4500000,
+      "average_stock_at_hutchinson_days": 45,
+      "switch_time_days": 60,
+      "criticality_score": 6,
       "extra_metadata": {
         "founded_year": 1988,
         "employee_count": 420,
@@ -460,6 +577,9 @@
       "stock_buffer_days": 14,
       "contract_end_date": "2027-12-31",
       "risk_mitigation_plan": "Fournisseur backup Vietnam activable en 10 jours. Stock de sécurité de 14 jours. Transport aérien d'urgence possible.",
+      "daily_consumption_value_eur": 20000,
+      "stock_coverage_days": 14,
+      "contract_penalties_per_day_eur": 5000,
       "extra_metadata": {
         "contract_type": "Long-term supply agreement",
         "payment_terms": "Net 60",
@@ -481,6 +601,9 @@
       "stock_buffer_days": 21,
       "contract_end_date": "2026-12-31",
       "risk_mitigation_plan": "Fournisseur secondaire pour diversification. Peut augmenter volumes si nécessaire.",
+      "daily_consumption_value_eur": 4000,
+      "stock_coverage_days": 21,
+      "contract_penalties_per_day_eur": 1000,
       "extra_metadata": {
         "contract_type": "Annual contract",
         "payment_terms": "Net 45",
@@ -501,6 +624,9 @@
       "stock_buffer_days": 30,
       "contract_end_date": "2028-06-30",
       "risk_mitigation_plan": "Dual sourcing avec fournisseur mexicain. Stock de sécurité 30 jours. Contrat long terme avec clauses de volume garanti.",
+      "daily_consumption_value_eur": 32000,
+      "stock_coverage_days": 30,
+      "contract_penalties_per_day_eur": 15000,
       "extra_metadata": {
         "contract_type": "Multi-year framework agreement",
         "payment_terms": "Net 90",
@@ -522,6 +648,9 @@
       "stock_buffer_days": 45,
       "contract_end_date": "2027-03-31",
       "risk_mitigation_plan": "Plusieurs fournisseurs alternatifs disponibles en Europe. Stock important car produits stables.",
+      "daily_consumption_value_eur": 12000,
+      "stock_coverage_days": 45,
+      "contract_penalties_per_day_eur": 3000,
       "extra_metadata": {
         "contract_type": "Annual contract with renewal option",
         "payment_terms": "Net 60",
@@ -542,6 +671,9 @@
       "stock_buffer_days": 10,
       "contract_end_date": "2026-09-30",
       "risk_mitigation_plan": "Fournisseur local unique. Stock minimal car délais courts. Identification de fournisseurs backup en cours.",
+      "daily_consumption_value_eur": 8000,
+      "stock_coverage_days": 10,
+      "contract_penalties_per_day_eur": 8000,
       "extra_metadata": {
         "contract_type": "Annual contract",
         "payment_terms": "Net 30",
@@ -563,6 +695,9 @@
       "stock_buffer_days": 20,
       "contract_end_date": "2027-12-31",
       "risk_mitigation_plan": "Fournisseur principal en Chine. Stock de sécurité 20 jours. Qualification de fournisseurs alternatifs en Asie en cours.",
+      "daily_consumption_value_eur": 24000,
+      "stock_coverage_days": 20,
+      "contract_penalties_per_day_eur": 12000,
       "extra_metadata": {
         "contract_type": "Long-term supply agreement",
         "payment_terms": "Net 45",
@@ -584,6 +719,9 @@
       "stock_buffer_days": 25,
       "contract_end_date": "2027-06-30",
       "risk_mitigation_plan": "Fournisseur local au Mexique. Plusieurs alternatives disponibles en Amérique du Nord.",
+      "daily_consumption_value_eur": 16000,
+      "stock_coverage_days": 25,
+      "contract_penalties_per_day_eur": 4000,
       "extra_metadata": {
         "contract_type": "Annual contract",
         "payment_terms": "Net 60",
@@ -605,6 +743,9 @@
       "stock_buffer_days": 60,
       "contract_end_date": "2028-12-31",
       "risk_mitigation_plan": "Produits standardisés avec nombreux fournisseurs alternatifs. Stock important car produits stables.",
+      "daily_consumption_value_eur": 14000,
+      "stock_coverage_days": 60,
+      "contract_penalties_per_day_eur": 2000,
       "extra_metadata": {
         "contract_type": "Multi-year framework agreement",
         "payment_terms": "Net 90",
@@ -626,6 +767,9 @@
       "stock_buffer_days": 90,
       "contract_end_date": "2027-12-31",
       "risk_mitigation_plan": "Fournisseur unique pour titane aéronautique. Stock stratégique 90 jours. Recherche active de sources alternatives (USA, Japon, Kazakhstan).",
+      "daily_consumption_value_eur": 40000,
+      "stock_coverage_days": 90,
+      "contract_penalties_per_day_eur": 75000,
       "extra_metadata": {
         "contract_type": "Long-term strategic supply agreement",
         "payment_terms": "Net 120",
@@ -649,6 +793,9 @@
       "stock_buffer_days": 45,
       "contract_end_date": "2027-09-30",
       "risk_mitigation_plan": "Fournisseur européen de composites. Plusieurs alternatives en Europe (France, Allemagne, UK).",
+      "daily_consumption_value_eur": 18000,
+      "stock_coverage_days": 45,
+      "contract_penalties_per_day_eur": 8000,
       "extra_metadata": {
         "contract_type": "Annual contract with volume commitment",
         "payment_terms": "Net 60",

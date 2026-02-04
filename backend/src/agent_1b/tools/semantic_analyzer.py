@@ -1,17 +1,12 @@
 """
 Filtre Niveau 3 - Analyse sémantique avec LLM
 
-Utilise Claude pour une analyse contextuelle approfondie.
+Utilise OpenAI ou Anthropic pour une analyse contextuelle approfondie.
 """
 
 import structlog
+import os
 from typing import List, Dict
-from langchain_anthropic import ChatAnthropic
-from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import PydanticOutputParser
-
-from src.agent_1b.models import SemanticAnalysisResult
-from src.config import settings
 
 logger = structlog.get_logger()
 
@@ -69,24 +64,23 @@ Procède à l'analyse maintenant.
 class SemanticAnalyzer:
     """Analyseur sémantique utilisant un LLM"""
     
-    def __init__(self, model_name: str = "claude-sonnet-4-5-20250929", temperature: float = 0.1):
+    def __init__(self, model_name: str = None, temperature: float = 0.1):
         """
         Args:
-            model_name: Nom du modèle Anthropic à utiliser
+            model_name: Nom du modèle à utiliser (optionnel)
             temperature: Température pour la génération (0-1)
         """
-        self.llm = ChatAnthropic(
-            model=model_name,
-            api_key=settings.anthropic_api_key,
-            temperature=temperature,
-            max_tokens=2000
-        )
+        self.temperature = temperature
+        self.llm_provider = os.getenv("LLM_PROVIDER", "openai").lower()
         
-        # Parser Pydantic pour structurer la sortie
-        self.output_parser = PydanticOutputParser(pydantic_object=SemanticAnalysisResult)
-        
-        # Créer la chaîne LangChain
-        self.chain = SEMANTIC_ANALYSIS_PROMPT | self.llm | self.output_parser
+        if self.llm_provider == "openai":
+            from openai import OpenAI
+            self.model_name = model_name or "gpt-4o-mini"
+            self.client = OpenAI()
+        else:
+            from anthropic import Anthropic
+            self.model_name = model_name or "claude-sonnet-4-20250514"
+            self.client = Anthropic()
     
     def analyze(
         self,

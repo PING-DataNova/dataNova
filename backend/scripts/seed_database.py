@@ -5,6 +5,7 @@ Ce script charge les données depuis test_data.json dans les tables :
 - hutchinson_sites
 - suppliers
 - supplier_relationships
+- data_sources (EUR-Lex, OpenMeteo, ACLED, WHO)
 
 Usage:
     cd backend
@@ -20,7 +21,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.storage.database import SessionLocal, init_db
-from src.storage.models import HutchinsonSite, Supplier, SupplierRelationship
+from src.storage.models import HutchinsonSite, Supplier, SupplierRelationship, DataSource
 
 
 def load_json_data(filepath: str) -> dict:
@@ -35,6 +36,7 @@ def clear_tables(db):
     db.query(SupplierRelationship).delete()
     db.query(Supplier).delete()
     db.query(HutchinsonSite).delete()
+    db.query(DataSource).delete()
     db.commit()
     print("   ✅ Tables vidées")
 
@@ -66,6 +68,12 @@ def seed_hutchinson_sites(db, sites_data: list) -> dict:
             employee_count=site.get('employee_count'),
             annual_production_value=site.get('annual_production_value'),
             strategic_importance=site.get('strategic_importance'),
+            # Nouvelles colonnes Business Interruption
+            daily_revenue=site.get('daily_revenue'),
+            daily_production_units=site.get('daily_production_units'),
+            safety_stock_days=site.get('safety_stock_days'),
+            ramp_up_time_days=site.get('recovery_time_days'),  # recovery_time -> ramp_up_time
+            key_customers=site.get('key_customers'),  # JSON directement
             extra_metadata=site.get('extra_metadata'),
             active=site.get('active', True)
         )
@@ -112,6 +120,11 @@ def seed_suppliers(db, suppliers_data: list) -> dict:
             company_size=supplier.get('company_size'),
             certifications=supplier.get('certifications'),
             financial_health=financial_health,
+            # Nouvelles colonnes Business Interruption
+            annual_purchase_volume=supplier.get('annual_purchase_volume_eur'),
+            average_stock_at_hutchinson_days=supplier.get('average_stock_at_hutchinson_days'),
+            switch_time_days=supplier.get('switch_time_days'),
+            criticality_score=supplier.get('criticality_score'),
             extra_metadata=supplier.get('extra_metadata'),
             active=supplier.get('active', True)
         )
@@ -151,6 +164,10 @@ def seed_supplier_relationships(db, relationships_data: list, site_mapping: dict
             lead_time_days=rel.get('lead_time_days'),
             contract_end_date=contract_end,
             risk_mitigation_plan=rel.get('risk_mitigation_plan'),
+            # Nouvelles colonnes Business Interruption
+            daily_consumption_value=rel.get('daily_consumption_value_eur'),
+            stock_coverage_days=rel.get('stock_coverage_days'),
+            contract_penalties_per_day=rel.get('contract_penalties_per_day_eur'),
             extra_metadata=rel.get('extra_metadata'),
             active=True
         )
@@ -163,11 +180,99 @@ def seed_supplier_relationships(db, relationships_data: list, site_mapping: dict
     db.commit()
 
 
+def seed_data_sources(db):
+    """
+    Insère les sources de données par défaut pour l'Agent 1A.
+    Ces sources permettent à l'admin de les activer/désactiver via l'API.
+    """
+    print("\n📡 Insertion des sources de données...")
+    
+    default_sources = [
+        {
+            "name": "EUR-Lex",
+            "description": "Base de données officielle du droit de l'Union européenne. Contient les règlements, directives et décisions.",
+            "source_type": "api",
+            "risk_type": "regulatory",
+            "base_url": "https://eur-lex.europa.eu/eurlex-ws/search",
+            "api_key_env_var": None,
+            "config": {
+                "domains": ["ENVI", "AGRI", "EMPL", "REGIO"],
+                "max_results": 100,
+                "language": "FRA"
+            },
+            "is_active": True,
+            "priority": 1
+        },
+        {
+            "name": "OpenMeteo",
+            "description": "API météorologique open-source pour les prévisions et données historiques climatiques.",
+            "source_type": "api",
+            "risk_type": "climate",
+            "base_url": "https://api.open-meteo.com/v1",
+            "api_key_env_var": None,
+            "config": {
+                "forecast_days": 7,
+                "models": ["best_match"],
+                "variables": ["temperature_2m", "precipitation", "wind_speed_10m"]
+            },
+            "is_active": True,
+            "priority": 2
+        },
+        {
+            "name": "ACLED",
+            "description": "Armed Conflict Location & Event Data - Base de données sur les conflits et événements géopolitiques.",
+            "source_type": "api",
+            "risk_type": "geopolitical",
+            "base_url": "https://api.acleddata.com/acled/read",
+            "api_key_env_var": "ACLED_API_KEY",
+            "config": {
+                "event_types": ["battles", "protests", "riots", "strategic_developments"],
+                "limit": 500
+            },
+            "is_active": False,  # Nécessite une clé API
+            "priority": 3
+        },
+        {
+            "name": "WHO Disease Outbreak News",
+            "description": "Actualités sur les épidémies et urgences sanitaires de l'OMS.",
+            "source_type": "rss",
+            "risk_type": "sanitary",
+            "base_url": "https://www.who.int/feeds/entity/don/en/rss.xml",
+            "api_key_env_var": None,
+            "config": {
+                "refresh_interval_hours": 6,
+                "keywords": ["outbreak", "epidemic", "pandemic", "health emergency"]
+            },
+            "is_active": False,  # À activer selon besoin
+            "priority": 4
+        }
+    ]
+    
+    for source_data in default_sources:
+        source = DataSource(
+            name=source_data["name"],
+            description=source_data["description"],
+            source_type=source_data["source_type"],
+            risk_type=source_data["risk_type"],
+            base_url=source_data["base_url"],
+            api_key_env_var=source_data["api_key_env_var"],
+            config=source_data["config"],
+            is_active=source_data["is_active"],
+            priority=source_data["priority"]
+        )
+        db.add(source)
+        status = "✅ Active" if source_data["is_active"] else "⏸️  Inactive"
+        print(f"   {status} {source_data['name']} ({source_data['risk_type']})")
+    
+    db.commit()
+
+
 def print_summary(db):
     """Affiche un résumé des données insérées."""
     sites_count = db.query(HutchinsonSite).count()
     suppliers_count = db.query(Supplier).count()
     relationships_count = db.query(SupplierRelationship).count()
+    sources_count = db.query(DataSource).count()
     
     print("\n" + "=" * 60)
     print("📊 RÉSUMÉ DU SEED")
@@ -175,6 +280,7 @@ def print_summary(db):
     print(f"   Sites Hutchinson:      {sites_count}")
     print(f"   Fournisseurs:          {suppliers_count}")
     print(f"   Relations:             {relationships_count}")
+    print(f"   Sources de données:    {sources_count}")
     print("=" * 60)
 
 
@@ -215,6 +321,9 @@ def main():
             site_mapping,
             supplier_mapping
         )
+        
+        # Insérer les sources de données par défaut
+        seed_data_sources(db)
         
         # Afficher le résumé
         print_summary(db)

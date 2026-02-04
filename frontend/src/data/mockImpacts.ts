@@ -424,6 +424,59 @@ export const MOCK_SUPPLIERS: MockSupplier[] = [
     employees: 1291
   },
   // Fournisseurs tiers à risque (pour la démonstration)
+  // IDs synchronisés avec la BDD quand possible
+  {
+    id: "supplier_thai_rubber",
+    name: "Thai Rubber Industries Co., Ltd.",
+    country: "Thailand",
+    city: "Samut Prakan",
+    lat: 13.65,
+    lng: 100.49,
+    riskLevel: "eleve",
+    riskCount: 2,
+    regulations: ["EUDR", "CS3D"],
+    sector: "Matières premières",
+    employees: 450
+  },
+  {
+    id: "supplier_german_steel",
+    name: "Deutsche Stahlwerke GmbH",
+    country: "Allemagne",
+    city: "Essen",
+    lat: 51.4556,
+    lng: 7.0116,
+    riskLevel: "moyen",
+    riskCount: 2,
+    regulations: ["CBAM", "CSRD"],
+    sector: "Métallurgie",
+    employees: 3500
+  },
+  {
+    id: "supplier_chinese_electronics",
+    name: "Shenzhen Electronics Manufacturing Ltd.",
+    country: "Chine",
+    city: "Shenzhen",
+    lat: 22.5431,
+    lng: 114.0579,
+    riskLevel: "eleve",
+    riskCount: 4,
+    regulations: ["CBAM", "CS3D", "CSRD", "Batteries"],
+    sector: "Électronique",
+    employees: 8500
+  },
+  {
+    id: "supplier_ukrainian_titanium",
+    name: "Ukrainian Titanium Works",
+    country: "Ukraine",
+    city: "Zaporizhzhia",
+    lat: 47.8388,
+    lng: 35.1396,
+    riskLevel: "eleve",
+    riskCount: 3,
+    regulations: ["Géopolitique", "Sanctions", "Supply Chain"],
+    sector: "Métallurgie",
+    employees: 3800
+  },
   {
     id: "supplier-rubber-my",
     name: "RubberTech Malaysia",

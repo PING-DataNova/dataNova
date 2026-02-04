@@ -4,7 +4,8 @@
 
 import { config } from '../config/app.config';
 
-const API_BASE_URL = config.apiUrl;
+// En dev, utilise le proxy Vite. En prod, utilise l'URL configurée.
+const API_BASE_URL = config.apiUrl || '';
 
 export interface LoginRequest {
   email: string;

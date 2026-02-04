@@ -1,12 +1,12 @@
 """
-Agent 3 : LLM Judge - Évaluation de la qualité des analyses (Anthropic Claude)
+Agent 3 : LLM Judge - Évaluation de la qualité des analyses (OpenAI ou Anthropic)
 """
 
 import json
 import time
+import os
 from typing import Dict, List, Any
 from datetime import datetime
-from anthropic import Anthropic
 
 from .criteria_evaluator import CriteriaEvaluator
 from .weights_config import get_weights, calculate_weighted_score
@@ -18,16 +18,26 @@ class Judge:
     Agent Judge qui évalue la qualité des analyses de pertinence et de risque
     """
     
-    def __init__(self, llm_model: str = "claude-sonnet-4-20250514"):
+    def __init__(self, llm_model: str = None):
         """
         Initialise le Judge
         
         Args:
-            llm_model: Modèle Claude à utiliser
+            llm_model: Modèle à utiliser (optionnel, défini automatiquement)
         """
-        self.llm_model = llm_model
-        self.client = Anthropic()
-        self.evaluator = CriteriaEvaluator(llm_model)
+        # Le Judge utilise OpenAI par défaut pour éviter les rate limits Anthropic
+        self.llm_provider = os.getenv("JUDGE_LLM_PROVIDER", "openai").lower()
+        
+        if self.llm_provider == "openai":
+            from openai import OpenAI
+            self.llm_model = llm_model or os.getenv("JUDGE_MODEL", "gpt-4o-mini")
+            self.client = OpenAI()
+        else:
+            from anthropic import Anthropic
+            self.llm_model = llm_model or "claude-sonnet-4-20250514"
+            self.client = Anthropic()
+        
+        self.evaluator = CriteriaEvaluator(self.llm_model)
     
     def evaluate(
         self,
@@ -181,17 +191,29 @@ class Judge:
             overall_confidence=overall_confidence
         )
         
-        response = self.client.messages.create(
-            model=self.llm_model,
-            max_tokens=1024,
-            temperature=0.0,  # Déterministe pour la décision
-            system=JUDGE_SYSTEM_PROMPT,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        result_text = response.content[0].text.strip()
+        # Appel LLM selon le provider
+        if self.llm_provider == "openai":
+            response = self.client.chat.completions.create(
+                model=self.llm_model,
+                max_tokens=1024,
+                temperature=0.0,
+                messages=[
+                    {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            result_text = response.choices[0].message.content.strip()
+        else:
+            response = self.client.messages.create(
+                model=self.llm_model,
+                max_tokens=1024,
+                temperature=0.0,
+                system=JUDGE_SYSTEM_PROMPT,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            result_text = response.content[0].text.strip()
         
         # Parser le JSON
         try:

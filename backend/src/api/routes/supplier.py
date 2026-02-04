@@ -10,8 +10,9 @@ import asyncio
 import structlog
 
 from src.storage.database import SessionLocal
-from src.storage.models import SupplierAnalysis
+from src.storage.models import SupplierAnalysis, Supplier, SupplierRelationship, HutchinsonSite
 from src.agent_1a.agent import run_agent_1a_for_supplier
+import json
 
 logger = structlog.get_logger()
 
@@ -368,5 +369,220 @@ async def delete_analysis(analysis_id: str):
         
         return {"message": "Analyse supprimée", "id": analysis_id}
         
+    finally:
+        db.close()
+
+
+# ============================================================================
+# ENDPOINTS FOURNISSEURS (lecture de la BDD)
+# ============================================================================
+
+from src.storage.models import Supplier, SupplierRelationship, HutchinsonSite
+import json
+
+
+class SupplierDBResponse(BaseModel):
+    """Réponse fournisseur depuis la BDD"""
+    id: str
+    name: str
+    code: str
+    country: str
+    region: Optional[str] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    sector: str
+    products_supplied: List[str] = []
+    company_size: Optional[str] = None
+    certifications: List[str] = []
+    financial_health: Optional[str] = None
+    active: bool = True
+    
+    # Données business
+    annual_purchase_volume: Optional[float] = None
+    daily_delivery_value: Optional[float] = None
+    average_stock_at_hutchinson_days: Optional[int] = None
+    switch_time_days: Optional[int] = None
+    criticality_score: Optional[int] = None
+    can_increase_capacity: bool = False
+    
+    # Métadonnées enrichies
+    employee_count: Optional[int] = None
+    annual_revenue_usd: Optional[float] = None
+    founded_year: Optional[int] = None
+
+
+class SupplierDetailDBResponse(SupplierDBResponse):
+    """Réponse détaillée avec relations"""
+    sites_served: List[dict] = []
+    risk_exposure: dict = {}
+
+
+def map_supplier_from_db(supplier: Supplier) -> SupplierDBResponse:
+    """Convertit un Supplier ORM en SupplierDBResponse"""
+    products = []
+    if supplier.products_supplied:
+        try:
+            products = json.loads(supplier.products_supplied) if isinstance(supplier.products_supplied, str) else supplier.products_supplied
+        except:
+            pass
+    
+    certifications = []
+    if supplier.certifications:
+        try:
+            certifications = json.loads(supplier.certifications) if isinstance(supplier.certifications, str) else supplier.certifications
+        except:
+            pass
+    
+    employee_count = None
+    annual_revenue_usd = None
+    founded_year = None
+    if supplier.extra_metadata:
+        try:
+            metadata = json.loads(supplier.extra_metadata) if isinstance(supplier.extra_metadata, str) else supplier.extra_metadata
+            employee_count = metadata.get('employee_count')
+            annual_revenue_usd = metadata.get('annual_revenue_usd')
+            founded_year = metadata.get('founded_year')
+        except:
+            pass
+    
+    return SupplierDBResponse(
+        id=supplier.id,
+        name=supplier.name,
+        code=supplier.code,
+        country=supplier.country,
+        region=supplier.region,
+        city=supplier.city,
+        address=supplier.address,
+        latitude=supplier.latitude,
+        longitude=supplier.longitude,
+        sector=supplier.sector,
+        products_supplied=products,
+        company_size=supplier.company_size,
+        certifications=certifications,
+        financial_health=supplier.financial_health,
+        active=supplier.active if supplier.active is not None else True,
+        annual_purchase_volume=supplier.annual_purchase_volume,
+        daily_delivery_value=supplier.daily_delivery_value,
+        average_stock_at_hutchinson_days=supplier.average_stock_at_hutchinson_days,
+        switch_time_days=supplier.switch_time_days,
+        criticality_score=supplier.criticality_score,
+        can_increase_capacity=supplier.can_increase_capacity if supplier.can_increase_capacity else False,
+        employee_count=employee_count,
+        annual_revenue_usd=annual_revenue_usd,
+        founded_year=founded_year
+    )
+
+
+@router.get("/db/list")
+async def get_suppliers_from_db(
+    country: Optional[str] = None,
+    sector: Optional[str] = None,
+    limit: int = Query(50, ge=1, le=200)
+):
+    """
+    Récupère la liste des fournisseurs depuis la base de données.
+    """
+    db = SessionLocal()
+    try:
+        query = db.query(Supplier).filter(Supplier.active == True)
+        
+        if country:
+            query = query.filter(Supplier.country.ilike(f"%{country}%"))
+        
+        if sector:
+            query = query.filter(Supplier.sector.ilike(f"%{sector}%"))
+        
+        suppliers = query.limit(limit).all()
+        
+        return {
+            "suppliers": [map_supplier_from_db(s) for s in suppliers],
+            "total": len(suppliers)
+        }
+    finally:
+        db.close()
+
+
+@router.get("/db/{supplier_id}")
+async def get_supplier_detail_from_db(supplier_id: str):
+    """
+    Récupère les détails complets d'un fournisseur par son ID.
+    """
+    db = SessionLocal()
+    try:
+        supplier = db.query(Supplier).filter(Supplier.id == supplier_id).first()
+        
+        if not supplier:
+            raise HTTPException(status_code=404, detail="Fournisseur non trouvé")
+        
+        # Récupérer les relations avec les sites
+        relationships = db.query(SupplierRelationship).filter(
+            SupplierRelationship.supplier_id == supplier_id
+        ).all()
+        
+        sites_served = []
+        for rel in relationships:
+            site = db.query(HutchinsonSite).filter(HutchinsonSite.id == rel.hutchinson_site_id).first()
+            if site:
+                # Récupérer les produits fournis depuis products_supplied
+                products = []
+                if rel.products_supplied:
+                    try:
+                        products = json.loads(rel.products_supplied) if isinstance(rel.products_supplied, str) else rel.products_supplied
+                    except:
+                        pass
+                
+                sites_served.append({
+                    "site_id": site.id,
+                    "site_name": site.name,
+                    "site_country": site.country,
+                    "criticality": rel.criticality,
+                    "products_supplied": products,
+                    "is_sole_supplier": rel.is_sole_supplier,
+                    "has_backup_supplier": rel.has_backup_supplier,
+                    "lead_time_days": rel.lead_time_days,
+                    "annual_volume": rel.annual_volume
+                })
+        
+        # Construire la réponse détaillée
+        base_response = map_supplier_from_db(supplier)
+        
+        # Calculer l'exposition au risque
+        critical_sites = len([s for s in sites_served if s.get('criticality') == 'Critique'])
+        sole_supplier_sites = len([s for s in sites_served if s.get('is_sole_supplier')])
+        
+        risk_exposure = {
+            "total_sites_served": len(sites_served),
+            "critical_relationships": critical_sites,
+            "sole_supplier_for": sole_supplier_sites,
+            "backup_coverage": len([s for s in sites_served if s.get('has_backup_supplier')]),
+            "risk_level": "eleve" if sole_supplier_sites > 0 or critical_sites >= 3 else "moyen" if critical_sites > 0 else "faible"
+        }
+        
+        return {
+            **base_response.model_dump(),
+            "sites_served": sites_served,
+            "risk_exposure": risk_exposure
+        }
+    finally:
+        db.close()
+
+
+@router.get("/db/by-name/{name}")
+async def get_supplier_by_name_from_db(name: str):
+    """
+    Recherche un fournisseur par son nom (partiel).
+    """
+    db = SessionLocal()
+    try:
+        supplier = db.query(Supplier).filter(
+            Supplier.name.ilike(f"%{name}%")
+        ).first()
+        
+        if not supplier:
+            raise HTTPException(status_code=404, detail="Fournisseur non trouvé")
+        
+        return map_supplier_from_db(supplier)
     finally:
         db.close()

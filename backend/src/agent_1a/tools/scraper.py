@@ -13,8 +13,8 @@ import re
 
 logger = structlog.get_logger()
 
-# Charger le .env depuis le dossier agent_1a
-env_path = Path(__file__).parent.parent / ".env"
+# Charger le .env depuis le dossier backend (racine du projet)
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
 load_dotenv(env_path)
 
 EURLEX_API_USERNAME = os.getenv("EURLEX_API_USERNAME")
