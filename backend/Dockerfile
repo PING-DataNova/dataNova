@@ -65,5 +65,5 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Migrations Alembic puis lancer l'API
-CMD alembic upgrade head && uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+# Script de démarrage avec migrations intelligentes
+CMD ["bash", "scripts/start.sh"]

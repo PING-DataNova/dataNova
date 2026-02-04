@@ -6,10 +6,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import analyses, impacts, auth, pipeline, supplier, admin
-from src.storage.database import init_db
 
-# Initialiser la base de données (créer les tables si nécessaire)
-init_db()
+# Note: Les migrations sont gérées par Alembic via le Dockerfile
+# init_db() n'est plus nécessaire ici
 
 # Créer l'application FastAPI
 app = FastAPI(
