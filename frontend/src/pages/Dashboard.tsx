@@ -4,7 +4,7 @@ import { User, RiskData, Notification } from '../types';
 import RiskTable from '../components/RiskTable';
 import NotificationCenter from '../components/NotificationCenter';
 import RiskMatrix, { RiskMatrixItem } from '../components/RiskMatrix';
-import RiskMatrixAdvanced, { RiskPoint } from '../components/RiskMatrixAdvanced';
+import RiskMatrixAdvanced from '../components/RiskMatrixAdvanced';
 import RiskDonutChart from '../components/RiskDonutChart';
 import SupplierMap, { SupplierLocation } from '../components/SupplierMap';
 import RiskDetailModal from '../components/RiskDetailModal';
@@ -90,12 +90,12 @@ const MOCK_PENDING_USERS: PendingUser[] = [
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => {
   const [activeTab, setActiveTab] = useState<'Dashboard' | 'Réglementations' | 'Climat' | 'Géopolitique' | 'Administration'>('Dashboard');
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications] = useState<Notification[]>([]);
   const [showRealTimeToast, setShowRealTimeToast] = useState<string | null>(null);
   
   // États pour le tri des risques dans le Dashboard
-  const [sortBy, setSortBy] = useState<'risk' | 'date'>('risk');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy] = useState<'risk' | 'date'>('risk');
+  const [sortOrder] = useState<'asc' | 'desc'>('desc');
   
   // États pour l'onglet Administration
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>(MOCK_PENDING_USERS);
@@ -165,26 +165,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
       minute: '2-digit'
     });
   };
-  
-  // Fonction pour afficher une notification toast (appelée uniquement quand il y a de vraies notifications)
-  const triggerNewRiskNotification = (category: string, title: string) => {
-    const newNotif: Notification = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: title,
-      description: `Un nouveau risque de type ${category} vient d'être enregistré dans la base.`,
-      category: category,
-      timestamp: new Date(),
-      isRead: false
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-    setShowRealTimeToast(title);
-    setTimeout(() => setShowRealTimeToast(null), 5000);
-  };
 
   const [risks, setRisks] = useState<RiskData[]>([]);
-  const [loadingRisks, setLoadingRisks] = useState(true);
-  const [impactStats, setImpactStats] = useState<{ name: string; value: number; color: string }[]>([]);
-  const [trendData, setTrendData] = useState<{ name: string; val: number }[]>([]);
+  const [, setLoadingRisks] = useState(true);
+  const [, setImpactStats] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [, setTrendData] = useState<{ name: string; val: number }[]>([]);
   const [riskMatrixItems, setRiskMatrixItems] = useState<RiskMatrixItem[]>([]);
   
   // États pour les KPI du dashboard
@@ -196,6 +181,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
     low_risks: number;
     critical_deadlines: number;
     by_risk_type: { [key: string]: number };
+    average_score?: number;
   } | null>(null);
 
   // Filtre des risques selon l'onglet actif
@@ -395,7 +381,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
   const [selectedCellInfo, setSelectedCellInfo] = useState<{ riskLevel: string; impactLevel: string }>({ riskLevel: '', impactLevel: '' });
 
   // État pour les fournisseurs et leur modal
-  const [suppliers, setSuppliers] = useState<SupplierLocation[]>(MOCK_SUPPLIERS);
+  const [suppliers] = useState<SupplierLocation[]>(MOCK_SUPPLIERS);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierLocation | null>(null);
 
