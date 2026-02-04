@@ -2,7 +2,7 @@ name: Backend - Build & Deploy to Azure
 
 on:
   push:
-    branches: [ main, agent1a1b_agent2_frontend_marc ]
+    branches: [ main, déploiement_finale ]
     paths:
       - 'backend/**'
       - '.github/workflows/backend-deploy.yml'
