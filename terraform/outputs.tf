@@ -41,7 +41,7 @@ output "postgres_admin_username" {
 
 output "postgres_admin_password" {
   description = "Mot de passe admin PostgreSQL (SENSIBLE - ne pas partager)"
-  value       = random_password.postgres_admin_password.result
+  value       = var.postgres_admin_password
   sensitive   = true  # Masqué par défaut, visible avec : terraform output -raw postgres_admin_password
 }
 
