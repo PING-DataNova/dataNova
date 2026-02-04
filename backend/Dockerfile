@@ -40,6 +40,8 @@ COPY --from=builder /opt/venv /opt/venv
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY config/ ./config/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./alembic.ini
 COPY data/company_profiles/ ./data/company_profiles/
 COPY data/company_process/ ./data/company_process/
 COPY data/sources_config.json ./data/sources_config.json
@@ -63,5 +65,5 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Init DB puis lancer l'API
-CMD python scripts/init_db.py --auto && uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+# Migrations Alembic puis lancer l'API
+CMD alembic upgrade head && uvicorn src.api.main:app --host 0.0.0.0 --port 8000
