@@ -80,7 +80,7 @@ def upgrade() -> None:
         sa.Column('business_interruption_score', sa.Float(), nullable=True),
         
         # Détails
-        sa.Column('is_concerned', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('is_concerned', sa.Boolean(), nullable=False, server_default=sa.text('false')),
         sa.Column('reasoning', sa.Text(), nullable=True),
         sa.Column('estimated_disruption_days', sa.Integer(), nullable=True),
         sa.Column('revenue_impact_percentage', sa.Float(), nullable=True),
@@ -95,8 +95,8 @@ def upgrade() -> None:
         sa.Column('extra_metadata', sa.JSON(), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         
-        # Contraintes
-        sa.CheckConstraint('entity_type IN ("site", "supplier")', name='check_entity_type'),
+        # Contraintes (guillemets simples pour PostgreSQL)
+        sa.CheckConstraint("entity_type IN ('site', 'supplier')", name='check_entity_type'),
         sa.CheckConstraint('risk_score >= 0 AND risk_score <= 100', name='check_risk_score_range'),
         sa.ForeignKeyConstraint(['event_id'], ['documents.id'], ),
         sa.PrimaryKeyConstraint('id')
