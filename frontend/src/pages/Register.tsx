@@ -69,8 +69,9 @@ const Register: React.FC<RegisterProps> = ({ onNavigate }) => {
       <div className="fixed inset-0 pointer-events-none opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
       <div className="w-full max-w-lg relative">
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2">
-          <img src="/hutchinson-logo-full.svg" alt="Hutchinson" className="h-8 object-contain" />
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex items-center space-x-2">
+           <div className="w-6 h-6 bg-slate-900 rounded-lg"></div>
+           <span className="font-black tracking-[0.3em] text-slate-900">HUTCHINSON</span>
         </div>
 
         <div className="bg-white p-12 rounded-[3rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] border border-slate-100 relative overflow-hidden">

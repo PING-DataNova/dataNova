@@ -159,48 +159,8 @@ export const impactsService = {
 
   /**
    * Récupère les détails complets d'un risque (sites, fournisseurs, météo, etc.)
-   * Pour les mock data (id commence par "mock-"), retourne des détails simulés
    */
   getRiskDetails: async (id: string): Promise<RiskDetailResponse> => {
-    // Si c'est un mock ID, retourner des données mock
-    if (id.startsWith('mock-')) {
-      const { MOCK_IMPACTS } = await import('../data/mockImpacts');
-      const mockImpact = MOCK_IMPACTS.find(i => i.id === id);
-      
-      if (mockImpact) {
-        return {
-          id: mockImpact.id,
-          analysis_id: mockImpact.id,
-          regulation_title: mockImpact.regulation_title,
-          regulation_type: mockImpact.category,
-          source_url: null,
-          source_excerpt: mockImpact.risk_details,
-          risk_level: mockImpact.risk_level,
-          risk_score: mockImpact.impact_level === 'critique' ? 90 : 
-                      mockImpact.impact_level === 'eleve' ? 75 : 
-                      mockImpact.impact_level === 'moyen' ? 50 : 25,
-          impact_level: mockImpact.impact_level,
-          supply_chain_impact: mockImpact.impact_level === 'critique' ? 'critique' : 
-                               mockImpact.impact_level === 'eleve' ? 'elevé' : 'modéré',
-          impacts_description: mockImpact.risk_details,
-          reasoning: mockImpact.llm_reasoning,
-          affected_sites: [
-            { id: 'site-1', name: 'Montargis (France)', risk_score: 65, reasoning: 'Site principal de production' },
-            { id: 'site-2', name: 'Wuhan (Chine)', risk_score: 80, reasoning: 'Fort volume de production' },
-          ],
-          affected_suppliers: [
-            { id: 'sup-1', name: 'Fournisseur Asie', risk_score: 70, reasoning: 'Dépendance matières premières' },
-            { id: 'sup-2', name: 'Fournisseur Europe', risk_score: 45, reasoning: 'Conformité réglementaire' },
-          ],
-          recommendations: mockImpact.recommendation,
-          created_at: mockImpact.created_at,
-          category: mockImpact.category,
-          weather_risk_summary: null
-        };
-      }
-    }
-    
-    // Sinon appeler le vrai backend
     return apiCall(`/impacts/${id}/details`, {
       method: 'GET',
     });

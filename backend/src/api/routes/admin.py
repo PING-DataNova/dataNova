@@ -384,23 +384,18 @@ async def run_scheduler_now():
     
     Lance le pipeline complet: Agent 1A → Agent 1B → Agent 2 → LLM Judge → Notifications
     """
-    from src.orchestration.langgraph_workflow import run_ping_workflow
-    import asyncio
+    from src.orchestration.langgraph_workflow import run_workflow
     
     try:
-        # Lancer le workflow dans un thread séparé (car il est synchrone)
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, 
-            lambda: run_ping_workflow(keyword="CBAM", max_documents=5, company_name="HUTCHINSON")
-        )
+        # Lancer le workflow en mode asynchrone
+        # Note: Pour une vraie implémentation, utiliser une task queue (Celery, etc.)
+        result = await run_workflow()
         
         SCHEDULER_CONFIG["last_run"] = datetime.utcnow().isoformat()
         
         return {
             "message": "Analyse lancée avec succès",
-            "status": result.get("status", "completed"),
-            "summary": result.get("summary", {}),
+            "status": "running",
             "triggered_at": SCHEDULER_CONFIG["last_run"]
         }
     except Exception as e:
