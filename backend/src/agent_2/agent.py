@@ -76,7 +76,23 @@ class Agent2:
         Returns:
             Tuple (risk_analysis, risk_projections)
         """
-        event_type = document.get('event_type')
+        event_type = document.get('event_type', '').lower()
+        
+        # Normaliser event_type (Agent 1A stocke en anglais, Agent 2 travaille en français)
+        event_type_mapping = {
+            "regulation": "reglementaire",
+            "regulatory": "reglementaire",
+            "climate": "climatique",
+            "weather": "climatique",
+            "geopolitical": "geopolitique",
+            "geopolitic": "geopolitique",
+        }
+        if event_type in event_type_mapping:
+            event_type = event_type_mapping[event_type]
+        
+        # Appliquer la normalisation dans le document pour toutes les sous-méthodes
+        document = {**document, "event_type": event_type}
+        
         event_id = document.get('id')
         
         # ========================================

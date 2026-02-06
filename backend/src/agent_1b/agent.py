@@ -247,10 +247,8 @@ class Agent1B:
         """
         Analyse de pertinence pour événements réglementaires
         
-        Approche triangulée:
-        - 30% Analyse par mots-clés
-        - 30% Analyse par codes NC
-        - 40% Analyse sémantique LLM
+        Approche 100% LLM sémantique pour une analyse plus intelligente
+        (les analyses keywords/NC sont conservées pour le reporting)
         
         Args:
             document: Document à analyser
@@ -264,41 +262,37 @@ class Agent1B:
         # Charger le profil Hutchinson
         hutchinson_profile = self._load_hutchinson_profile()
         
-        # 1. Analyse par mots-clés (30%)
+        # Analyse par mots-clés (pour reporting uniquement)
         keyword_score, keyword_matches = self._analyze_keywords(
             document.content or document.summary or "",
             hutchinson_profile["keywords"]
         )
         
-        # 2. Analyse par codes NC (30%)
+        # Analyse par codes NC (pour reporting uniquement)
         nc_score, nc_matches = self._analyze_nc_codes(
             document.content or document.summary or "",
             hutchinson_profile["nc_codes"]
         )
         
-        # 3. Analyse sémantique LLM (40%)
+        # Analyse sémantique LLM (100% du score final)
         semantic_score, semantic_reasoning, semantic_matches = self._analyze_semantically_regulatory(
             document,
             hutchinson_profile
         )
         
-        # Calcul du score final pondéré
-        final_score = (
-            keyword_score * 0.30 +
-            nc_score * 0.30 +
-            semantic_score * 0.40
-        )
+        # Score final = 100% LLM sémantique
+        final_score = semantic_score
         
         # Déterminer la décision
-        if final_score >= 0.7:
+        if final_score >= 0.6:
             decision = "OUI"
-            confidence = min(final_score, 1.0)
         elif final_score >= 0.4:
             decision = "PARTIELLEMENT"
-            confidence = final_score
         else:
             decision = "NON"
-            confidence = 1.0 - final_score
+        
+        # Confidence = score LLM direct (plus simple à interpréter)
+        confidence = final_score
         
         # Construire le reasoning
         reasoning = self._build_regulatory_reasoning(
