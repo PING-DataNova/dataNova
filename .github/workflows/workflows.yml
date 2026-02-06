@@ -4,14 +4,14 @@ on:
   push:
     branches:
       - main
-      - agent1a1b_agent2_frontend_marc
+      - Finale
     paths:
       - 'backend/**'
       - '.github/workflows/workflows.yml'
   pull_request:
     branches:
       - main
-      - agent1a1b_agent2_frontend_marc
+      - Finale
     paths:
       - 'backend/**'
 
