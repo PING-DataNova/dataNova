@@ -81,7 +81,8 @@ class DocumentRepository:
         nc_codes: Optional[list] = None,
         regulation_type: str = "CBAM",
         publication_date: Optional[datetime] = None,
-        document_metadata: Optional[dict] = None
+        document_metadata: Optional[dict] = None,
+        celex_id: Optional[str] = None
     ) -> tuple[Document, str]:
         """
         Insérer ou mettre à jour un document (upsert)
@@ -95,6 +96,7 @@ class DocumentRepository:
             regulation_type: Type de réglementation
             publication_date: Date de publication
             document_metadata: Métadonnées additionnelles
+            celex_id: Identifiant CELEX du document EUR-Lex
         
         Returns:
             Tuple (document, status) où status est "new", "modified" ou "unchanged"
@@ -133,6 +135,7 @@ class DocumentRepository:
                 content=content,
                 event_type="reglementaire",
                 event_subtype=regulation_type,
+                celex_id=celex_id,
                 publication_date=publication_date,
                 extra_metadata=metadata,
                 status="new",
@@ -290,8 +293,16 @@ class AnalysisRepository:
         Returns:
             Liste d'analyses
         """
+        # Note: la colonne est 'decision' (OUI/NON/PARTIELLEMENT)
+        # On mappe: approved -> OUI, rejected -> NON, pending -> PARTIELLEMENT
+        status_map = {
+            "approved": "OUI",
+            "rejected": "NON", 
+            "pending": "PARTIELLEMENT"
+        }
+        decision = status_map.get(validation_status, validation_status)
         return self.session.query(PertinenceCheck)\
-            .filter(PertinenceCheck.validation_status == validation_status)\
+            .filter(PertinenceCheck.decision == decision)\
             .order_by(PertinenceCheck.created_at.desc())\
             .all()
     
@@ -305,8 +316,15 @@ class AnalysisRepository:
         Returns:
             Liste d'analyses
         """
+        # Note: la colonne est 'decision' (OUI/NON/PARTIELLEMENT)
+        status_map = {
+            "approved": "OUI",
+            "rejected": "NON",
+            "pending": "PARTIELLEMENT"
+        }
+        decision = status_map.get(validation_status, validation_status)
         return self.session.query(PertinenceCheck)\
-            .filter(PertinenceCheck.validation_status == validation_status)\
+            .filter(PertinenceCheck.decision == decision)\
             .order_by(PertinenceCheck.created_at.desc())\
             .all()
     

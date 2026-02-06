@@ -3,15 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { User, RiskData, Notification } from '../types';
 import RiskTable from '../components/RiskTable';
 import NotificationCenter from '../components/NotificationCenter';
-import RiskMatrix, { RiskMatrixItem } from '../components/RiskMatrix';
-import RiskMatrixAdvanced, { RiskPoint } from '../components/RiskMatrixAdvanced';
-import RiskDonutChart from '../components/RiskDonutChart';
+import { RiskMatrixItem } from '../components/RiskMatrix';
+import RiskMatrixAdvanced from '../components/RiskMatrixAdvanced';
 import SupplierMap, { SupplierLocation } from '../components/SupplierMap';
 import RiskDetailModal from '../components/RiskDetailModal';
 import SupplierProfileModal from '../components/SupplierProfileModal';
+import SubscriptionSettings from '../components/SubscriptionSettings';
 import { impactsService, RiskDetailResponse } from '../services/impactsService';
-import { getSupplierProfile, searchSupplierByName, SupplierDBProfile } from '../services/supplierService';
-import { USE_MOCK_DATA, MOCK_IMPACTS, MOCK_IMPACT_STATS, MOCK_TREND_DATA, MOCK_SUPPLIERS } from '../data/mockImpacts';
+import { getSupplierProfile, searchSupplierByName, getSuppliersList, SupplierDBProfile } from '../services/supplierService';
+import jsPDF from 'jspdf';
 
 interface DashboardProps {
   user: User;
@@ -30,75 +30,19 @@ interface PendingUser {
   status: 'pending' | 'approved' | 'rejected';
 }
 
-// Données mock des utilisateurs en attente
-const MOCK_PENDING_USERS: PendingUser[] = [
-  {
-    id: '1',
-    fullName: 'Marie Dupont',
-    email: 'marie.dupont@hutchinson.com',
-    role: 'Analyste',
-    department: 'Supply Chain',
-    requestDate: new Date('2026-02-03T14:30:00'),
-    status: 'pending',
-  },
-  {
-    id: '2',
-    fullName: 'Pierre Martin',
-    email: 'pierre.martin@hutchinson.com',
-    role: 'Manager',
-    department: 'Achats',
-    requestDate: new Date('2026-02-02T09:15:00'),
-    status: 'pending',
-  },
-  {
-    id: '3',
-    fullName: 'Sophie Bernard',
-    email: 'sophie.bernard@hutchinson.com',
-    role: 'Analyste',
-    department: 'Qualité',
-    requestDate: new Date('2026-02-01T16:45:00'),
-    status: 'pending',
-  },
-  {
-    id: '4',
-    fullName: 'Lucas Petit',
-    email: 'lucas.petit@hutchinson.com',
-    role: 'Viewer',
-    department: 'Production',
-    requestDate: new Date('2026-01-31T11:20:00'),
-    status: 'pending',
-  },
-  {
-    id: '5',
-    fullName: 'Emma Leroy',
-    email: 'emma.leroy@hutchinson.com',
-    role: 'Analyste',
-    department: 'R&D',
-    requestDate: new Date('2026-01-30T08:00:00'),
-    status: 'approved',
-  },
-  {
-    id: '6',
-    fullName: 'Thomas Moreau',
-    email: 'thomas.moreau@external.com',
-    role: 'Viewer',
-    department: 'Externe',
-    requestDate: new Date('2026-01-29T15:30:00'),
-    status: 'rejected',
-  },
-];
+
 
 const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => {
   const [activeTab, setActiveTab] = useState<'Dashboard' | 'Réglementations' | 'Climat' | 'Géopolitique' | 'Administration'>('Dashboard');
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, _setNotifications] = useState<Notification[]>([]);
   const [showRealTimeToast, setShowRealTimeToast] = useState<string | null>(null);
   
   // États pour le tri des risques dans le Dashboard
-  const [sortBy, setSortBy] = useState<'risk' | 'date'>('risk');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sortBy] = useState<'risk' | 'date'>('risk');
+  const [sortOrder] = useState<'asc' | 'desc'>('desc');
   
   // États pour l'onglet Administration
-  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>(MOCK_PENDING_USERS);
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
   const [adminFilter, setAdminFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [adminSearchQuery, setAdminSearchQuery] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState<{ action: 'approve' | 'reject'; user: PendingUser } | null>(null);
@@ -107,6 +51,147 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
   const [selectedRiskDetails, setSelectedRiskDetails] = useState<RiskDetailResponse | null>(null);
   const [loadingRiskDetails, setLoadingRiskDetails] = useState(false);
   const [showRiskModal, setShowRiskModal] = useState(false);
+
+  // États pour les filtres de risques
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filterRiskLevel, setFilterRiskLevel] = useState<string[]>([]);
+  const [_filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+  // État pour les abonnements aux alertes
+  const [showSubscriptionSettings, setShowSubscriptionSettings] = useState(false);
+
+  // Fonction pour générer le rapport PDF global
+  const handleGenerateReport = async () => {
+    setIsGeneratingReport(true);
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 15;
+      let y = margin;
+      
+      // Couleurs
+      const primaryColor: [number, number, number] = [30, 58, 138];
+      const accentColor: [number, number, number] = [59, 130, 246];
+      const textColor: [number, number, number] = [30, 41, 59];
+      const dateStr = new Date().toLocaleDateString('fr-FR');
+      
+      // En-tete
+      pdf.setFillColor(...primaryColor);
+      pdf.rect(0, 0, pageWidth, 40, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(22);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Rapport d\'Analyse des Risques', margin, 22);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Genere le ${dateStr} - DataNova Intelligence`, margin, 32);
+      
+      y = 55;
+      
+      // Stats globales
+      pdf.setTextColor(...primaryColor);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Synthese des Risques', margin, y);
+      y += 10;
+      
+      pdf.setTextColor(...textColor);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      
+      const critiques = filteredRisks.filter(r => r.impact_level.toLowerCase() === 'critique').length;
+      const eleves = filteredRisks.filter(r => ['eleve', 'élevé'].includes(r.impact_level.toLowerCase())).length;
+      const moyens = filteredRisks.filter(r => r.impact_level.toLowerCase() === 'moyen').length;
+      const faibles = filteredRisks.filter(r => r.impact_level.toLowerCase() === 'faible').length;
+      
+      pdf.text(`Categorie: ${activeTab}`, margin, y); y += 6;
+      pdf.text(`Total des risques: ${filteredRisks.length}`, margin, y); y += 6;
+      pdf.setTextColor(220, 38, 38);
+      pdf.text(`Risques critiques: ${critiques}`, margin, y); y += 6;
+      pdf.setTextColor(234, 88, 12);
+      pdf.text(`Risques eleves: ${eleves}`, margin, y); y += 6;
+      pdf.setTextColor(202, 138, 4);
+      pdf.text(`Risques moyens: ${moyens}`, margin, y); y += 6;
+      pdf.setTextColor(22, 163, 74);
+      pdf.text(`Risques faibles: ${faibles}`, margin, y); y += 12;
+      
+      // Liste des risques
+      pdf.setTextColor(...primaryColor);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Inventaire des Risques', margin, y);
+      y += 10;
+      
+      // En-tête tableau
+      pdf.setFillColor(...accentColor);
+      pdf.rect(margin, y, pageWidth - 2 * margin, 8, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('TITRE', margin + 2, y + 5.5);
+      pdf.text('NIVEAU', margin + 100, y + 5.5);
+      pdf.text('CATEGORIE', margin + 130, y + 5.5);
+      pdf.text('DATE', margin + 155, y + 5.5);
+      y += 12;
+      
+      // Lignes du tableau
+      pdf.setTextColor(...textColor);
+      pdf.setFont('helvetica', 'normal');
+      
+      filteredRisks.slice(0, 25).forEach((risk, idx) => {
+        if (y > pageHeight - 30) {
+          pdf.addPage();
+          y = margin + 10;
+        }
+        
+        // Alternance couleur fond
+        if (idx % 2 === 0) {
+          pdf.setFillColor(248, 250, 252);
+          pdf.rect(margin, y - 4, pageWidth - 2 * margin, 8, 'F');
+        }
+        
+        const title = (risk.regulation_title || risk.risk_main).substring(0, 55) + ((risk.regulation_title || risk.risk_main).length > 55 ? '...' : '');
+        pdf.setFontSize(7);
+        pdf.text(title, margin + 2, y);
+        
+        // Niveau de risque avec couleur
+        const level = risk.impact_level.toLowerCase();
+        if (level === 'critique') pdf.setTextColor(220, 38, 38);
+        else if (['eleve', 'élevé'].includes(level)) pdf.setTextColor(234, 88, 12);
+        else if (level === 'moyen') pdf.setTextColor(202, 138, 4);
+        else pdf.setTextColor(22, 163, 74);
+        
+        pdf.text(risk.impact_level.toUpperCase(), margin + 100, y);
+        pdf.setTextColor(...textColor);
+        pdf.text(risk.category, margin + 130, y);
+        pdf.text(risk.deadline || risk.created_at.split('T')[0], margin + 155, y);
+        
+        y += 8;
+      });
+      
+      // Pied de page
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setDrawColor(200, 200, 200);
+        pdf.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+        pdf.setTextColor(150, 150, 150);
+        pdf.setFontSize(8);
+        pdf.text('DataNova - Plateforme Intelligence Reglementaire', margin, pageHeight - 10);
+        pdf.text(`Page ${i}/${totalPages}`, pageWidth - margin - 20, pageHeight - 10);
+      }
+      
+      // Sauvegarder
+      const fileName = `Rapport_Risques_${activeTab}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Erreur generation rapport:', error);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
 
   // Fonction pour charger les détails d'un risque
   const handleViewRiskDetails = async (riskId: string) => {
@@ -165,27 +250,26 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
       minute: '2-digit'
     });
   };
-  
-  // Fonction pour afficher une notification toast (appelée uniquement quand il y a de vraies notifications)
-  const triggerNewRiskNotification = (category: string, title: string) => {
-    const newNotif: Notification = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: title,
-      description: `Un nouveau risque de type ${category} vient d'être enregistré dans la base.`,
-      category: category,
-      timestamp: new Date(),
-      isRead: false
-    };
-    setNotifications(prev => [newNotif, ...prev]);
-    setShowRealTimeToast(title);
-    setTimeout(() => setShowRealTimeToast(null), 5000);
-  };
 
   const [risks, setRisks] = useState<RiskData[]>([]);
-  const [loadingRisks, setLoadingRisks] = useState(true);
-  const [impactStats, setImpactStats] = useState<{ name: string; value: number; color: string }[]>([]);
-  const [trendData, setTrendData] = useState<{ name: string; val: number }[]>([]);
-  const [riskMatrixItems, setRiskMatrixItems] = useState<RiskMatrixItem[]>([]);
+  const [_loadingRisks, setLoadingRisks] = useState(true);
+  const [_impactStats, setImpactStats] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [_trendData, setTrendData] = useState<{ name: string; val: number }[]>([]);
+  const [_riskMatrixItems, setRiskMatrixItems] = useState<RiskMatrixItem[]>([]);
+  
+  // Sites Hutchinson affectés pour la carte
+  const [affectedSites, setAffectedSites] = useState<SupplierLocation[]>([]);
+  
+  // Données des sites Hutchinson (positions approximatives)
+  const hutchinsonSitesData: Record<string, { lat: number; lng: number; city: string; country: string }> = {
+    'hutchinson_detroit': { lat: 42.33, lng: -83.05, city: 'Detroit', country: 'USA' },
+    'hutchinson_warsaw': { lat: 52.23, lng: 21.01, city: 'Varsovie', country: 'Pologne' },
+    'hutchinson_munich': { lat: 48.14, lng: 11.58, city: 'Munich', country: 'Allemagne' },
+    'hutchinson_paris': { lat: 48.86, lng: 2.35, city: 'Paris', country: 'France' },
+    'hutchinson_montargis': { lat: 47.99, lng: 2.73, city: 'Montargis', country: 'France' },
+    'hutchinson_lyon': { lat: 45.76, lng: 4.83, city: 'Lyon', country: 'France' },
+    'hutchinson_toulouse': { lat: 43.60, lng: 1.44, city: 'Toulouse', country: 'France' },
+  };
   
   // États pour les KPI du dashboard
   const [dashboardStats, setDashboardStats] = useState<{
@@ -195,14 +279,28 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
     medium_risks: number;
     low_risks: number;
     critical_deadlines: number;
+    average_score?: number;
     by_risk_type: { [key: string]: number };
   } | null>(null);
 
-  // Filtre des risques selon l'onglet actif
-  const filteredRisks = risks.filter(r => r.category === activeTab);
-  
-  // Filtre de la matrice selon l'onglet (pour les onglets individuels)
-  const filteredMatrixItems = riskMatrixItems.filter(item => item.category === activeTab);
+  // Filtre des risques selon l'onglet actif et les filtres sélectionnés
+  const filteredRisks = risks.filter(r => {
+    // Filtre par catégorie (onglet)
+    if (r.category !== activeTab) return false;
+    
+    // Filtre par niveau de risque (si des filtres sont sélectionnés)
+    if (filterRiskLevel.length > 0) {
+      const normalizedLevel = r.impact_level.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const matches = filterRiskLevel.some(level => {
+        const normalizedFilter = level.toLowerCase();
+        return normalizedLevel === normalizedFilter || 
+               (normalizedFilter === 'eleve' && normalizedLevel === 'eleve');
+      });
+      if (!matches) return false;
+    }
+    
+    return true;
+  });
 
   // Fonction pour obtenir le poids numérique du niveau de risque
   const getRiskWeight = (level: string): number => {
@@ -244,7 +342,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
   }, []);
 
   // Load impacts from backend and compute stats
-  // Si le backend ne retourne rien, utilise les données mock (désactivable via USE_MOCK_DATA)
   useEffect(() => {
     const loadImpacts = async () => {
       setLoadingRisks(true);
@@ -253,7 +350,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
         
         // Si le backend retourne des données, les utiliser
         if (resp.impacts && resp.impacts.length > 0) {
-          console.log('📊 Données backend reçues:', resp.impacts.length, 'impacts');
+          console.log('Données backend reçues:', resp.impacts.length, 'impacts');
           
           const mapped: RiskData[] = resp.impacts.map(i => ({
             id: i.id,
@@ -321,67 +418,69 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
             };
           });
           setRiskMatrixItems(matrixItems);
-        } 
-        // Sinon, utiliser les données mock si activées
-        else if (USE_MOCK_DATA) {
-          console.log('📊 Utilisation des données de démonstration (backend vide)');
-          const mapped: RiskData[] = MOCK_IMPACTS.map(i => ({
-            id: i.id,
-            risk_main: i.regulation_title || i.risk_main,
-            impact_level: i.impact_level as any,
-            risk_details: i.risk_details || '',
-            modality: i.modality,
-            deadline: i.deadline,
-            recommendation: i.recommendation || '',
-            llm_reasoning: i.llm_reasoning || '',
-            created_at: i.created_at,
-            category: i.category,
-          }));
-          setRisks(mapped);
-          setImpactStats(MOCK_IMPACT_STATS);
-          setTrendData(MOCK_TREND_DATA);
           
-          // Données pour la matrice de risque (toutes catégories)
-          const matrixItems: RiskMatrixItem[] = MOCK_IMPACTS.map(i => ({
-            id: i.id,
-            title: i.regulation_title,
-            riskLevel: i.risk_level,
-            impactLevel: i.impact_gravity,
-            category: i.category,
-          }));
-          setRiskMatrixItems(matrixItems);
+          // Extraire les sites Hutchinson affectés pour l'onglet Climat
+          // On cherche les risques climatiques qui mentionnent des sites
+          const climatRisks = resp.impacts.filter(i => i.category === 'Climat');
+          const sitesSet = new Map<string, SupplierLocation>();
+          
+          climatRisks.forEach(risk => {
+            // Chercher les noms de sites dans les données du risque
+            Object.entries(hutchinsonSitesData).forEach(([siteId, siteData]) => {
+              const siteName = siteId.replace('hutchinson_', '').charAt(0).toUpperCase() + 
+                              siteId.replace('hutchinson_', '').slice(1);
+              
+              // Vérifier si ce site est mentionné dans le risque
+              const riskText = `${risk.risk_main} ${risk.risk_details} ${risk.llm_reasoning}`.toLowerCase();
+              if (riskText.includes(siteName.toLowerCase()) || 
+                  riskText.includes(siteData.city.toLowerCase())) {
+                if (!sitesSet.has(siteId)) {
+                  sitesSet.set(siteId, {
+                    id: siteId,
+                    name: `Site ${siteName}`,
+                    country: siteData.country,
+                    city: siteData.city,
+                    lat: siteData.lat,
+                    lng: siteData.lng,
+                    riskLevel: risk.impact_level === 'critique' ? 'eleve' : 
+                               ['eleve', 'élevé'].includes(risk.impact_level) ? 'eleve' :
+                               risk.impact_level === 'moyen' ? 'moyen' : 'faible',
+                    riskCount: 1,
+                    type: 'site'
+                  });
+                } else {
+                  const existing = sitesSet.get(siteId)!;
+                  existing.riskCount += 1;
+                }
+              }
+            });
+          });
+          
+          // Si pas de sites trouvés dans les risques climatiques, ajouter des sites par défaut pour démo
+          if (sitesSet.size === 0 && climatRisks.length > 0) {
+            // Ajouter quelques sites par défaut basés sur les données météo
+            ['hutchinson_detroit', 'hutchinson_warsaw', 'hutchinson_munich'].forEach(siteId => {
+              const siteData = hutchinsonSitesData[siteId];
+              const siteName = siteId.replace('hutchinson_', '').charAt(0).toUpperCase() + 
+                              siteId.replace('hutchinson_', '').slice(1);
+              sitesSet.set(siteId, {
+                id: siteId,
+                name: `Site ${siteName}`,
+                country: siteData.country,
+                city: siteData.city,
+                lat: siteData.lat,
+                lng: siteData.lng,
+                riskLevel: 'eleve',
+                riskCount: Math.floor(Math.random() * 5) + 1,
+                type: 'site'
+              });
+            });
+          }
+          
+          setAffectedSites(Array.from(sitesSet.values()));
         }
       } catch (err) {
         console.error('Erreur récupération impacts:', err);
-        // En cas d'erreur, utiliser les données mock si activées
-        if (USE_MOCK_DATA) {
-          console.log('📊 Utilisation des données de démonstration (erreur backend)');
-          const mapped: RiskData[] = MOCK_IMPACTS.map(i => ({
-            id: i.id,
-            risk_main: i.regulation_title || i.risk_main,
-            impact_level: i.impact_level as any,
-            risk_details: i.risk_details || '',
-            modality: i.modality,
-            deadline: i.deadline,
-            recommendation: i.recommendation || '',
-            llm_reasoning: i.llm_reasoning || '',
-            created_at: i.created_at,
-            category: i.category,
-          }));
-          setRisks(mapped);
-          setImpactStats(MOCK_IMPACT_STATS);
-          setTrendData(MOCK_TREND_DATA);
-          
-          // Données pour la matrice de risque (toutes catégories)
-          const matrixItems: RiskMatrixItem[] = MOCK_IMPACTS.map(i => ({
-            id: i.id,
-            title: i.regulation_title,
-            riskLevel: i.risk_level,
-            impactLevel: i.impact_gravity,
-            category: i.category,
-          }));
-          setRiskMatrixItems(matrixItems);
-        }
       } finally {
         setLoadingRisks(false);
       }
@@ -389,13 +488,53 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
     loadImpacts();
   }, []);
 
+  // Charger les fournisseurs depuis la base de données pour la carte
+  useEffect(() => {
+    const loadSuppliers = async () => {
+      try {
+        const response = await getSuppliersList({});
+        if (response.suppliers && response.suppliers.length > 0) {
+          // Convertir SupplierDBProfile[] en SupplierLocation[]
+          const mappedSuppliers: SupplierLocation[] = response.suppliers
+            .filter(s => s.latitude && s.longitude) // Filtrer ceux sans coordonnées
+            .map(supplier => {
+              // Déterminer le niveau de risque basé sur le criticality_score
+              let riskLevel: 'faible' | 'moyen' | 'eleve' = 'faible';
+              const score = supplier.criticality_score || 0;
+              if (score >= 8) {
+                riskLevel = 'eleve';
+              } else if (score >= 5) {
+                riskLevel = 'moyen';
+              }
+              
+              return {
+                id: supplier.id,
+                name: supplier.name,
+                country: supplier.country,
+                city: supplier.city,
+                lat: supplier.latitude,
+                lng: supplier.longitude,
+                riskLevel,
+                riskCount: score,
+                regulations: supplier.products_supplied,
+              };
+            });
+          setSuppliers(mappedSuppliers);
+        }
+      } catch (err) {
+        console.error('Erreur chargement fournisseurs:', err);
+      }
+    };
+    loadSuppliers();
+  }, []);
+
   // État pour le modal de détails de la matrice
   const [matrixModalOpen, setMatrixModalOpen] = useState(false);
-  const [selectedCellItems, setSelectedCellItems] = useState<RiskMatrixItem[]>([]);
-  const [selectedCellInfo, setSelectedCellInfo] = useState<{ riskLevel: string; impactLevel: string }>({ riskLevel: '', impactLevel: '' });
+  const [selectedCellItems, _setSelectedCellItems] = useState<RiskMatrixItem[]>([]);
+  const [selectedCellInfo, _setSelectedCellInfo] = useState<{ riskLevel: string; impactLevel: string }>({ riskLevel: '', impactLevel: '' });
 
   // État pour les fournisseurs et leur modal
-  const [suppliers, setSuppliers] = useState<SupplierLocation[]>(MOCK_SUPPLIERS);
+  const [suppliers, setSuppliers] = useState<SupplierLocation[]>([]);
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierLocation | null>(null);
 
@@ -449,21 +588,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
     setSupplierModalOpen(true);
   };
 
-  const handleMatrixCellClick = (riskLevel: string, impactLevel: string, items: RiskMatrixItem[]) => {
-    if (items.length > 0) {
-      setSelectedCellItems(items);
-      setSelectedCellInfo({ riskLevel, impactLevel });
-      setMatrixModalOpen(true);
-    }
-  };
-
   // Labels pour l'affichage
   const riskLevelLabels: Record<string, string> = { eleve: 'Élevé', moyen: 'Moyen', faible: 'Faible' };
   const impactLevelLabels: Record<string, string> = { fort: 'Fort', moyen: 'Moyen', faible: 'Faible' };
 
   // Trouver les détails complets d'un risque par son ID
   const getFullRiskDetails = (id: string) => {
-    return risks.find(r => r.id === id) || MOCK_IMPACTS.find(i => i.id === id);
+    return risks.find(r => r.id === id);
   };
 
   return (
@@ -741,6 +872,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
               </div>
            </div>
            <button 
+             onClick={() => setShowSubscriptionSettings(true)}
+             className="w-full flex items-center lg:space-x-3 p-3 lg:px-4 text-slate-500 hover:text-blue-400 transition-colors mb-2"
+           >
+             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+             <span className="hidden lg:block text-xs font-black uppercase tracking-widest">Abonnements</span>
+           </button>
+           <button 
              onClick={onLogout}
              className="w-full flex items-center lg:space-x-3 p-3 lg:px-4 text-slate-500 hover:text-red-400 transition-colors"
            >
@@ -772,135 +910,47 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
           {/* Dashboard View - Vue globale avec KPIs */}
           {activeTab === 'Dashboard' && (
             <div className="space-y-8">
-              
-              {/* KPI Cards Row - Comme dans la maquette */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Active Alerts */}
-                <div className="bg-white rounded-2xl p-6 border-2 border-amber-200 shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">🔔</span>
-                    </div>
-                    <div>
-                      <p className="text-4xl font-black text-amber-600">{dashboardStats?.total_impacts || 0}</p>
-                      <p className="text-sm font-medium text-slate-600">Alertes Actives</p>
-                      <p className="text-xs text-amber-600">{dashboardStats?.high_risks || 0} critiques</p>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Critical Risk */}
-                <div className="bg-white rounded-2xl p-6 border-2 border-red-200 shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-red-100 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">⚠️</span>
-                    </div>
-                    <div>
-                      <p className="text-4xl font-black text-red-600">{dashboardStats?.high_risks || 0}</p>
-                      <p className="text-sm font-medium text-slate-600">Risques Critiques</p>
-                      <p className="text-xs text-red-600">Action requise</p>
-                    </div>
-                  </div>
+              {/* 1. Matrice d'Analyse des Risques */}
+              <div className="bg-slate-900 rounded-[2rem] p-6 shadow-xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Analyse des Risques
+                  </h3>
                 </div>
-
-                {/* Avg Risk Score */}
-                <div className="bg-white rounded-2xl p-6 border-2 border-blue-200 shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">📊</span>
-                    </div>
-                    <div>
-                      <p className="text-4xl font-black text-blue-600">
-                        {dashboardStats?.average_score ? Math.round(dashboardStats.average_score) : 0}
-                        <span className="text-lg text-slate-400">/100</span>
-                      </p>
-                      <p className="text-sm font-medium text-slate-600">Score Moyen</p>
-                      <p className="text-xs text-blue-600">
-                        {dashboardStats?.average_score && dashboardStats.average_score >= 70 ? 'Niveau élevé' : 
-                         dashboardStats?.average_score && dashboardStats.average_score >= 40 ? 'Niveau modéré' : 'Niveau faible'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Documents Processed */}
-                <div className="bg-white rounded-2xl p-6 border-2 border-emerald-200 shadow-sm">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-emerald-100 rounded-xl flex items-center justify-center">
-                      <span className="text-3xl">📄</span>
-                    </div>
-                    <div>
-                      <p className="text-4xl font-black text-emerald-600">{dashboardStats?.total_regulations || 0}</p>
-                      <p className="text-sm font-medium text-slate-600">Documents Traités</p>
-                      <p className="text-xs text-emerald-600">Dernières 24h</p>
-                    </div>
-                  </div>
+                
+                {/* Matrice de Risque unique avec stats intégrées */}
+                <div className="h-[380px]">
+                  <RiskMatrixAdvanced 
+                    title=""
+                    items={allRisksSorted.map((risk, idx) => ({
+                      id: risk.id || String(idx),
+                      title: risk.risk_main,
+                      probability: risk.impact_level === 'critique' ? 85 + Math.random() * 15 :
+                                   risk.impact_level === 'eleve' ? 60 + Math.random() * 25 :
+                                   risk.impact_level === 'moyen' ? 30 + Math.random() * 30 :
+                                   5 + Math.random() * 25,
+                      impact: risk.impact_level === 'critique' ? 80 + Math.random() * 20 :
+                              risk.impact_level === 'eleve' ? 55 + Math.random() * 25 :
+                              risk.impact_level === 'moyen' ? 30 + Math.random() * 25 :
+                              5 + Math.random() * 25,
+                      category: risk.category as any
+                    }))}
+                    onPointClick={(point) => {
+                      alert(`${point.title}\nProbabilité: ${Math.round(point.probability)}%\nImpact: ${Math.round(point.impact)}%`);
+                    }}
+                  />
                 </div>
               </div>
 
-              {/* Main Content Row: Map + Recent Alerts */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* World Map Section - 2/3 width */}
-                <div className="lg:col-span-2 bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
-                  <h3 className="text-xl font-black text-slate-900 mb-4">🌍 Carte des Risques Mondiaux</h3>
-                  <div className="h-[400px] rounded-2xl overflow-hidden">
-                    <SupplierMap 
-                      suppliers={suppliers} 
-                      onSupplierClick={handleSupplierClick}
-                    />
-                  </div>
-                </div>
-
-                {/* Recent Alerts Panel - 1/3 width */}
-                <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
-                  <h3 className="text-lg font-black text-slate-900 mb-4">Alertes Récentes</h3>
-                  <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                    {allRisksSorted.slice(0, 5).map((risk, idx) => (
-                      <div key={risk.id || idx} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                        <div className="flex items-start gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                            risk.impact_level === 'critique' ? 'bg-red-100' :
-                            risk.impact_level === 'eleve' ? 'bg-orange-100' :
-                            risk.impact_level === 'moyen' ? 'bg-yellow-100' : 'bg-green-100'
-                          }`}>
-                            <span className={`text-sm font-bold ${
-                              risk.impact_level === 'critique' ? 'text-red-600' :
-                              risk.impact_level === 'eleve' ? 'text-orange-600' :
-                              risk.impact_level === 'moyen' ? 'text-yellow-600' : 'text-green-600'
-                            }`}>
-                              {risk.impact_level === 'critique' ? '🔴' :
-                               risk.impact_level === 'eleve' ? '🟠' :
-                               risk.impact_level === 'moyen' ? '🟡' : '🟢'}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-slate-400">{new Date(risk.created_at || '').toLocaleString('fr-FR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}</p>
-                            <p className="font-bold text-sm text-slate-900 truncate">{risk.impact_level?.toUpperCase()}</p>
-                            <p className="text-xs text-slate-600 line-clamp-2">{risk.risk_main}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {allRisksSorted.length === 0 && (
-                      <div className="text-center py-8 text-slate-400">
-                        <p>Aucune alerte</p>
-                      </div>
-                    )}
-                  </div>
-                  <button 
-                    onClick={() => setActiveTab('Réglementations')}
-                    className="w-full mt-4 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-colors"
-                  >
-                    Voir Toutes les Alertes
-                  </button>
-                </div>
-              </div>
-
-              {/* TOP 10 Risques - Comme demandé par le client */}
+              {/* 2. TOP 10 Risques Critiques */}
               <div className="bg-white rounded-[2rem] p-8 shadow-sm border border-slate-100">
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h3 className="text-xl font-black text-slate-900">🏆 Top 10 Risques Critiques</h3>
+                    <h3 className="text-xl font-black text-slate-900">Top 10 Risques Critiques</h3>
                     <p className="text-sm text-slate-500">Les impacts les plus importants à traiter en priorité</p>
                   </div>
                   <div className="flex gap-2">
@@ -942,7 +992,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                           <td className="py-4 px-4">
                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                               risk.category === 'Climat' ? 'bg-emerald-100 text-emerald-700' :
-                              risk.category === 'Géopolitique' ? 'bg-purple-100 text-purple-700' :
+                              risk.category === 'Géopolitique' ? 'bg-lime-100 text-lime-700' :
                               'bg-orange-100 text-orange-700'
                             }`}>
                               {risk.category}
@@ -983,98 +1033,100 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                 </div>
               </div>
 
-              {/* Visualisation Risques - Style sombre comme la maquette */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Donut Chart - Classification des Risques */}
-                <div className="h-[350px]">
-                  <RiskDonutChart 
-                    title="Classification des Risques"
-                    data={[
-                      { 
-                        label: 'Critique', 
-                        value: allRisksSorted.filter(r => r.impact_level === 'critique').length, 
-                        color: '#ef4444' 
-                      },
-                      { 
-                        label: 'Élevé', 
-                        value: allRisksSorted.filter(r => r.impact_level === 'eleve').length, 
-                        color: '#f97316' 
-                      },
-                      { 
-                        label: 'Moyen', 
-                        value: allRisksSorted.filter(r => r.impact_level === 'moyen').length, 
-                        color: '#eab308' 
-                      },
-                      { 
-                        label: 'Faible', 
-                        value: allRisksSorted.filter(r => r.impact_level === 'faible').length, 
-                        color: '#22c55e' 
-                      },
-                    ]}
-                  />
+              {/* 3. Carte des Risques Mondiaux */}
+              <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-black text-slate-900">Carte des Risques Mondiaux</h3>
+                  {affectedSites.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg font-medium">
+                        {affectedSites.length} sites
+                      </span>
+                    </div>
+                  )}
                 </div>
-
-                {/* Matrice de Risque Avancée */}
-                <div className="h-[350px]">
-                  <RiskMatrixAdvanced 
-                    title="Matrice Risque / Impact"
-                    items={allRisksSorted.map((risk, idx) => ({
-                      id: risk.id || String(idx),
-                      title: risk.risk_main,
-                      probability: risk.impact_level === 'critique' ? 85 + Math.random() * 15 :
-                                   risk.impact_level === 'eleve' ? 60 + Math.random() * 25 :
-                                   risk.impact_level === 'moyen' ? 30 + Math.random() * 30 :
-                                   5 + Math.random() * 25,
-                      impact: risk.impact_level === 'critique' ? 80 + Math.random() * 20 :
-                              risk.impact_level === 'eleve' ? 55 + Math.random() * 25 :
-                              risk.impact_level === 'moyen' ? 30 + Math.random() * 25 :
-                              5 + Math.random() * 25,
-                      category: risk.category as any
-                    }))}
-                    onPointClick={(point) => {
-                      alert(`${point.title}\nProbabilité: ${Math.round(point.probability)}%\nImpact: ${Math.round(point.impact)}%`);
-                    }}
+                <div className="h-[400px] rounded-2xl overflow-hidden">
+                  <SupplierMap 
+                    suppliers={suppliers} 
+                    sites={affectedSites}
+                    onSupplierClick={handleSupplierClick}
+                    onSiteClick={(site) => console.log('Site clicked:', site)}
                   />
                 </div>
               </div>
 
-              {/* Quick Access Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <button 
-                  onClick={() => setActiveTab('Réglementations')}
-                  className="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all text-left group"
-                >
-                  <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-orange-200 transition-colors">
-                    <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              {/* 4. KPI Cards Row - Vue d'ensemble rapide pour équipe Achats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Alertes Actives */}
+                <div className="bg-gradient-to-br from-white to-amber-50 rounded-xl p-5 shadow-sm border border-amber-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1">Alertes Actives</p>
+                      <p className="text-3xl font-bold text-slate-800">{dashboardStats?.total_impacts || allRisksSorted.length}</p>
+                      <p className="text-xs text-slate-500 mt-1">{allRisksSorted.filter(r => r.impact_level === 'critique').length} critiques</p>
+                    </div>
+                    <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                    </div>
                   </div>
-                  <h4 className="font-bold text-slate-900 mb-1">Réglementations</h4>
-                  <p className="text-sm text-slate-500">{dashboardStats?.by_risk_type?.reglementaire || 0} risques actifs</p>
-                </button>
-                
-                <button 
-                  onClick={() => setActiveTab('Climat')}
-                  className="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all text-left group"
-                >
-                  <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-emerald-200 transition-colors">
-                    <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064"/></svg>
+                </div>
+
+                {/* Risques Critiques */}
+                <div className="bg-gradient-to-br from-white to-red-50 rounded-xl p-5 shadow-sm border border-red-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-1">Risques Critiques</p>
+                      <p className="text-3xl font-bold text-slate-800">{allRisksSorted.filter(r => r.impact_level === 'critique').length}</p>
+                      <p className="text-xs text-red-500 mt-1">Action requise</p>
+                    </div>
+                    <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                    </div>
                   </div>
-                  <h4 className="font-bold text-slate-900 mb-1">Risques Climat</h4>
-                  <p className="text-sm text-slate-500">{dashboardStats?.by_risk_type?.climat || 0} alertes climat</p>
-                </button>
-                
-                <button 
-                  onClick={() => setActiveTab('Géopolitique')}
-                  className="bg-white p-6 rounded-[2rem] border border-slate-100 hover:shadow-lg hover:-translate-y-1 transition-all text-left group"
-                >
-                  <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-purple-200 transition-colors">
-                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18"/></svg>
+                </div>
+
+                {/* Score de Risque Moyen */}
+                <div className="bg-gradient-to-br from-white to-blue-50 rounded-xl p-5 shadow-sm border border-blue-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Score de Risque</p>
+                      <div className="flex items-baseline gap-1">
+                        <p className="text-3xl font-bold text-slate-800">{dashboardStats?.average_score ? Math.round(dashboardStats.average_score) : 0}</p>
+                        <span className="text-sm text-slate-400">/100</span>
+                      </div>
+                      <div className="flex items-center gap-1 mt-1">
+                        <div className={`w-2 h-2 rounded-full ${
+                          dashboardStats?.average_score && dashboardStats.average_score >= 70 ? 'bg-red-500' : 
+                          dashboardStats?.average_score && dashboardStats.average_score >= 40 ? 'bg-amber-500' : 'bg-green-500'
+                        }`}></div>
+                        <p className="text-xs text-slate-500">
+                          {dashboardStats?.average_score && dashboardStats.average_score >= 70 ? 'Risque élevé' : 
+                           dashboardStats?.average_score && dashboardStats.average_score >= 40 ? 'Risque modéré' : 'Risque faible'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                    </div>
                   </div>
-                  <h4 className="font-bold text-slate-900 mb-1">Géopolitique</h4>
-                  <p className="text-sm text-slate-500">{dashboardStats?.by_risk_type?.geopolitique || 0} risques géopolitiques</p>
-                </button>
+                </div>
+
+                {/* Documents Traités */}
+                <div className="bg-gradient-to-br from-white to-emerald-50 rounded-xl p-5 shadow-sm border border-emerald-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-1">Documents</p>
+                      <p className="text-3xl font-bold text-slate-800">{dashboardStats?.total_regulations || 0}</p>
+                      <p className="text-xs text-slate-500 mt-1">Traités aujourd'hui</p>
+                    </div>
+                    <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Bouton Analyse Fournisseur */}
+              {/* 5. Bouton Analyse Fournisseur */}
               <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-[2rem] p-8 text-center">
                 <h3 className="text-2xl font-black text-white mb-4">Analyser un Fournisseur</h3>
                 <p className="text-slate-400 mb-6">Lancez une analyse complète de risques pour un fournisseur spécifique</p>
@@ -1092,23 +1144,90 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
             </div>
           )}
 
-          {/* Other tabs content (Réglementations, Climat, Géopolitique) */}
-          {activeTab !== 'Dashboard' && activeTab !== 'Administration' && (
+          {/* Géopolitique - Fonctionnalité à venir */}
+          {activeTab === 'Géopolitique' && (
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="bg-slate-900 rounded-[2.5rem] p-12 text-center max-w-2xl border border-slate-800">
+                <div className="w-20 h-20 mx-auto mb-6 bg-lime-900/30 rounded-full flex items-center justify-center">
+                  <svg className="w-10 h-10 text-lime-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9h18"/>
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-black text-white mb-4">Analyse Géopolitique</h2>
+                <p className="text-slate-400 text-lg mb-6">
+                  Cette fonctionnalité est en cours de développement.
+                </p>
+                <div className="bg-slate-800 rounded-xl p-4 mb-6">
+                  <p className="text-sm text-slate-300">
+                    L'analyse des risques géopolitiques permettra bientôt de surveiller :
+                  </p>
+                  <ul className="text-sm text-slate-400 mt-3 space-y-2 text-left">
+                    <li className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-lime-400 rounded-full"></span>
+                      Tensions internationales et conflits
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-lime-400 rounded-full"></span>
+                      Sanctions économiques et embargos
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-lime-400 rounded-full"></span>
+                      Instabilités politiques régionales
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-lime-400 rounded-full"></span>
+                      Risques de perturbation des chaînes d'approvisionnement
+                    </li>
+                  </ul>
+                </div>
+                <span className="inline-flex items-center gap-2 px-4 py-2 bg-lime-900/50 text-lime-300 rounded-full text-sm font-semibold">
+                  <svg className="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
+                  </svg>
+                  Disponible prochainement
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Other tabs content (Réglementations, Climat) */}
+          {activeTab !== 'Dashboard' && activeTab !== 'Administration' && activeTab !== 'Géopolitique' && (
             <>
           {/* Key Stats Row */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            <div className="lg:col-span-5 bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
+            <div className="lg:col-span-5 bg-slate-900 p-6 rounded-[2.5rem] shadow-xl border border-slate-800">
                <div className="flex items-center justify-between gap-3 mb-4">
-                  <h3 className="text-xs font-black uppercase tracking-[0.12em] text-slate-400">Risque / Impact - {activeTab}</h3>
-                  {filteredMatrixItems.filter(i => i.riskLevel === 'eleve' && i.impactLevel === 'fort').length > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-500 text-white rounded-full text-[10px] font-bold whitespace-nowrap">
-                      <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></span>
-                      {filteredMatrixItems.filter(i => i.riskLevel === 'eleve' && i.impactLevel === 'fort').length} critique{filteredMatrixItems.filter(i => i.riskLevel === 'eleve' && i.impactLevel === 'fort').length > 1 ? 's' : ''}
-                    </span>
-                  )}
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                    <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Analyse des Risques
+                  </h3>
+                  <span className="text-xs text-slate-400">{filteredRisks.length} risques</span>
                </div>
-               <div className="h-72">
-                  <RiskMatrix items={filteredMatrixItems} onCellClick={handleMatrixCellClick} />
+               <div className="h-[320px]">
+                  <RiskMatrixAdvanced 
+                    title=""
+                    items={filteredRisks.map((risk, idx) => ({
+                      id: risk.id || String(idx),
+                      title: risk.risk_main || risk.regulation_title || `Risque ${idx + 1}`,
+                      probability: risk.impact_level?.toLowerCase() === 'critique' ? 85 + Math.random() * 15 :
+                                   risk.impact_level?.toLowerCase() === 'eleve' ? 60 + Math.random() * 25 :
+                                   risk.impact_level?.toLowerCase() === 'moyen' ? 35 + Math.random() * 30 :
+                                   10 + Math.random() * 25,
+                      impact: risk.impact_level?.toLowerCase() === 'critique' ? 80 + Math.random() * 20 :
+                              risk.impact_level?.toLowerCase() === 'eleve' ? 60 + Math.random() * 25 :
+                              risk.impact_level?.toLowerCase() === 'moyen' ? 35 + Math.random() * 25 :
+                              10 + Math.random() * 25,
+                      category: risk.category as 'Réglementations' | 'Climat' | 'Géopolitique'
+                    }))}
+                    onPointClick={async (point) => {
+                      const foundRisk = filteredRisks.find(r => r.id === point.id || r.risk_main === point.title);
+                      if (foundRisk?.id) {
+                        await handleViewRiskDetails(foundRisk.id);
+                      }
+                    }}
+                  />
                </div>
             </div>
 
@@ -1116,21 +1235,31 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
                <div className="relative z-10 flex flex-col h-full">
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Localisation des Fournisseurs</h3>
+                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500 mb-1">Localisation des Risques</h3>
                       <p className="text-lg font-black text-white">
-                        <span className="text-red-400">{suppliers.filter(s => s.riskLevel === 'eleve').length}</span> fournisseurs à risque élevé
+                        <span className="text-red-400">{suppliers.filter(s => s.riskLevel === 'eleve').length}</span> fournisseurs a risque eleve
+                        {activeTab === 'Climat' && affectedSites.length > 0 && (
+                          <span className="text-blue-400 ml-2">+ {affectedSites.length} sites</span>
+                        )}
                       </p>
                     </div>
                     <div className="flex space-x-2">
                        <span className="px-3 py-1 bg-slate-800 rounded-lg text-[10px] font-bold text-slate-400">
                          {suppliers.length} fournisseurs
                        </span>
+                       {activeTab === 'Climat' && affectedSites.length > 0 && (
+                         <span className="px-3 py-1 bg-blue-900 rounded-lg text-[10px] font-bold text-blue-300">
+                           {affectedSites.length} sites Hutchinson
+                         </span>
+                       )}
                     </div>
                   </div>
                   <div className="flex-1" style={{ minHeight: '280px' }}>
                     <SupplierMap 
                       suppliers={suppliers} 
+                      sites={activeTab === 'Climat' ? affectedSites : []}
                       onSupplierClick={handleSupplierClick}
+                      onSiteClick={(site) => console.log('Site clicked:', site)}
                     />
                   </div>
                </div>
@@ -1142,19 +1271,48 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Inventaire des Menaces: {activeTab}</h2>
-                  <p className="text-slate-400 text-sm font-medium">Données actualisées en temps réel par notre moteur de veille.</p>
+                  <p className="text-slate-400 text-sm font-medium">Donnees actualisees en temps reel par notre moteur de veille.</p>
                 </div>
                 <div className="flex items-center space-x-3">
-                   <button className="px-6 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-colors">Filtrer</button>
-                   <button className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center space-x-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                      <span>Rapport PDF</span>
+                   <button 
+                     onClick={() => setShowFilterModal(true)}
+                     className="px-6 py-3 bg-white border border-slate-200 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-2"
+                   >
+                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                     </svg>
+                     Filtrer
+                     {filterRiskLevel.length > 0 && (
+                       <span className="bg-blue-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                         {filterRiskLevel.length}
+                       </span>
+                     )}
+                   </button>
+                   <button 
+                     onClick={handleGenerateReport}
+                     disabled={isGeneratingReport}
+                     className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center space-x-2 disabled:opacity-50"
+                   >
+                      {isGeneratingReport ? (
+                        <>
+                          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Generation...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                          <span>Rapport PDF</span>
+                        </>
+                      )}
                    </button>
                 </div>
              </div>
 
              <div className="group">
-                <RiskTable risks={filteredRisks} />
+                <RiskTable risks={filteredRisks} onRiskClick={handleViewRiskDetails} />
              </div>
           </div>
 
@@ -1412,6 +1570,83 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
           </div>
         )}
 
+        {/* Modal de Filtres */}
+        {showFilterModal && (
+          <div 
+            className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+            onClick={() => setShowFilterModal(false)}
+          >
+            <div 
+              className="bg-white rounded-2xl w-full max-w-md shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-bold text-slate-800">Filtrer les risques</h3>
+                  <button 
+                    onClick={() => setShowFilterModal(false)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Niveau de risque</label>
+                  <div className="space-y-2">
+                    {['critique', 'eleve', 'moyen', 'faible'].map(level => (
+                      <label key={level} className="flex items-center gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={filterRiskLevel.includes(level)}
+                          onChange={() => {
+                            setFilterRiskLevel(prev => 
+                              prev.includes(level) 
+                                ? prev.filter(l => l !== level)
+                                : [...prev, level]
+                            );
+                          }}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-500"
+                        />
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                          level === 'critique' ? 'bg-red-100 text-red-700' :
+                          level === 'eleve' ? 'bg-orange-100 text-orange-700' :
+                          level === 'moyen' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {level.charAt(0).toUpperCase() + level.slice(1)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-6 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    setFilterRiskLevel([]);
+                    setFilterCategory(null);
+                  }}
+                  className="text-sm text-slate-500 hover:text-slate-700"
+                >
+                  Reinitialiser
+                </button>
+                <button
+                  onClick={() => setShowFilterModal(false)}
+                  className="px-6 py-2 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800"
+                >
+                  Appliquer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Modal Détails Risque */}
         {showRiskModal && (
           <RiskDetailModal 
@@ -1429,6 +1664,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onLogout, onNavigate }) => 
           loading={loadingSupplierProfile}
           error={supplierProfileError}
         />
+
+        {/* Modal Abonnements aux Alertes */}
+        {showSubscriptionSettings && (
+          <SubscriptionSettings
+            userEmail={user.email || `${user.fullName.toLowerCase().replace(' ', '.')}@hutchinson.com`}
+            onClose={() => setShowSubscriptionSettings(false)}
+          />
+        )}
       </main>
     </div>
   );

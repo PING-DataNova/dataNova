@@ -372,15 +372,23 @@ async def trigger_agent2_sync(request: Agent2Request = Agent2Request()):
         messages = result.get("messages", [])
         content = ""
         if messages:
-            last_msg = messages[-1].content
-            if isinstance(last_msg, list):
+            last_msg = messages[-1]
+            # Supporter à la fois les objets avec .content et les dicts
+            if hasattr(last_msg, 'content'):
+                last_msg_content = last_msg.content
+            elif isinstance(last_msg, dict):
+                last_msg_content = last_msg.get("content", "")
+            else:
+                last_msg_content = str(last_msg)
+            
+            if isinstance(last_msg_content, list):
                 content = " ".join([
                     item.get("text", "") 
-                    for item in last_msg 
+                    for item in last_msg_content 
                     if isinstance(item, dict) and item.get("type") == "text"
                 ])
             else:
-                content = str(last_msg)
+                content = str(last_msg_content)
         
         return PipelineStatus(
             status="completed",

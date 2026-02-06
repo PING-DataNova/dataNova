@@ -127,74 +127,19 @@ const RiskMatrixAdvanced: React.FC<RiskMatrixAdvancedProps> = ({
             </div>
 
             {/* Zone de la matrice avec gradient */}
-            <div className="flex-1 relative rounded-xl overflow-hidden">
-              {/* Background gradient zones - style comme l'image */}
-              <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                <defs>
-                  {/* Gradient radial du coin bas-gauche (vert) vers haut-droite (rouge) */}
-                  <linearGradient id="matrixGradientX" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#22c55e" />
-                    <stop offset="33%" stopColor="#84cc16" />
-                    <stop offset="50%" stopColor="#eab308" />
-                    <stop offset="66%" stopColor="#f97316" />
-                    <stop offset="100%" stopColor="#ef4444" />
-                  </linearGradient>
-                  <linearGradient id="matrixGradientY" x1="0%" y1="100%" x2="0%" y2="0%">
-                    <stop offset="0%" stopColor="rgba(34, 197, 94, 0.8)" />
-                    <stop offset="33%" stopColor="rgba(132, 204, 22, 0.6)" />
-                    <stop offset="50%" stopColor="rgba(234, 179, 8, 0.5)" />
-                    <stop offset="66%" stopColor="rgba(249, 115, 22, 0.6)" />
-                    <stop offset="100%" stopColor="rgba(239, 68, 68, 0.8)" />
-                  </linearGradient>
-                </defs>
-                
-                {/* Zones colorées avec courbes */}
-                {/* Zone verte (bas-gauche) */}
-                <path 
-                  d="M 0 100 Q 30 90, 25 75 Q 20 60, 15 50 Q 10 35, 0 30 L 0 100 Z" 
-                  fill="#22c55e" 
-                  fillOpacity="0.9"
-                  transform="scale(4, 4)"
-                />
-                {/* Zone jaune-vert */}
-                <path 
-                  d="M 0 30 Q 10 35, 15 50 Q 20 60, 25 75 Q 30 90, 0 100 L 0 30 M 25 75 Q 40 85, 50 100 L 0 100 Q 30 90, 25 75 Z M 0 30 Q 15 25, 30 35 Q 45 45, 50 60 Q 55 75, 50 100 L 25 75 Q 20 60, 15 50 Q 10 35, 0 30 Z" 
-                  fill="#84cc16" 
-                  fillOpacity="0.85"
-                  transform="scale(4, 4)"
-                />
-                {/* Zone jaune */}
-                <path 
-                  d="M 0 15 Q 20 10, 40 20 Q 60 30, 70 50 Q 80 70, 75 100 L 50 100 Q 55 75, 50 60 Q 45 45, 30 35 Q 15 25, 0 30 L 0 15 Z" 
-                  fill="#eab308" 
-                  fillOpacity="0.85"
-                  transform="scale(4, 4)"
-                />
-                {/* Zone orange */}
-                <path 
-                  d="M 0 0 Q 30 0, 55 10 Q 80 20, 90 40 Q 100 60, 100 100 L 75 100 Q 80 70, 70 50 Q 60 30, 40 20 Q 20 10, 0 15 L 0 0 Z" 
-                  fill="#f97316" 
-                  fillOpacity="0.85"
-                  transform="scale(4, 4)"
-                />
-                {/* Zone rouge (haut-droite) */}
-                <path 
-                  d="M 55 0 Q 75 0, 90 10 Q 100 20, 100 40 L 100 100 Q 100 60, 90 40 Q 80 20, 55 10 Q 30 0, 55 0 Z M 100 0 L 100 40 Q 100 20, 90 10 Q 75 0, 55 0 L 100 0 Z" 
-                  fill="#ef4444" 
-                  fillOpacity="0.9"
-                  transform="scale(4, 4)"
-                />
-                
+            <div className="flex-1 relative rounded-xl overflow-hidden bg-slate-800">
+              {/* Grille neutre - les points seront colorés selon la légende */}
+              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                 {/* Grille */}
-                <g stroke="rgba(255,255,255,0.1)" strokeWidth="1">
+                <g stroke="rgba(255,255,255,0.15)" strokeWidth="0.3">
                   {/* Lignes horizontales */}
-                  <line x1="0" y1="25%" x2="100%" y2="25%" />
-                  <line x1="0" y1="50%" x2="100%" y2="50%" />
-                  <line x1="0" y1="75%" x2="100%" y2="75%" />
+                  <line x1="0" y1="25" x2="100" y2="25" />
+                  <line x1="0" y1="50" x2="100" y2="50" />
+                  <line x1="0" y1="75" x2="100" y2="75" />
                   {/* Lignes verticales */}
-                  <line x1="25%" y1="0" x2="25%" y2="100%" />
-                  <line x1="50%" y1="0" x2="50%" y2="100%" />
-                  <line x1="75%" y1="0" x2="75%" y2="100%" />
+                  <line x1="25" y1="0" x2="25" y2="100" />
+                  <line x1="50" y1="0" x2="50" y2="100" />
+                  <line x1="75" y1="0" x2="75" y2="100" />
                 </g>
               </svg>
 

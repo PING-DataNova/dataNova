@@ -72,20 +72,20 @@
 │  │           Vérifie citations des sources, cohérence, etc.             │   │
 │  └─────────────────────────────────┬───────────────────────────────────┘   │
 │                                    ↓                                        │
-│         ┌──────────────────────────┼──────────────────────────┐            │
-│         ↓                          ↓                          ↓            │
-│   ┌──────────┐            ┌──────────────┐            ┌──────────┐         │
-│   │ Score<7  │            │ Score 7-8.5  │            │Score>8.5 │         │
-│   │  REJET   │            │  VALIDATION  │            │   AUTO   │         │
-│   │          │            │   HUMAINE    │            │ PUBLIÉ   │         │
-│   └──────────┘            └──────┬───────┘            └────┬─────┘         │
-│                                  ↓                         ↓               │
-│                           ┌──────────────┐          ┌──────────────┐       │
-│                           │   RAPPORT    │          │   RAPPORT    │       │
-│                           │  + mention   │          │  + mention   │       │
-│                           │ "validé par  │          │ "généré par  │       │
-│                           │  [nom]"      │          │  IA (92%)"   │       │
-│                           └──────────────┘          └──────────────┘       │
+│         ┌────────────────────────────────────────────────────┐            │
+│         ↓                                                    ↓            │
+│   ┌──────────────────┐                        ┌──────────────────────┐    │
+│   │    Score < 7     │                        │     Score >= 7       │    │
+│   │      REJET       │                        │    AUTO PUBLIÉ       │    │
+│   │                  │                        │  + EMAIL NOTIF       │    │
+│   └──────────────────┘                        └──────────┬───────────┘    │
+│                                                          ↓                │
+│                                               ┌──────────────────────┐    │
+│                                               │      RAPPORT         │    │
+│                                               │   + mention          │    │
+│                                               │   "généré par        │    │
+│                                               │    IA (score%)"      │    │
+│                                               └──────────────────────┘    │
 │                                  ↓                         ↓               │
 │                           ┌────────────────────────────────────┐           │
 │                           │         BASE DE DONNÉES            │           │
@@ -495,81 +495,61 @@
 
 ---
 
-# 5. 📊 WORKFLOW DE VALIDATION HUMAINE (V2)
+# 5. 📊 WORKFLOW DE NOTIFICATION AUTOMATIQUE
 
-## 5.1 Logique de validation
+## 5.1 Logique de notification
+
+> **Note :** La validation humaine a été supprimée. Tout rapport avec un score >= 7 est automatiquement publié et une notification email est envoyée.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                      WORKFLOW VALIDATION HUMAINE                            │
+│                      WORKFLOW NOTIFICATION AUTOMATIQUE                      │
 └─────────────────────────────────────────────────────────────────────────────┘
 
                          SCORE LLM JUDGE
                               │
-          ┌───────────────────┼───────────────────┐
-          │                   │                   │
-          ▼                   ▼                   ▼
-    ┌──────────┐       ┌──────────────┐    ┌──────────────┐
-    │ Score<7  │       │Score 7-8.5   │    │ Score>8.5    │
-    └────┬─────┘       └──────┬───────┘    └──────┬───────┘
-         │                    │                   │
-         ▼                    ▼                   ▼
-    ┌──────────┐       ┌──────────────┐    ┌──────────────┐
-    │  REJET   │       │ STATUT:      │    │ STATUT:      │
-    │ Rapport  │       │ "À VALIDER"  │    │ "PUBLIÉ"     │
-    │ non      │       │              │    │              │
-    │ diffusé  │       │ Notification │    │ Mention:     │
-    │          │       │ au validateur│    │ "Généré par  │
-    │          │       │              │    │  IA (92%)"   │
-    └──────────┘       └──────┬───────┘    └──────────────┘
-                              │
-                              ▼
-                    ┌──────────────────┐
-                    │ Validateur       │
-                    │ se connecte      │
-                    │                  │
-                    │ "Vous avez 5     │
-                    │  rapports à      │
-                    │  valider"        │
-                    └────────┬─────────┘
-                             │
-               ┌─────────────┴─────────────┐
-               │                           │
-               ▼                           ▼
-        ┌──────────────┐           ┌──────────────┐
-        │  APPROUVER   │           │  REJETER     │
-        │              │           │              │
-        │ Statut:      │           │ Statut:      │
-        │ "PUBLIÉ"     │           │ "REJETÉ"     │
-        │              │           │              │
-        │ Mention:     │           │ Rapport non  │
-        │ "Validé par  │           │ diffusé      │
-        │  [Nom]"      │           │              │
-        └──────────────┘           └──────────────┘
+          ┌───────────────────┴───────────────────┐
+          │                                       │
+          ▼                                       ▼
+    ┌──────────────┐                    ┌──────────────────┐
+    │  Score < 7   │                    │   Score >= 7     │
+    └──────┬───────┘                    └────────┬─────────┘
+           │                                     │
+           ▼                                     ▼
+    ┌──────────────┐                    ┌──────────────────┐
+    │    REJET     │                    │  AUTO PUBLIÉ     │
+    │              │                    │                  │
+    │  Rapport     │                    │  Statut:         │
+    │  non diffusé │                    │  "PUBLIÉ"        │
+    │              │                    │                  │
+    │              │                    │  + Email auto    │
+    │              │                    │    envoyé        │
+    └──────────────┘                    └──────────────────┘
 ```
 
-## 5.2 Gestion des relances
+## 5.2 Notification par email
 
-**Citation du client :**
-> *"Si l'humain le valide dans les 24-48h, s'il ne le valide pas, je lui envoie une relance, un email de rappel."*
+Lorsqu'un rapport atteint un score >= 7.0, un email est automatiquement envoyé via **Brevo (Sendinblue)** contenant :
+- Le titre du rapport
+- Le score de confiance
+- Un résumé des risques identifiés
+- Un lien vers le rapport complet
 
 ```
-Jour J : Rapport généré avec score 7.5 → Email envoyé au validateur
-Jour J+1 : Pas de validation → Relance automatique par email
-Jour J+2 : Nouvelle analyse lancée → Rapport versionné (v2)
+Jour J : Rapport généré avec score >= 7.0 → Publié + Email envoyé automatiquement
+Jour J+1 : Nouvelle analyse lancée → Rapport versionné (v2)
          → Ancien rapport marqué "obsolète"
-         → Nouvelle demande de validation sur v2
+         → Nouveau rapport publié si score >= 7.0
 ```
 
 ## 5.3 Versioning des rapports
 
-**Citation du client :**
-> *"Si on refait l'analyse le lendemain, ce rapport-là évolue. Il y a peut-être de nouveaux éléments, donc il serait à valider avec la nouvelle version."*
+> Lorsqu'une nouvelle analyse est effectuée, l'ancien rapport est marqué "obsolète" et la nouvelle version est automatiquement publiée si le score >= 7.
 
 | Version | Date | Score | Statut | Notes |
 |---------|------|-------|--------|-------|
 | v1 | 02/02/2026 | 7.8 | Obsolète | Remplacé par v2 |
-| v2 | 03/02/2026 | 8.1 | À valider | Nouvelles données météo |
+| v2 | 03/02/2026 | 8.1 | Publié | Nouvelles données météo, email envoyé |
 
 ---
 

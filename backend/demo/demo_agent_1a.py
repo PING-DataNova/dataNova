@@ -41,10 +41,6 @@ async def test_combined():
     print(f'    - Trouves: {result["sources"]["eurlex"]["found"]}')
     print(f'    - Traites: {result["sources"]["eurlex"]["processed"]}')
     
-    print(f'  CBAM Guidance:')
-    print(f'    - Trouves: {result["sources"]["cbam_guidance"]["found"]}')
-    print(f'    - Traites: {result["sources"]["cbam_guidance"]["processed"]}')
-    
     print(f'\nTotal:')
     print(f'  - Documents trouves: {result.get("total_found", 0)}')
     print(f'  - Documents traites: {result.get("documents_processed", 0)}')

@@ -378,6 +378,129 @@ class WeatherRiskEngine:
         )
         
         return round(adjusted_score, 2), reason
+
+    def generate_logistics_recommendations(
+        self,
+        entity_name: str,
+        entity_type: str,
+        weather_risk: Dict,
+        country: str = None
+    ) -> List[Dict]:
+        """
+        Génère des recommandations logistiques concrètes basées sur les alertes météo.
+        
+        Args:
+            entity_name: Nom du site ou fournisseur
+            entity_type: 'site' ou 'supplier'
+            weather_risk: Résultat de get_site_weather_risk()
+            country: Pays de l'entité
+            
+        Returns:
+            Liste de recommandations avec actions concrètes
+        """
+        if not weather_risk.get("has_weather_risk", False):
+            return []
+        
+        recommendations = []
+        alerts = weather_risk.get("alerts", [])
+        
+        # Traductions pour l'affichage
+        alert_type_names = {
+            "snow": "Neige",
+            "heavy_rain": "Fortes pluies",
+            "extreme_cold": "Grand froid",
+            "extreme_heat": "Canicule",
+            "strong_wind": "Vents forts",
+            "storm": "Tempête"
+        }
+        
+        severity_names = {
+            "critical": "critique",
+            "high": "élevé",
+            "medium": "modéré",
+            "low": "faible"
+        }
+        
+        for alert in alerts:
+            alert_type = alert.get("alert_type", "")
+            severity = alert.get("severity", "medium")
+            alert_date = alert.get("alert_date")
+            value = alert.get("value", 0)
+            unit = alert.get("unit", "")
+            city = alert.get("city", "")
+            
+            # Formater la date
+            if alert_date:
+                if hasattr(alert_date, 'strftime'):
+                    date_str = alert_date.strftime("%d/%m/%Y")
+                else:
+                    date_str = str(alert_date)
+            else:
+                date_str = "prochains jours"
+            
+            # Générer recommandation selon le type d'alerte
+            rec = {
+                "entity_name": entity_name,
+                "entity_type": "Fournisseur" if entity_type == "supplier" else "Site",
+                "location": f"{city}, {country}" if city and country else (city or country or ""),
+                "alert_type": alert_type_names.get(alert_type, alert_type),
+                "severity": severity_names.get(severity, severity),
+                "date": date_str,
+                "value": f"{value} {unit}" if value else "",
+                "action": "",
+                "deadline": "",
+                "priority": "haute" if severity in ["critical", "high"] else "moyenne"
+            }
+            
+            # Actions spécifiques par type d'alerte
+            if alert_type == "snow":
+                if severity in ["critical", "high"]:
+                    rec["action"] = f"Anticiper les livraisons AVANT le {date_str} ou reporter APRES la période de neige. Prevoir stock tampon de 3-5 jours."
+                    rec["deadline"] = f"Commander avant le {date_str}"
+                else:
+                    rec["action"] = f"Informer les transporteurs du risque neige. Prevoir delais supplementaires de 1-2 jours."
+                    rec["deadline"] = f"A partir du {date_str}"
+                    
+            elif alert_type == "heavy_rain":
+                if severity in ["critical", "high"]:
+                    rec["action"] = f"Risque d'inondation - Verifier que les marchandises ne transitent pas par des zones inondables. Reporter si possible apres le {date_str}."
+                    rec["deadline"] = f"Eviter les expeditions le {date_str}"
+                else:
+                    rec["action"] = "Proteger les marchandises sensibles a l'humidite. Prevoir emballages etanches."
+                    rec["deadline"] = f"Avant le {date_str}"
+                    
+            elif alert_type == "extreme_cold":
+                if severity in ["critical", "high"]:
+                    rec["action"] = f"Gel possible des equipements et routes verglacees. Prevoir transport avec chauffage pour produits sensibles. Anticiper les livraisons."
+                    rec["deadline"] = f"Livrer avant le {date_str}"
+                else:
+                    rec["action"] = "Conditions hivernales - Prevoir delais supplementaires et verifier l'etat des routes."
+                    rec["deadline"] = f"Surveillance a partir du {date_str}"
+                    
+            elif alert_type == "extreme_heat":
+                if severity in ["critical", "high"]:
+                    rec["action"] = f"Canicule - Privilegier les transports de nuit ou tot le matin. Verifier la climatisation des camions pour produits thermosensibles."
+                    rec["deadline"] = f"Du {date_str}"
+                else:
+                    rec["action"] = "Chaleur elevee - S'assurer que les produits sensibles sont transportes dans de bonnes conditions."
+                    rec["deadline"] = f"A partir du {date_str}"
+                    
+            elif alert_type == "strong_wind":
+                if severity in ["critical", "high"]:
+                    rec["action"] = f"Vents violents - Risque de fermeture des ponts et ports. Prevoir itineraires alternatifs ou reporter le transport."
+                    rec["deadline"] = f"Reporter apres le {date_str}"
+                else:
+                    rec["action"] = "Vents forts - Securiser les chargements et eviter les transports de marchandises volumineuses."
+                    rec["deadline"] = f"Attention le {date_str}"
+                    
+            elif alert_type == "storm":
+                rec["action"] = f"TEMPETE ANNONCEE - NE PAS EXPEDIER le {date_str}. Reporter toutes les livraisons. Verifier les stocks de securite."
+                rec["deadline"] = f"STOP expeditions le {date_str}"
+                rec["priority"] = "critique"
+            
+            recommendations.append(rec)
+        
+        return recommendations
     
     def get_all_weather_risks(
         self,
@@ -417,11 +540,27 @@ class WeatherRiskEngine:
         for site in sites:
             site_id = site.get("id")
             site_code = site.get("site_id")
-            results[site_id] = self.get_site_weather_risk(site_id, site_code)
+            weather_risk = self.get_site_weather_risk(site_id, site_code)
+            # Ajouter recommandations logistiques
+            weather_risk["logistics_recommendations"] = self.generate_logistics_recommendations(
+                entity_name=site.get("name", "Site inconnu"),
+                entity_type="site",
+                weather_risk=weather_risk,
+                country=site.get("country")
+            )
+            results[site_id] = weather_risk
         
         for supplier in suppliers:
             supplier_id = supplier.get("id")
             supplier_code = supplier.get("supplier_id")
-            results[supplier_id] = self.get_site_weather_risk(supplier_id, supplier_code)
+            weather_risk = self.get_site_weather_risk(supplier_id, supplier_code)
+            # Ajouter recommandations logistiques
+            weather_risk["logistics_recommendations"] = self.generate_logistics_recommendations(
+                entity_name=supplier.get("name", "Fournisseur inconnu"),
+                entity_type="supplier",
+                weather_risk=weather_risk,
+                country=supplier.get("country")
+            )
+            results[supplier_id] = weather_risk
         
         return results

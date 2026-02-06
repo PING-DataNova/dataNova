@@ -7,7 +7,7 @@ interface AgentDashboardProps {
   onNavigate: (page: 'landing' | 'login' | 'register' | 'dashboard' | 'agent') => void;
 }
 
-const AgentDashboard: React.FC<AgentDashboardProps> = ({ user, onNavigate }) => {
+const AgentDashboard: React.FC<AgentDashboardProps> = ({ user: _user, onNavigate }) => {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 

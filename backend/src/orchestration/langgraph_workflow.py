@@ -6,15 +6,15 @@ START → Agent 1A → Agent 1B → [OUI/PARTIELLEMENT] → Agent 2 → LLM Judg
                             → [NON] → END
 
 Décisions du Judge:
-- Score >= 8.5 → APPROVE (Notification Immédiate)
-- Score 7.0-8.4 → REVIEW (Validation Humaine requise)
-- Score < 7.0 → REJECT (Archiver)
+- Score >= 7.0 → APPROVE (Notification Immédiate par email)
+- Score < 7.0 → REJECT (Archiver, pas de notification)
 """
 
 # Charger les variables d'environnement en premier
 from dotenv import load_dotenv
 load_dotenv()
 
+import os
 import asyncio
 import structlog
 from typing import Dict, List, TypedDict, Optional, Literal
@@ -23,7 +23,7 @@ from datetime import datetime
 from langgraph.graph import StateGraph, END
 
 # Imports des agents
-from src.agent_1a.agent import run_agent_1a
+from src.agent_1a.agent import run_agent_1a, run_agent_1a_full_collection
 from src.agent_1a.tools.weather import OpenMeteoClient, Location
 from src.agent_1b.agent import Agent1B
 from src.agent_2.agent import Agent2
@@ -262,9 +262,9 @@ class PINGState(TypedDict):
     judge_evaluations: List[Dict]
     
     # Décisions finales
-    approved: List[Dict]  # Score >= 8.5
-    needs_review: List[Dict]  # Score 7.0-8.4
-    rejected: List[Dict]  # Score < 7.0
+    approved: List[Dict]  # Score >= 7.0 → Notification envoyée
+    needs_review: List[Dict]  # Non utilisé (conservé pour compatibilité)
+    rejected: List[Dict]  # Score < 7.0 → Archivé
     
     # Notifications
     notifications_sent: List[Dict]  # Notifications envoyées
@@ -777,19 +777,37 @@ def create_alert(document: Dict, risk_analysis: Dict, judge_evaluation: Dict) ->
 def node_agent_1a(state: PINGState) -> PINGState:
     """
     Node Agent 1A : Collecte des documents ET des alertes météo
+    
+    MODE B: Collecte par mots-clés MÉTIER extraits du profil entreprise.
+    Les mots-clés sont en anglais et incluent:
+    - Matériaux: rubber, elastomer, steel, aluminium...
+    - Secteurs: automotive, aerospace, industrial...
+    - Produits: sealing, hoses, gaskets...
+    - Codes HS/NC: 4001, 4002, 7208...
+    
+    L'Agent 1B classifiera ensuite les documents par réglementation (CBAM, REACH, etc.)
     """
     import time
     start_time = time.time()
-    logger.info("node_agent_1a_started", keyword=state["keyword"])
+    
+    # Chemin vers le profil entreprise
+    company_profile_path = "data/company_profiles/Hutchinson_SA.json"
+    
+    logger.info("node_agent_1a_started", mode="full_collection", company_profile=company_profile_path)
     state["current_step"] = "agent_1a"
     
     weather_result = {"alerts_saved": 0}
     
     try:
-        # Exécuter Agent 1A (recherche EUR-Lex par mot-clé)
-        result = asyncio.run(run_agent_1a(
-            keyword=state["keyword"],
-            max_documents=state["max_documents"]
+        # MODE B: Collecte complète depuis le profil entreprise
+        # Les mots-clés métier sont extraits automatiquement du profil
+        result = asyncio.run(run_agent_1a_full_collection(
+            company_profile_path=company_profile_path,
+            min_publication_year=2010,  # Documents depuis 2010
+            max_documents_per_keyword=8,  # 8 docs par mot-clé
+            max_keywords=7,  # 7 mots-clés max
+            save_to_db=True,
+            use_database=True  # Lire les sites depuis la BDD pour la météo
         ))
         
         state["agent_1a_result"] = result
@@ -819,10 +837,12 @@ def node_agent_1a(state: PINGState) -> PINGState:
             status="success",
             execution_time_ms=execution_time_ms,
             extra_metadata={
-                "keyword": state["keyword"],
+                "mode": "full_collection",
+                "company_profile": company_profile_path,
                 "documents_collected": len(documents),
-                "documents_found": result.get("documents_found", 0),
-                "total_available": result.get("total_available_on_eurlex", 0),
+                "documents_saved": result.get("documents_saved", 0),
+                "eurlex_total": result.get("eurlex_total", 0),
+                "keywords_used": result.get("keywords_used", []),
                 "weather_alerts_saved": weather_result.get("alerts_saved", 0),
                 "weather_sites_processed": weather_result.get("sites_processed", 0)
             }
@@ -1213,23 +1233,17 @@ def node_llm_judge(state: PINGState) -> PINGState:
                 }
             )
             
-            if score >= 8.5 or action == "APPROVE":
+            # Score >= 7.0 = APPROVE direct avec notification email
+            if score >= 7.0 or action == "APPROVE":
                 approved.append(result_item)
                 # Créer une alerte pour les documents approuvés
                 if risk_analysis_id:
                     create_alert(doc, risk_analysis, evaluation)
                 logger.info(
-                    "document_approved",
+                    "document_approved_for_notification",
                     doc_id=doc["id"],
-                    score=score
-                )
-                
-            elif score >= 7.0 or action == "REVIEW":
-                needs_review.append(result_item)
-                logger.info(
-                    "document_needs_review",
-                    doc_id=doc["id"],
-                    score=score
+                    score=score,
+                    will_send_email=True
                 )
                 
             else:
@@ -1269,19 +1283,21 @@ def node_llm_judge(state: PINGState) -> PINGState:
 
 def node_notification(state: PINGState) -> PINGState:
     """
-    Node Notification : Envoie des alertes email selon le niveau de risque
+    Node Notification : Envoie des alertes email automatiquement
     
-    - CRITIQUE/ELEVE (APPROVE): Notification immédiate
-    - MOYEN (REVIEW): Notification pour validation humaine
-    - FAIBLE (REJECT): Archivage, pas de notification
+    - Score >= 7.0 (APPROVE): Notification email envoyée automatiquement
+    - Score < 7.0 (REJECT): Archivage, pas de notification
     """
     import time
     start_time = time.time()
     logger.info("node_notification_started")
     state["current_step"] = "notification"
     
-    # Initialiser le service (dry_run=True par défaut)
-    notification_service = NotificationService(dry_run=True)
+    # Initialiser le service - dry_run contrôlé par variable d'environnement EMAIL_DRY_RUN
+    # Par défaut, envoi réel activé (dry_run=False)
+    email_dry_run = os.getenv("EMAIL_DRY_RUN", "false").lower() == "true"
+    notification_service = NotificationService(dry_run=email_dry_run)
+    logger.info("notification_service_initialized", dry_run=email_dry_run)
     
     notifications_sent = []
     notifications_skipped = []

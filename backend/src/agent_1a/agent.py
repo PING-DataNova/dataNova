@@ -120,43 +120,59 @@ async def run_agent_1a_full_collection(
     
     all_documents = []
     seen_celexes = set()
+    seen_urls = set()  # Fallback pour déduplication si pas de CELEX
     download_errors = 0
     extraction_errors = 0
     
     for keyword in keywords:
         try:
+            # max_results: 0 = pas de limite → utiliser 100 (max raisonnable pour EUR-Lex)
+            effective_max = max_documents_per_keyword if max_documents_per_keyword > 0 else 100
+            
             # Rechercher sur EUR-Lex
             result = await search_eurlex(
                 keyword=keyword,
-                max_results=max_documents_per_keyword,
+                max_results=effective_max,
                 consolidated_only=True  # Préférence pour les textes consolidés (CELEX préfixe 0)
             )
             
             docs = result.documents if hasattr(result, 'documents') else []
+            logger.info("eurlex_keyword_results", keyword=keyword, docs_found=len(docs))
             
             for doc in docs:
                 celex = getattr(doc, 'celex_id', '') or getattr(doc, 'celex_number', '') or ''
+                pdf_url = str(getattr(doc, 'pdf_url', '') or '')
+                title = str(getattr(doc, 'title', '') or '')[:50]
                 
-                # Éviter les doublons
-                if celex and celex in seen_celexes:
-                    continue
-                seen_celexes.add(celex)
+                # Déduplication par CELEX ou par URL
+                if celex:
+                    if celex in seen_celexes:
+                        logger.debug("skipping_duplicate_celex", celex=celex)
+                        continue
+                    seen_celexes.add(celex)
+                elif pdf_url:
+                    if pdf_url in seen_urls:
+                        logger.debug("skipping_duplicate_url", url=pdf_url[:50])
+                        continue
+                    seen_urls.add(pdf_url)
                 
-                # Vérifier l'année de publication
+                # Vérifier l'année de publication (optionnel)
                 pub_date = getattr(doc, 'publication_date', None)
-                if pub_date:
+                if pub_date and min_publication_year > 0:
                     try:
                         year = pub_date.year if hasattr(pub_date, 'year') else int(str(pub_date)[:4])
                         if year < min_publication_year:
+                            logger.debug("skipping_old_document", celex=celex, year=year, min_year=min_publication_year)
                             continue
                     except:
-                        pass
+                        pass  # Si on ne peut pas parser la date, on garde le document
                 
                 all_documents.append({
                     'eurlex_doc': doc,
                     'matched_keyword': keyword,
                     'celex': celex
                 })
+                logger.info("document_added", celex=celex or "N/A", title=title, keyword=keyword)
                 
         except Exception as e:
             logger.warning("eurlex_search_error", keyword=keyword, error=str(e))
@@ -227,14 +243,12 @@ async def run_agent_1a_full_collection(
                         source_url=str(pdf_url) if pdf_url else eurlex_url[:1000],
                         event_type="regulation",
                         event_subtype=doc_type or "EUR-LEX",
+                        celex_id=celex,
                         hash_sha256=doc_hash,
                         content=content,
                         summary=title,
                         status="new",
-                        workflow_status="raw",  # Agent 1A: statut initial
-                        regulation_type=None,  # Sera classifié par Agent 1B
                         extra_metadata={
-                            "celex_id": celex,
                             "matched_keyword": keyword,
                             "local_path": local_path,
                             "collection_mode": "automatic"
@@ -478,104 +492,116 @@ def _extract_keywords_from_profile(profile: Dict) -> List[str]:
     IMPORTANT: On n'extrait PAS les noms de réglementations (CBAM, REACH, CSRD, etc.)
     car la classification des réglementations est faite par l'Agent 1B.
     
+    Les mots-clés doivent être :
+    - En ANGLAIS (EUR-Lex recherche principalement en anglais)
+    - SIMPLES (pas de caractères spéciaux, accents, parenthèses)
+    - PERTINENTS pour la recherche réglementaire
+    
     Catégories extraites :
-    - Matériaux (caoutchouc, élastomères, acier, aluminium...)
-    - Codes NC/HS (tarifs douaniers)
+    - Matériaux (rubber, elastomer, steel, aluminium...)
+    - Codes NC/HS (tarifs douaniers - format numérique)
     - Secteurs d'activité (automotive, aerospace...)
     - Produits (sealing, hoses, joints...)
     """
+    import re
+    import unicodedata
+    
+    def clean_keyword(kw: str) -> str:
+        """Nettoie un mot-clé pour EUR-Lex"""
+        # Supprimer les accents
+        kw = unicodedata.normalize('NFKD', kw).encode('ASCII', 'ignore').decode('ASCII')
+        # Supprimer les caractères spéciaux sauf espaces et tirets
+        kw = re.sub(r'[^a-zA-Z0-9\s\-]', ' ', kw)
+        # Normaliser les espaces
+        kw = ' '.join(kw.split())
+        return kw.strip().lower()
+    
+    def is_valid_keyword(kw: str) -> bool:
+        """Vérifie si un mot-clé est valide pour EUR-Lex"""
+        if not kw or len(kw) < 3:
+            return False
+        # Ignorer les mots-clés trop complexes (plus de 3 mots)
+        if len(kw.split()) > 3:
+            return False
+        # Ignorer les mots-clés avec trop de caractères spéciaux
+        if re.search(r'[éèêëàâäùûüôöîïç]', kw):
+            return False
+        return True
+    
     keywords = set()
     
-    # 1. Secteurs et segments
+    # 1. Mots-clés métier ANGLAIS prédéfinis (prioritaires pour EUR-Lex)
+    # Ces termes sont optimisés pour la recherche réglementaire UE
+    ENGLISH_KEYWORDS = [
+        # Matériaux
+        "rubber", "natural rubber", "synthetic rubber", "elastomer",
+        "steel", "aluminium", "aluminum", "carbon black",
+        "EPDM", "SBR", "NBR",
+        # Secteurs
+        "automotive", "aerospace", "industrial",
+        # Produits
+        "sealing", "hoses", "gaskets", "pipes", "tubes",
+        "anti-vibration", "damping",
+        # Thèmes réglementaires métier (pas les noms de règlements)
+        "emission", "carbon", "chemical substances",
+        "packaging", "waste", "recycling",
+        "deforestation", "sustainability"
+    ]
+    keywords.update(ENGLISH_KEYWORDS)
+    
+    # 2. Extraire des segments industry (en anglais dans le profil)
     company = profile.get("company", {})
     industry = company.get("industry", {})
     
-    sector = industry.get("sector", "")
-    if sector:
-        # Extraire les mots clés du secteur
-        for word in ["rubber", "elastomer", "materials", "sealing", "automotive"]:
-            if word.lower() in sector.lower():
-                keywords.add(word)
-    
     segments = industry.get("segments", [])
     for segment in segments:
-        # "Automotive sealing & NVH" -> "automotive sealing", "NVH"
-        keywords.add(segment.split("&")[0].strip().lower())
+        # "Automotive sealing & NVH" -> "automotive sealing"
+        parts = segment.split("&")
+        for part in parts:
+            cleaned = clean_keyword(part)
+            if is_valid_keyword(cleaned):
+                keywords.add(cleaned)
     
-    # 2. Matériaux (supply chain)
+    # 3. Extraire les codes HS/NC (numériques - toujours valides)
     supply_chain = profile.get("supply_chain", {})
     
-    # Caoutchouc naturel
-    natural_rubber = supply_chain.get("natural_rubber", {})
-    if natural_rubber:
-        keywords.add("natural rubber")
-        keywords.add("rubber")
-        for supplier in natural_rubber.get("suppliers", []):
-            nc_code = supplier.get("nc_code", "")
-            if nc_code:
-                keywords.add(nc_code)
+    for material_type in ["natural_rubber", "synthetic_rubber", "metals_and_additives"]:
+        material_data = supply_chain.get(material_type, {})
+        
+        for supplier in material_data.get("suppliers", []):
+            nc_code = supplier.get("nc_code", "") or supplier.get("hs_code", "")
+            if nc_code and re.match(r'^\d{4}', str(nc_code)):
+                keywords.add(str(nc_code)[:4])  # Garder les 4 premiers chiffres
+        
+        for material in material_data.get("critical_materials", []):
+            hs_code = material.get("hs_code", "")
+            if hs_code and re.match(r'^\d{4}', str(hs_code)):
+                keywords.add(str(hs_code)[:4])
     
-    # Caoutchouc synthétique
-    synthetic_rubber = supply_chain.get("synthetic_rubber", {})
-    if synthetic_rubber:
-        keywords.add("synthetic rubber")
-        keywords.add("EPDM")
-        keywords.add("SBR")
-        for supplier in synthetic_rubber.get("suppliers", []):
-            nc_code = supplier.get("nc_code", "")
-            if nc_code:
-                keywords.add(nc_code)
-    
-    # Métaux et additifs
-    metals = supply_chain.get("metals_and_additives", {})
-    for material in metals.get("critical_materials", []):
-        desc = material.get("description", "")
-        if desc:
-            keywords.add(desc.lower())
-        hs_code = material.get("hs_code", "")
-        if hs_code:
-            keywords.add(hs_code)
-    
-    # 3. Codes NC explicites
+    # 4. Extraire les codes NC des imports/exports
     nc_codes = profile.get("nc_codes", {})
-    for item in nc_codes.get("imports", []):
-        code = item.get("code", "")
-        if code:
-            keywords.add(code)
+    for item in nc_codes.get("imports", []) + nc_codes.get("exports", []):
+        code = item.get("code", "") or item.get("hs_code", "")
+        if code and re.match(r'^\d{4}', str(code)):
+            keywords.add(str(code)[:4])
     
-    # 4. Produits fabriqués
-    products = profile.get("products", company.get("products", []))
-    if isinstance(products, list):
-        for product in products:
-            if isinstance(product, str):
-                keywords.add(product.lower())
-            elif isinstance(product, dict):
-                name = product.get("name", "")
-                if name:
-                    keywords.add(name.lower())
+    # 5. NE PAS extraire les "products" car souvent en français
+    # On utilise à la place les ENGLISH_KEYWORDS prédéfinis
     
-    # 5. Mots-clés métier génériques (secteurs, pas réglementations)
-    keywords.add("automotive")
-    keywords.add("aerospace")
-    keywords.add("elastomer")
-    keywords.add("sealing")
-    keywords.add("rubber")
-    keywords.add("hoses")
-    keywords.add("joints")
-    
-    # NOTE: On n'ajoute PAS les noms de réglementations ici !
-    # CBAM, EUDR, CSRD, REACH, anti-dumping sont des TYPES de réglementation
-    # qui seront classifiés par l'Agent 1B après collecte.
-    
-    # Nettoyer et filtrer
+    # 6. Nettoyer et filtrer
     clean_keywords = []
     for kw in keywords:
-        kw = str(kw).strip()
-        if kw and len(kw) >= 2:  # Ignorer les trop courts
+        kw = clean_keyword(str(kw))
+        if is_valid_keyword(kw) and kw not in clean_keywords:
             clean_keywords.append(kw)
     
-    # Limiter et trier par pertinence (mots plus spécifiques d'abord)
-    clean_keywords = sorted(clean_keywords, key=len, reverse=True)[:25]
+    # Trier : mots-clés texte d'abord (plus pertinents pour EUR-Lex), puis codes HS
+    def sort_key(kw):
+        if re.match(r'^\d{4}$', kw):
+            return (1, kw)  # Codes HS en dernier
+        return (0, -len(kw), kw)  # Mots texte d'abord, par longueur décroissante
+    
+    clean_keywords = sorted(clean_keywords, key=sort_key)[:30]
     
     return clean_keywords
 
@@ -850,10 +876,8 @@ async def run_agent_1a_by_domain(
                         title=doc.title,
                         content=content.text,
                         nc_codes=[nc.code for nc in content.nc_codes],
-                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=publication_date,
                         document_metadata=metadata,
-                        workflow_status="raw"  # Agent 1A: statut initial
                     )
                     saved_count += 1
                     
@@ -1170,10 +1194,8 @@ async def run_agent_1a(
                         title=doc.title,
                         content=content.text,
                         nc_codes=[nc.code for nc in content.nc_codes],
-                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=publication_date,
                         document_metadata=metadata,
-                        workflow_status="raw"  # Agent 1A: statut initial
                     )
                     saved_count += 1
                     
@@ -1266,29 +1288,22 @@ async def run_agent_1a_combined(
         from src.storage.repositories import DocumentRepository
         
         # ====================================================================
-        # ÉTAPE 1 : SCRAPING PARALLÈLE (EUR-Lex + CBAM)
+        # ÉTAPE 1 : SCRAPING EUR-Lex UNIQUEMENT
         # ====================================================================
-        logger.info("step_1_parallel_scraping")
+        logger.info("step_1_eurlex_scraping")
         
-        # Lancer les deux scrapers en parallèle
-        eurlex_task = search_eurlex(keyword, max_results=max_eurlex_documents)
-        cbam_task = search_cbam_guidance(categories=cbam_categories, max_results=max_cbam_documents)
-        
-        eurlex_results, cbam_results = await asyncio.gather(eurlex_task, cbam_task)
+        # Recherche EUR-Lex uniquement (CBAM Guidance désactivé)
+        eurlex_results = await search_eurlex(keyword, max_results=max_eurlex_documents)
         
         # Vérifier les résultats
         if eurlex_results.status != "success":
             logger.error("eurlex_search_failed", error=eurlex_results.error)
         
-        if cbam_results.status != "success":
-            logger.error("cbam_search_failed", error=cbam_results.error)
-        
-        total_found = len(eurlex_results.documents) + len(cbam_results.documents)
+        total_found = len(eurlex_results.documents)
         
         logger.info(
             "step_1_completed",
             eurlex_count=len(eurlex_results.documents),
-            cbam_count=len(cbam_results.documents),
             total=total_found
         )
         
@@ -1318,23 +1333,6 @@ async def run_agent_1a_combined(
                 
                 documents_to_process.append({
                     'source': 'eurlex',
-                    'doc': doc,
-                    'url': url
-                })
-            
-            # Vérifier CBAM documents
-            for doc in cbam_results.documents:
-                url = str(doc.url)
-                existing_doc = repo.find_by_url(url)
-                
-                if existing_doc:
-                    # Pour CBAM, on vérifie juste l'existence (pas de hash remote)
-                    documents_unchanged.append(doc)
-                    logger.info("document_unchanged", title=doc.title)
-                    continue
-                
-                documents_to_process.append({
-                    'source': 'cbam',
                     'doc': doc,
                     'url': url
                 })
@@ -1501,30 +1499,18 @@ async def run_agent_1a_combined(
                     with open(file_path, 'rb') as f:
                         file_hash = hashlib.sha256(f.read()).hexdigest()
                     
-                    # Préparer les métadonnées selon la source
+                    # Préparer les métadonnées (EUR-Lex uniquement)
                     # Note: content est un objet ExtractedContent (Pydantic), pas un dict
-                    if source == 'eurlex':
-                        metadata = {
-                            'source': 'eurlex',
-                            'celex_number': doc.celex_number,
-                            'document_type': doc.document_type,
-                            'pages': content.page_count,
-                            'tables': len(content.tables),
-                            'file_path': file_path
-                        }
-                        nc_codes = [nc.code for nc in content.nc_codes]  # Extraire les codes NC
-                        pub_date = doc.publication_date  # EurlexDocument utilise publication_date, pas date
-                    else:  # cbam
-                        metadata = {
-                            'source': 'cbam_guidance',
-                            'format': doc.format,
-                            'size': doc.size,
-                            'category': doc.category,
-                            'pages': content.page_count,
-                            'file_path': file_path
-                        }
-                        nc_codes = [nc.code for nc in content.nc_codes]  # Extraire les codes NC
-                        pub_date = getattr(doc, 'date', None)
+                    metadata = {
+                        'source': 'eurlex',
+                        'celex_number': doc.celex_number,
+                        'document_type': doc.document_type,
+                        'pages': content.page_count,
+                        'tables': len(content.tables),
+                        'file_path': file_path
+                    }
+                    nc_codes = [nc.code for nc in content.nc_codes]  # Extraire les codes NC
+                    pub_date = doc.publication_date  # EurlexDocument utilise publication_date, pas date
                     
                     # Sauvegarder avec upsert_document (Agent 1B classifiera)
                     saved_doc, status = repo.upsert_document(
@@ -1533,10 +1519,9 @@ async def run_agent_1a_combined(
                         title=doc.title,
                         content=content.text,  # Attribut text, pas .get('text')
                         nc_codes=nc_codes,
-                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=pub_date,
                         document_metadata=metadata,
-                        workflow_status="raw"  # Agent 1A: statut initial
+                        celex_id=doc.celex_number,
                     )
                     saved_count += 1
                     
@@ -1568,15 +1553,10 @@ async def run_agent_1a_combined(
         result = {
             "status": "success",
             "keyword": keyword,
-            "cbam_categories": cbam_categories,
             "sources": {
                 "eurlex": {
                     "found": len(eurlex_results.documents),
                     "processed": len([x for x in extracted_documents if x['source'] == 'eurlex'])
-                },
-                "cbam_guidance": {
-                    "found": len(cbam_results.documents),
-                    "processed": len([x for x in extracted_documents if x['source'] == 'cbam'])
                 }
             },
             "total_found": total_found,
@@ -1894,10 +1874,8 @@ async def run_agent_1a_multi_sectors(
                         title=doc.title,
                         content=content.text,
                         nc_codes=[nc.code for nc in content.nc_codes],
-                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=publication_date,
                         document_metadata=metadata,
-                        workflow_status="raw"  # Agent 1A: statut initial
                     )
                     saved_count += 1
                     
@@ -2320,10 +2298,8 @@ async def run_agent_1a_from_profile(
                         title=doc.title,
                         content=content.text[:50000] if content.text else "",
                         nc_codes=[nc.code for nc in content.nc_codes[:100]] if content.nc_codes else [],
-                        regulation_type=None,  # Sera classifié par Agent 1B
                         publication_date=doc.publication_date,
                         document_metadata=metadata,
-                        workflow_status="raw"  # Agent 1A: statut initial
                     )
                     
                     saved_count += 1
@@ -2773,8 +2749,6 @@ async def run_agent_1a_for_supplier(
                         content=content,
                         summary=doc_title,
                         status="new",
-                        workflow_status="raw",  # Agent 1A: statut initial
-                        regulation_type=None,  # Sera classifié par Agent 1B
                         extra_metadata={
                             "celex_id": doc_info.get("celex_id"),
                             "matched_keyword": doc_info.get("matched_keyword"),

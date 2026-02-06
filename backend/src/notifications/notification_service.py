@@ -9,6 +9,7 @@ import structlog
 
 from .router import NotificationRouter
 from .email_sender import EmailSender
+from .subscription_filter import get_matching_subscriptions, update_subscription_stats
 
 logger = structlog.get_logger()
 
@@ -61,7 +62,7 @@ class NotificationService:
         affected_sites = risk_analysis.get("affected_sites", [])
         affected_suppliers = risk_analysis.get("affected_suppliers", [])
         
-        # 1. Router les destinataires
+        # 1. Router les destinataires (contacts par défaut)
         routing = self.router.get_recipients(
             risk_score=risk_score,
             event_type=event_type,
@@ -70,7 +71,33 @@ class NotificationService:
         )
         
         risk_level = routing["risk_level"]
-        recipients = routing["recipients"]
+        recipients = set(routing["recipients"])  # Utiliser un set pour déduplication
+        
+        # 2. Ajouter les destinataires des abonnements personnalisés
+        matching_subscriptions = []
+        try:
+            matching_subscriptions = get_matching_subscriptions(
+                event_type=event_type,
+                risk_level=risk_level,
+                affected_sites=affected_sites,
+                affected_suppliers=affected_suppliers
+            )
+            
+            for sub in matching_subscriptions:
+                if sub.get("notify_immediately", True):
+                    recipients.add(sub["email"])
+                    self.logger.debug(
+                        "subscription_recipient_added",
+                        email=sub["email"],
+                        subscription_name=sub.get("subscription_name")
+                    )
+        except Exception as e:
+            self.logger.warning(
+                "subscription_lookup_failed",
+                error=str(e)
+            )
+        
+        recipients = list(recipients)  # Reconvertir en liste
         
         if not recipients:
             self.logger.warning("no_recipients_found", risk_level=risk_level)
@@ -80,7 +107,7 @@ class NotificationService:
                 "message": "Aucun destinataire trouvé pour ce niveau de risque"
             }
         
-        # 2. Préparer le résumé des entités affectées
+        # 3. Préparer le résumé des entités affectées
         affected_entities = {
             "sites": len(affected_sites),
             "suppliers": len(affected_suppliers),
@@ -128,6 +155,7 @@ class NotificationService:
             "action_delay": routing["action_delay"],
             "recipients_count": len(recipients),
             "recipients": recipients,
+            "subscriptions_matched": len(matching_subscriptions),
             "document_id": document.get("id"),
             "document_title": event_title,
             "risk_score": risk_score,
@@ -135,11 +163,24 @@ class NotificationService:
             "email_result": email_result
         }
         
+        # 8. Mettre à jour les statistiques des abonnements
+        if email_result.get("status") == "sent":
+            for sub in matching_subscriptions:
+                try:
+                    update_subscription_stats(sub["subscription_id"])
+                except Exception as e:
+                    self.logger.warning(
+                        "subscription_stats_update_failed",
+                        subscription_id=sub.get("subscription_id"),
+                        error=str(e)
+                    )
+        
         self.logger.info(
             "notification_completed",
             status=result["status"],
             risk_level=risk_level,
-            recipients_count=len(recipients)
+            recipients_count=len(recipients),
+            subscriptions_matched=len(matching_subscriptions)
         )
         
         return result

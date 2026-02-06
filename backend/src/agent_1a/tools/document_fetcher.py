@@ -4,6 +4,7 @@ Document Fetcher - Téléchargement de documents réglementaires (SCÉNARIO 2 OP
 Responsable: Dev 1
 """
 from langchain.tools import tool
+import asyncio
 import json
 import hashlib
 import re
@@ -175,17 +176,64 @@ async def fetch_document(
         output_path = Path(output_dir)
         output_path.mkdir(parents=True, exist_ok=True)
         
-        # Télécharger le document
-        async with httpx.AsyncClient(
-            timeout=timeout,
-            follow_redirects=True,
-            limits=httpx.Limits(max_connections=5)
-        ) as client:
-            response = await client.get(url)
-            response.raise_for_status()
-            
-            content = response.content
-            content_type = response.headers.get("content-type", "")
+        # Headers pour simuler un navigateur (évite les blocages)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/pdf,*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+        
+        # Retry avec backoff exponentiel
+        max_retries = 3
+        content = None
+        content_type = ""
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                async with httpx.AsyncClient(
+                    timeout=timeout,
+                    follow_redirects=True,
+                    limits=httpx.Limits(max_connections=5)
+                ) as client:
+                    response = await client.get(url, headers=headers)
+                    response.raise_for_status()
+                    
+                    content = response.content
+                    content_type = response.headers.get("content-type", "")
+                    
+                    # Validation: vérifier que le contenu n'est pas vide
+                    if len(content) == 0:
+                        raise ValueError("Contenu téléchargé vide (0 bytes)")
+                    
+                    # Validation PDF: vérifier que c'est un vrai PDF si attendu
+                    if "pdf" in url.lower() or "application/pdf" in content_type.lower():
+                        if not content[:4] == b'%PDF':
+                            # C'est peut-être une page d'erreur HTML
+                            if b'<!DOCTYPE' in content[:100] or b'<html' in content[:100].lower():
+                                raise ValueError("EUR-Lex a retourné une page HTML au lieu du PDF")
+                    
+                    # Succès - sortir de la boucle de retry
+                    break
+                    
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 0.5  # 0.5s, 1s, 2s
+                    logger.warning(
+                        "fetch_retry",
+                        url=url,
+                        attempt=attempt + 1,
+                        max_retries=max_retries,
+                        wait_time=wait_time,
+                        error=str(e)
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise last_error
+        
+        if content is None:
+            raise ValueError("Échec du téléchargement après toutes les tentatives")
             
         # Générer le nom du fichier si non fourni
         if not filename:

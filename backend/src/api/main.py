@@ -5,7 +5,7 @@ Point d'entrée de l'API FastAPI
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.api.routes import analyses, impacts, auth, pipeline, supplier, admin
+from src.api.routes import analyses, impacts, auth, pipeline, supplier, admin, documents, subscriptions
 from src.storage.database import init_db
 
 # Initialiser la base de données (créer les tables si nécessaire)
@@ -25,9 +25,21 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+        "http://localhost:3004",
+        "http://localhost:3005",
+        "http://localhost:3006",
+        "http://localhost:3007",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
         "http://127.0.0.1:3001",
+        "http://127.0.0.1:3002",
+        "http://127.0.0.1:3003",
+        "http://127.0.0.1:3004",
+        "http://127.0.0.1:3005",
+        "http://127.0.0.1:3006",
+        "http://127.0.0.1:3007",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -42,6 +54,8 @@ app.include_router(impacts.router, prefix="/api")
 app.include_router(pipeline.router, prefix="/api")
 app.include_router(supplier.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
+app.include_router(subscriptions.router)  # Note: prefix déjà dans le router
 
 
 @app.get("/")

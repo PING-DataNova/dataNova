@@ -90,6 +90,7 @@ class Document(Base):
     source_url = Column(String(1000), nullable=False)
     event_type = Column(String(50), nullable=False)  # reglementaire, climatique, geopolitique
     event_subtype = Column(String(100), nullable=True)  # CBAM, inondation, conflit, etc.
+    celex_id = Column(String(50), nullable=True, index=True)  # Ajout du CELEX ID pour mapping PDF
     publication_date = Column(DateTime, nullable=True)
     collection_date = Column(DateTime, nullable=False, default=datetime.utcnow)
     hash_sha256 = Column(String(64), unique=True, nullable=False)
@@ -762,3 +763,77 @@ class DataSource(Base):
     
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+# ============================================================================
+# ABONNEMENTS AUX ALERTES
+# ============================================================================
+
+# Types d'événements pour les abonnements
+SUBSCRIPTION_EVENT_TYPES = ["reglementaire", "climatique", "geopolitique", "all"]
+
+# Niveaux de criticité minimum pour notifications
+MIN_CRITICALITY_LEVELS = ["all", "FAIBLE", "MOYEN", "ELEVE", "CRITIQUE"]
+
+
+class AlertSubscription(Base):
+    """
+    Abonnements personnalisés aux alertes.
+    Permet aux utilisateurs de filtrer les notifications selon leurs préférences.
+    
+    Un utilisateur peut créer plusieurs abonnements avec différents critères :
+    - Par type d'événement (réglementaire, climatique, géopolitique)
+    - Par fournisseur spécifique
+    - Par site Hutchinson spécifique
+    - Par pays
+    - Par niveau de criticité minimum
+    """
+    __tablename__ = "alert_subscriptions"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    
+    # Informations utilisateur (email pour les non-inscrits, user_id pour les inscrits)
+    user_id = Column(String, ForeignKey("users.id"), nullable=True)
+    email = Column(String(255), nullable=False)  # Email de notification
+    name = Column(String(200), nullable=True)  # Nom de l'abonné
+    
+    # Nom de l'abonnement (pour l'affichage dans l'UI)
+    subscription_name = Column(String(200), nullable=False, default="Mon abonnement")
+    
+    # Filtres par type d'événement
+    event_types = Column(JSON, nullable=False, default=["all"])  # ["reglementaire", "climatique"] ou ["all"]
+    
+    # Filtres par entités
+    supplier_ids = Column(JSON, nullable=True)  # Liste des IDs fournisseurs (vide = tous)
+    supplier_names = Column(JSON, nullable=True)  # Noms des fournisseurs (pour affichage)
+    site_ids = Column(JSON, nullable=True)  # Liste des IDs sites Hutchinson (vide = tous)
+    site_names = Column(JSON, nullable=True)  # Noms des sites (pour affichage)
+    
+    # Filtres géographiques
+    countries = Column(JSON, nullable=True)  # Liste des pays (vide = tous)
+    
+    # Filtre par criticité minimum
+    min_criticality = Column(String(20), nullable=False, default="MOYEN")  # FAIBLE, MOYEN, ELEVE, CRITIQUE
+    
+    # Options de notification
+    notify_immediately = Column(Boolean, default=True)  # Notification immédiate
+    digest_frequency = Column(String(20), nullable=True)  # daily, weekly (si notify_immediately = False)
+    include_weather_alerts = Column(Boolean, default=True)  # Inclure les alertes météo
+    include_regulatory = Column(Boolean, default=True)  # Inclure les alertes réglementaires
+    include_geopolitical = Column(Boolean, default=True)  # Inclure les alertes géopolitiques
+    
+    # Statut
+    is_active = Column(Boolean, default=True)
+    verified = Column(Boolean, default=False)  # Email vérifié
+    verification_token = Column(String(100), nullable=True)
+    
+    # Métadonnées
+    last_notified_at = Column(DateTime, nullable=True)
+    notification_count = Column(Integer, default=0)
+    extra_metadata = Column(JSON, nullable=True)
+    
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relations
+    user = relationship("User", backref="subscriptions")

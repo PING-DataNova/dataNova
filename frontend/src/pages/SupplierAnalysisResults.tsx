@@ -100,6 +100,16 @@ const SupplierAnalysisResults: React.FC<SupplierAnalysisResultsProps> = ({
                 >
                   Voir sur EUR-Lex
                 </a>
+                {risk.celex_id && (
+                  <a
+                    href={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/documents/by-celex/${risk.celex_id}`}
+                    download={`${risk.celex_id}.pdf`}
+                    className="pdf-link"
+                    style={{marginLeft: '1em', color: '#2563eb', fontWeight: 'bold'}}
+                  >
+                    Télécharger PDF
+                  </a>
+                )}
               </div>
             ))}
           </div>

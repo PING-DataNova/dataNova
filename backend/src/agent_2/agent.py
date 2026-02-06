@@ -1493,7 +1493,8 @@ class Agent2:
                 "max_severity": "high",
                 "average_weather_risk_score": 45.2,
                 "alerts_by_type": {"snow": 2, "heavy_rain": 6},
-                "entities_at_risk": [{"name": "...", "alerts_count": 3}]
+                "entities_at_risk": [{"name": "...", "alerts_count": 3}],
+                "logistics_recommendations": [...]  # NOUVEAU
             }
         """
         entities_with_alerts = []
@@ -1502,6 +1503,7 @@ class Agent2:
         max_severity = None
         all_weather_scores = []
         alerts_by_type = {}
+        all_logistics_recommendations = []  # NOUVEAU
         
         severity_weights = {"critical": 4, "high": 3, "medium": 2, "low": 1}
         
@@ -1522,6 +1524,10 @@ class Agent2:
                     "weather_summary": weather_risk.get("weather_summary", "")
                 })
                 
+                # NOUVEAU: Collecter les recommandations logistiques
+                logistics_recs = weather_risk.get("logistics_recommendations", [])
+                all_logistics_recommendations.extend(logistics_recs)
+                
                 # Trouver la sévérité max
                 entity_severity = weather_risk.get("max_severity", "low")
                 weight = severity_weights.get(entity_severity, 0)
@@ -1535,13 +1541,20 @@ class Agent2:
                         alerts_by_type[alert_type] = 0
                     alerts_by_type[alert_type] += count
         
+        # NOUVEAU: Trier les recommandations par priorité
+        priority_order = {"critique": 0, "haute": 1, "moyenne": 2, "basse": 3}
+        all_logistics_recommendations.sort(
+            key=lambda x: priority_order.get(x.get("priority", "moyenne"), 2)
+        )
+        
         return {
             "entities_with_alerts": len(entities_with_alerts),
             "total_alerts": total_alerts,
             "max_severity": max_severity,
             "average_weather_risk_score": round(sum(all_weather_scores) / len(all_weather_scores), 2) if all_weather_scores else 0,
             "alerts_by_type": alerts_by_type,
-            "entities_at_risk": entities_with_alerts[:10]  # Top 10
+            "entities_at_risk": entities_with_alerts[:10],  # Top 10
+            "logistics_recommendations": all_logistics_recommendations[:15]  # NOUVEAU: Top 15 recommandations
         }
     
     # ========================================
@@ -2088,6 +2101,9 @@ RÉPONDS UNIQUEMENT EN JSON:
         """
         Formate la réponse du LLM en texte de raisonnement
         """
+        if not llm_result:
+            return f"Score de risque: {risk_score:.1f}/100"
+        
         reasoning_parts = []
         
         # Niveau de risque global
@@ -2095,15 +2111,15 @@ RÉPONDS UNIQUEMENT EN JSON:
         reasoning_parts.append(f"🎯 NIVEAU DE RISQUE: {risk_level} (Score: {risk_score:.1f}/100)")
         
         # Analyse d'impact
-        impact = llm_result.get("impact_assessment", {})
+        impact = llm_result.get("impact_assessment") or {}
         if impact:
-            prob = impact.get("impact_probability", 0)
-            duration = impact.get("estimated_impact_duration_days", 0)
+            prob = impact.get("impact_probability", 0) or 0
+            duration = impact.get("estimated_impact_duration_days", 0) or 0
             reasoning_parts.append(f"\n📊 PROBABILITÉ D'IMPACT: {prob*100:.0f}%")
             reasoning_parts.append(f"⏱️ DURÉE ESTIMÉE: {duration} jours")
         
         # Analyse en cascade
-        cascade = impact.get("cascade_analysis", {})
+        cascade = impact.get("cascade_analysis") or {}
         if cascade:
             days_until = cascade.get("days_until_disruption", 0)
             downstream = cascade.get("affected_downstream_entities", [])
@@ -2458,3 +2474,209 @@ RÉPONDS UNIQUEMENT EN JSON:
         """Explique le score d'urgence"""
         # Simuler la date de l'événement (en production, utiliser document.get('publication_date'))
         return "Urgence 90%: Événement en cours, action immédiate requise (0-48h)"
+    
+    def run(self, validation_status: str = "approved", limit: int = 10) -> Dict:
+        """
+        Méthode principale pour exécuter l'Agent 2 sur les documents pertinents.
+        
+        Cette méthode est appelée par l'API pour traiter les documents ayant passé
+        le filtre de pertinence (Agent 1B).
+        
+        Args:
+            validation_status: Statut de validation requis (par défaut "approved")
+            limit: Nombre maximum de documents à traiter
+            
+        Returns:
+            Dict avec les résultats de l'analyse
+        """
+        from src.storage.database import get_session
+        from src.storage.models import (
+            Document, PertinenceCheck, HutchinsonSite, Supplier, 
+            SupplierRelationship, RiskAnalysis
+        )
+        import structlog
+        
+        logger = structlog.get_logger()
+        session = get_session()
+        
+        try:
+            # Charger les sites et fournisseurs
+            sites_db = session.query(HutchinsonSite).filter_by(active=True).all()
+            suppliers_db = session.query(Supplier).filter_by(active=True).all()
+            relationships_db = session.query(SupplierRelationship).all()
+            
+            sites = [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "country": s.country,
+                    "city": s.city,
+                    "latitude": s.latitude,
+                    "longitude": s.longitude,
+                    "strategic_importance": s.strategic_importance,
+                    "revenue_percentage": getattr(s, 'revenue_percentage', 5.0),
+                    "employees_count": getattr(s, 'employees_count', 100),
+                }
+                for s in sites_db
+            ]
+            
+            suppliers = [
+                {
+                    "id": s.id,
+                    "name": s.name,
+                    "country": s.country,
+                    "city": getattr(s, 'city', None),
+                    "latitude": s.latitude,
+                    "longitude": s.longitude,
+                    "is_sole_supplier": getattr(s, 'is_sole_supplier', False),
+                    "strategic_importance": getattr(s, 'strategic_importance', 'moyen'),
+                }
+                for s in suppliers_db
+            ]
+            
+            supplier_relationships = [
+                {
+                    "id": r.id,
+                    "site_id": r.hutchinson_site_id,
+                    "supplier_id": r.supplier_id,
+                    "dependency_score": r.criticality,
+                }
+                for r in relationships_db
+            ]
+            
+            # Récupérer les documents pertinents (OUI ou PARTIELLEMENT)
+            pertinent_checks = (
+                session.query(PertinenceCheck, Document)
+                .join(Document, PertinenceCheck.document_id == Document.id)
+                .filter(PertinenceCheck.decision.in_(['OUI', 'PARTIELLEMENT']))
+                .limit(limit)
+                .all()
+            )
+            
+            logger.info(
+                "agent2_run_started",
+                pertinent_count=len(pertinent_checks),
+                sites_count=len(sites),
+                suppliers_count=len(suppliers)
+            )
+            
+            results = []
+            
+            for check, doc in pertinent_checks:
+                # Vérifier si déjà analysé
+                existing_analysis = session.query(RiskAnalysis).filter_by(
+                    document_id=doc.id
+                ).first()
+                
+                if existing_analysis:
+                    logger.info("document_already_analyzed", doc_id=doc.id[:8])
+                    continue
+                
+                # Préparer le document
+                document_dict = {
+                    "id": doc.id,
+                    "title": doc.title,
+                    "content": doc.content,
+                    "summary": doc.summary,
+                    "event_type": doc.event_type,
+                    "source_url": doc.source_url,
+                    "geographic_scope": doc.geographic_scope,
+                    "extra_metadata": doc.extra_metadata,
+                }
+                
+                # Préparer le résultat de pertinence
+                pertinence_result = {
+                    "decision": check.decision,
+                    "confidence": check.confidence,
+                    "reasoning": check.reasoning,
+                    "affected_sites": check.affected_sites or [],
+                    "affected_suppliers": check.affected_suppliers or [],
+                }
+                
+                logger.info(
+                    "agent2_analyzing",
+                    doc_id=doc.id[:8],
+                    title=doc.title[:50] if doc.title else "N/A"
+                )
+                
+                # Analyser avec Agent 2
+                try:
+                    risk_analysis, risk_projections = self.analyze(
+                        document=document_dict,
+                        pertinence_result=pertinence_result,
+                        sites=sites,
+                        suppliers=suppliers,
+                        supplier_relationships=supplier_relationships
+                    )
+                    
+                    # Sauvegarder en BDD
+                    new_analysis = RiskAnalysis(
+                        id=str(uuid.uuid4()),
+                        document_id=doc.id,
+                        pertinence_check_id=check.id,
+                        impacts_description=risk_analysis.get("impacts_description", ""),
+                        affected_sites=risk_analysis.get("affected_sites", []),
+                        affected_suppliers=risk_analysis.get("affected_suppliers", []),
+                        geographic_analysis=risk_analysis.get("geographic_analysis"),
+                        criticality_analysis=risk_analysis.get("criticality_analysis"),
+                        risk_level=risk_analysis.get("overall_risk_level", "Moyen"),
+                        risk_score=risk_analysis.get("risk_score", 50.0),
+                        supply_chain_impact=risk_analysis.get("supply_chain_impact", "moyen"),
+                        recommendations=json.dumps(risk_analysis.get("recommendations", [])),
+                        reasoning=risk_analysis.get("reasoning", ""),
+                        llm_model=risk_analysis.get("llm_model", "unknown"),
+                        llm_tokens=risk_analysis.get("llm_tokens", 0),
+                        processing_time_ms=risk_analysis.get("processing_time_ms", 0),
+                        # Note: severity_score, probability_score, exposure_score, urgency_score, 
+                        # risk_score_360, business_interruption_score stockés dans analysis_metadata
+                        analysis_metadata={
+                            "severity_score": risk_analysis.get("severity_score"),
+                            "probability_score": risk_analysis.get("probability_score"),
+                            "exposure_score": risk_analysis.get("exposure_score"),
+                            "urgency_score": risk_analysis.get("urgency_score"),
+                            "risk_score_360": risk_analysis.get("risk_score_360"),
+                            "business_interruption_score": risk_analysis.get("business_interruption_score"),
+                            "weather_risk_summary": risk_analysis.get("weather_risk_summary"),
+                        },
+                        context_and_stakes=risk_analysis.get("context_and_stakes"),
+                        affected_entities_details=risk_analysis.get("affected_entities_details"),
+                        financial_analysis=risk_analysis.get("financial_analysis"),
+                        timeline=risk_analysis.get("timeline"),
+                        prioritization_matrix=risk_analysis.get("prioritization_matrix"),
+                        do_nothing_scenario=risk_analysis.get("do_nothing_scenario"),
+                        recommendations_model=risk_analysis.get("recommendations_model"),
+                    )
+                    
+                    session.add(new_analysis)
+                    session.commit()
+                    
+                    results.append({
+                        "document_id": doc.id,
+                        "risk_level": risk_analysis.get("overall_risk_level"),
+                        "risk_score": risk_analysis.get("risk_score"),
+                    })
+                    
+                    logger.info(
+                        "agent2_analysis_saved",
+                        doc_id=doc.id[:8],
+                        risk_level=risk_analysis.get("overall_risk_level"),
+                        risk_score=risk_analysis.get("risk_score")
+                    )
+                    
+                except Exception as e:
+                    logger.error(
+                        "agent2_analysis_failed",
+                        doc_id=doc.id[:8],
+                        error=str(e)
+                    )
+                    continue
+            
+            return {
+                "status": "completed",
+                "documents_analyzed": len(results),
+                "results": results,
+                "messages": [{"content": f"Agent 2 a analysé {len(results)} documents"}]
+            }
+            
+        finally:
+            session.close()

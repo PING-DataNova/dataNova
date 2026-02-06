@@ -233,11 +233,11 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
         RiskAnalysis.risk_level.in_(['Faible', 'faible'])
     ).count()
     
-    # Calculer le score moyen réel (risk_score est sur 10, on convertit en 100)
+    # Calculer le score moyen réel (risk_score est déjà sur 100)
     analyses = db.query(RiskAnalysis).all()
     if analyses:
         scores = [a.risk_score for a in analyses if a.risk_score is not None]
-        avg_score = (sum(scores) / len(scores) * 10) if scores else 0  # Convertir 0-10 en 0-100
+        avg_score = (sum(scores) / len(scores)) if scores else 0  # Score déjà sur 0-100
     else:
         avg_score = 0
     
@@ -404,7 +404,7 @@ def get_risk_details(
         source_url=source_url,
         source_excerpt=source_excerpt,
         risk_level=risk.risk_level or "Moyen",
-        risk_score=round(risk.risk_score * 10, 1) if risk.risk_score else 0,  # Convertir 0-10 en 0-100
+        risk_score=round(risk.risk_score, 1) if risk.risk_score else 0,  # Score deja sur 0-100
         impact_level=impact_level,
         supply_chain_impact=risk.supply_chain_impact,
         impacts_description=risk.impacts_description or "",

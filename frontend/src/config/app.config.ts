@@ -12,18 +12,14 @@ export const config = {
   // - En prod: URL complète de l'API
   apiUrl: import.meta.env.VITE_API_URL || '',
   
-  // Mode de données mock (fallback si backend vide)
-  useMockData: import.meta.env.VITE_USE_MOCK_DATA === 'true' || true,
-  
   // Debug mode
   debug: import.meta.env.VITE_DEBUG === 'true' || import.meta.env.DEV,
 };
 
 // Log de la configuration au démarrage
 if (config.debug) {
-  console.log('🔧 Configuration DataNova:', {
+  console.log('Configuration DataNova:', {
     apiUrl: config.apiUrl || '(proxy → localhost:8000)',
-    useMockData: config.useMockData,
     debug: config.debug,
   });
 }

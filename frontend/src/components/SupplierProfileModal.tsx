@@ -332,10 +332,10 @@ const SupplierProfileModal: React.FC<SupplierProfileModalProps> = ({
                         </div>
                         <div className="flex flex-wrap gap-4 text-sm text-slate-600">
                           {site.lead_time_days && (
-                            <span>📦 Délai: {site.lead_time_days} jours</span>
+                            <span>Délai: {site.lead_time_days} jours</span>
                           )}
                           {site.annual_volume && (
-                            <span>💰 Volume: {formatCurrency(site.annual_volume)}</span>
+                            <span>Volume: {formatCurrency(site.annual_volume)}</span>
                           )}
                         </div>
                         {site.products_supplied && site.products_supplied.length > 0 && (

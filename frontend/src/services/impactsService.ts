@@ -76,6 +76,18 @@ export interface RiskDetailResponse {
     max_severity: string;
     average_weather_risk_score: number;
     alerts_by_type: { [key: string]: number };
+    logistics_recommendations?: Array<{
+      entity_name: string;
+      entity_type: string;
+      location: string;
+      alert_type: string;
+      severity: string;
+      date: string;
+      value: string;
+      action: string;
+      deadline: string;
+      priority: string;
+    }>;
   } | null;
 }
 
@@ -95,6 +107,7 @@ export interface DashboardStats {
   critical_deadlines: number;
   pending_percentage: number;
   approved_percentage: number;
+  average_score?: number;
   by_risk_type: {
     [key: string]: number;  // Plus flexible: reglementaire, climat, geopolitique, etc.
   };
