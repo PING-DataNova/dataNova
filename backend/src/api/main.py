@@ -57,6 +57,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://yellow-glacier-027c6c103.1.azurestaticapps.net",
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:3001",
@@ -68,18 +69,11 @@ app.add_middleware(
         "http://localhost:3007",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
-        "http://127.0.0.1:3001",
-        "http://127.0.0.1:3002",
-        "http://127.0.0.1:3003",
-        "http://127.0.0.1:3004",
-        "http://127.0.0.1:3005",
-        "http://127.0.0.1:3006",
-        "http://127.0.0.1:3007",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    allow_origin_regex=r"https://.*\.azurestaticapps\.net",  # Accepte tous les Static Web Apps
+    allow_origin_regex=r"https://.*\.azurestaticapps\.net",
 )
 
 # Enregistrer les routes
