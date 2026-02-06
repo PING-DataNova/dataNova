@@ -24,5 +24,11 @@ fi
 echo "📦 Exécution des migrations Alembic..."
 alembic upgrade head
 
+# Seed de la base si SEED_DB=true
+if [ "$SEED_DB" = "true" ]; then
+    echo "🌱 SEED_DB=true - Chargement des données de test..."
+    python3 scripts/seed_database.py
+fi
+
 echo "✅ Migrations terminées, démarrage de l'API..."
 exec uvicorn src.api.main:app --host 0.0.0.0 --port 8000
