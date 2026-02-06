@@ -17,10 +17,15 @@ async def lifespan(app: FastAPI):
     admin.init_scheduler()
     
     # Init DB + Seed en background (pour ne pas bloquer le health check)
-    import threading
+    import os, threading
     def init_and_seed():
         try:
-            from src.storage.database import init_db
+            from src.storage.database import init_db, get_engine, drop_all_tables
+            # Si RESET_DB=true, on drop tout d'abord
+            if os.environ.get("RESET_DB") == "true":
+                print("[MAIN] 🔴 RESET_DB=true → DROP toutes les tables...")
+                drop_all_tables()
+                print("[MAIN] Tables supprimées, recréation...")
             init_db()
             print("[MAIN] Tables créées ✅")
         except Exception as e:
