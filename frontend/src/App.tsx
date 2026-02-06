@@ -1,4 +1,4 @@
-
+// DataNova Frontend v1.0 - Production deployment
 import React, { useState, useEffect } from 'react';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
