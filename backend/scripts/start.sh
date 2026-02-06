@@ -8,8 +8,6 @@
 #   RESET_DB       - Si "true", supprime et recrée toutes les tables (DANGER)
 # =============================================================================
 
-set -e
-
 echo "============================================="
 echo "  DataNova Backend - Démarrage"
 echo "============================================="
@@ -28,7 +26,6 @@ if [ "$RESET_DB" = "true" ]; then
     echo "   (Ceci est irréversible !)"
     
     if [ -n "$DATABASE_URL" ]; then
-        # Supprimer le schema public et recréer
         python -c "
 from sqlalchemy import create_engine, text
 import os
@@ -38,17 +35,17 @@ with engine.connect() as conn:
     conn.execute(text('CREATE SCHEMA public'))
     conn.commit()
 print('✅ Schema public recréé')
-"
+" || echo "⚠️  Erreur lors du reset, on continue..."
     fi
     
     echo "📦 Application des migrations depuis zéro..."
-    alembic upgrade head
+    alembic upgrade head || { echo "❌ Alembic upgrade failed"; exit 1; }
     echo "✅ Toutes les migrations appliquées"
 else
     # --- Mode normal: appliquer les migrations manquantes ---
     echo ""
     echo "📦 Application des migrations Alembic..."
-    alembic upgrade head
+    alembic upgrade head || { echo "❌ Alembic upgrade failed"; exit 1; }
     echo "✅ Migrations à jour"
 fi
 
