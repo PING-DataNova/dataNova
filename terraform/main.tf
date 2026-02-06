@@ -30,19 +30,13 @@ resource "azurerm_resource_group" "main" {
 }
 
 # -----------------------------------------------------------------------------
-# 2. GÉNÉRATION DE MOT DE PASSE POSTGRESQL
+# 2. MOT DE PASSE POSTGRESQL
 # -----------------------------------------------------------------------------
-# Génère un mot de passe aléatoire sécurisé pour PostgreSQL
+# Utilise le mot de passe défini dans terraform.tfvars (plus de random_password)
+# Cela garantit que le mot de passe reste le même après destroy/apply
 
-resource "random_password" "postgres_admin_password" {
-  length  = 32
-  special = true
-  # Caractères spéciaux compatibles avec PostgreSQL
-  override_special = "!#$%&*()-_=+[]{}<>:?"
-  min_lower        = 1
-  min_upper        = 1
-  min_numeric      = 1
-  min_special      = 1
+locals {
+  postgres_password = var.postgres_admin_password
 }
 
 # -----------------------------------------------------------------------------
@@ -57,7 +51,7 @@ resource "azurerm_postgresql_flexible_server" "main" {
   
   # Authentification
   administrator_login    = var.postgres_admin_username
-  administrator_password = random_password.postgres_admin_password.result
+  administrator_password = local.postgres_password
   
   # Version et SKU
   version = var.postgres_version
@@ -178,7 +172,7 @@ resource "azurerm_key_vault" "main" {
 # Secret 1 : Mot de passe PostgreSQL
 resource "azurerm_key_vault_secret" "postgres_password" {
   name         = "postgres-admin-password"
-  value        = random_password.postgres_admin_password.result
+  value        = local.postgres_password
   key_vault_id = azurerm_key_vault.main.id
   
   depends_on = [azurerm_key_vault.main]
@@ -205,7 +199,46 @@ resource "azurerm_key_vault_secret" "google_api_key" {
 # Secret 4 : URL de connexion PostgreSQL complète
 resource "azurerm_key_vault_secret" "database_url" {
   name  = "database-url"
-  value = "postgresql://${var.postgres_admin_username}:${random_password.postgres_admin_password.result}@${azurerm_postgresql_flexible_server.main.fqdn}:5432/${azurerm_postgresql_flexible_server_database.main.name}?sslmode=require"
+  value = "postgresql://${var.postgres_admin_username}:${local.postgres_password}@${azurerm_postgresql_flexible_server.main.fqdn}:5432/${azurerm_postgresql_flexible_server_database.main.name}?sslmode=require"
+  key_vault_id = azurerm_key_vault.main.id
+  
+  depends_on = [azurerm_key_vault.main]
+}
+
+# Secret 5 : Clé API OpenAI
+resource "azurerm_key_vault_secret" "openai_api_key" {
+  count        = var.openai_api_key != "" ? 1 : 0
+  name         = "openai-api-key"
+  value        = var.openai_api_key
+  key_vault_id = azurerm_key_vault.main.id
+  
+  depends_on = [azurerm_key_vault.main]
+}
+
+# Secret 6 : EUR-Lex API
+resource "azurerm_key_vault_secret" "eurlex_api_username" {
+  count        = var.eurlex_api_username != "" ? 1 : 0
+  name         = "eurlex-api-username"
+  value        = var.eurlex_api_username
+  key_vault_id = azurerm_key_vault.main.id
+  
+  depends_on = [azurerm_key_vault.main]
+}
+
+resource "azurerm_key_vault_secret" "eurlex_api_password" {
+  count        = var.eurlex_api_password != "" ? 1 : 0
+  name         = "eurlex-api-password"
+  value        = var.eurlex_api_password
+  key_vault_id = azurerm_key_vault.main.id
+  
+  depends_on = [azurerm_key_vault.main]
+}
+
+# Secret 7 : Brevo API
+resource "azurerm_key_vault_secret" "brevo_api_key" {
+  count        = var.brevo_api_key != "" ? 1 : 0
+  name         = "brevo-api-key"
+  value        = var.brevo_api_key
   key_vault_id = azurerm_key_vault.main.id
   
   depends_on = [azurerm_key_vault.main]

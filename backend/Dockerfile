@@ -40,9 +40,11 @@ COPY --from=builder /opt/venv /opt/venv
 COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY config/ ./config/
-COPY data/company_profiles/ ./data/company_profiles/
-COPY data/company_process/ ./data/company_process/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./alembic.ini
+COPY data/test_data.json ./data/test_data.json
 COPY data/sources_config.json ./data/sources_config.json
+COPY data/company_profiles/ ./data/company_profiles/
 
 # Create necessary directories with proper permissions
 RUN mkdir -p data logs data/documents \
@@ -63,5 +65,5 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Init DB puis lancer l'API
-CMD python scripts/init_db.py --auto && uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+# Init DB (migrations Alembic) puis lancer l'API
+CMD ["bash", "scripts/start.sh"]

@@ -2,7 +2,7 @@ name: Frontend - Deploy to Azure Static Web Apps
 
 on:
   push:
-    branches: [ main, agent1a1b_agent2_frontend_marc ]
+    branches: [ main, déploiement_finale ]
     paths:
       - 'frontend/**'
       - '.github/workflows/frontend-deploy.yml'
@@ -22,8 +22,8 @@ jobs:
     - name:  Build And Deploy
       uses: Azure/static-web-apps-deploy@v1
       env:
-        VITE_API_BASE_URL: https://datanova-dev-backend.happyforest-90d4db38.francecentral.azurecontainerapps.io/api
-        VITE_API_URL: https://datanova-dev-backend.happyforest-90d4db38.francecentral.azurecontainerapps.io
+        VITE_API_BASE_URL: https://datanova-dev-backend.livelywater-56b26eaa.francecentral.azurecontainerapps.io/api
+        VITE_API_URL: https://datanova-dev-backend.livelywater-56b26eaa.francecentral.azurecontainerapps.io
       with:
         azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
         repo_token: ${{ secrets.GITHUB_TOKEN }}

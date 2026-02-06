@@ -33,7 +33,7 @@ def upgrade() -> None:
         sa.Column('description', sa.Text(), nullable=True),
         sa.Column('keywords', sa.JSON(), nullable=True),
         sa.Column('sources', sa.JSON(), nullable=True),
-        sa.Column('active', sa.Boolean(), nullable=False, server_default='1'),
+        sa.Column('active', sa.Boolean(), nullable=False, server_default=sa.text('true')),
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('name')
@@ -47,21 +47,21 @@ def upgrade() -> None:
             'Risques liés aux réglementations, lois et directives',
             '["CBAM", "EUR-Lex", "réglementation", "loi", "directive", "norme", "conformité"]',
             '[{"type": "web", "url": "https://eur-lex.europa.eu"}, {"type": "web", "url": "https://www.legifrance.gouv.fr"}]',
-            1
+            true
         ),
         (
             'Climatique',
             'Risques liés aux événements climatiques et catastrophes naturelles',
             '["inondation", "tempête", "sécheresse", "canicule", "ouragan", "cyclone", "tremblement de terre", "tsunami"]',
             '[{"type": "api", "url": "https://api.weatherapi.com"}, {"type": "web", "url": "https://www.meteo-france.fr"}]',
-            1
+            true
         ),
         (
             'Géopolitique',
             'Risques liés aux conflits, tensions géopolitiques et sanctions',
             '["conflit", "guerre", "sanction", "embargo", "tension", "crise", "instabilité", "coup d\'\'état"]',
             '[{"type": "web", "url": "https://www.diplomatie.gouv.fr"}, {"type": "web", "url": "https://www.un.org"}]',
-            1
+            true
         )
     """)
     
@@ -80,7 +80,7 @@ def upgrade() -> None:
         sa.Column('business_interruption_score', sa.Float(), nullable=True),
         
         # Détails
-        sa.Column('is_concerned', sa.Boolean(), nullable=False, server_default='0'),
+        sa.Column('is_concerned', sa.Boolean(), nullable=False, server_default=sa.text('false')),
         sa.Column('reasoning', sa.Text(), nullable=True),
         sa.Column('estimated_disruption_days', sa.Integer(), nullable=True),
         sa.Column('revenue_impact_percentage', sa.Float(), nullable=True),
@@ -96,7 +96,7 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime(), nullable=False, server_default=sa.text('CURRENT_TIMESTAMP')),
         
         # Contraintes
-        sa.CheckConstraint('entity_type IN ("site", "supplier")', name='check_entity_type'),
+        sa.CheckConstraint("entity_type IN ('site', 'supplier')", name='check_entity_type'),
         sa.CheckConstraint('risk_score >= 0 AND risk_score <= 100', name='check_risk_score_range'),
         sa.ForeignKeyConstraint(['event_id'], ['documents.id'], ),
         sa.PrimaryKeyConstraint('id')

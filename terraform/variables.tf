@@ -143,6 +143,51 @@ variable "google_api_key" {
   sensitive   = true
 }
 
+variable "openai_api_key" {
+  description = "Clé API OpenAI"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "postgres_admin_password" {
+  description = "Mot de passe admin PostgreSQL (fixe, pas régénéré)"
+  type        = string
+  sensitive   = true
+}
+
+variable "eurlex_api_username" {
+  description = "Username EUR-Lex API"
+  type        = string
+  default     = ""
+}
+
+variable "eurlex_api_password" {
+  description = "Password EUR-Lex API"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "brevo_api_key" {
+  description = "Clé API Brevo pour les emails"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "sender_email" {
+  description = "Email expéditeur pour les notifications"
+  type        = string
+  default     = "noradossamo1@gmail.com"
+}
+
+variable "sender_name" {
+  description = "Nom expéditeur pour les notifications"
+  type        = string
+  default     = "Système PING - Hutchinson"
+}
+
 # -----------------------------------------------------------------------------
 # CONFIGURATION FRONTEND
 # -----------------------------------------------------------------------------

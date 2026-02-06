@@ -7,10 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import analyses, impacts, auth, pipeline, supplier, admin, documents, subscriptions
-from src.storage.database import init_db
 
-# Initialiser la base de données (créer les tables si nécessaire)
-init_db()
+# Note: les tables sont gérées par Alembic (scripts/start.sh)
+# Ne PAS appeler init_db() ici pour éviter les conflits avec les migrations
 
 
 @asynccontextmanager

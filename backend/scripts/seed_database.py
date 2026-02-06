@@ -20,8 +20,8 @@ from datetime import datetime
 # Ajouter le répertoire parent au path pour les imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.storage.database import SessionLocal, init_db
-from src.storage.models import HutchinsonSite, Supplier, SupplierRelationship, DataSource
+from src.storage.database import SessionLocal
+from src.storage.models import HutchinsonSite, Supplier, SupplierRelationship, DataSource, CompanyProfile
 
 
 def load_json_data(filepath: str) -> dict:
@@ -37,6 +37,7 @@ def clear_tables(db):
     db.query(Supplier).delete()
     db.query(HutchinsonSite).delete()
     db.query(DataSource).delete()
+    db.query(CompanyProfile).delete()
     db.commit()
     print("   ✅ Tables vidées")
 
@@ -180,6 +181,64 @@ def seed_supplier_relationships(db, relationships_data: list, site_mapping: dict
     db.commit()
 
 
+def seed_company_profiles(db):
+    """
+    Charge les profils entreprise depuis data/company_profiles/*.json
+    Utilise le nouveau modèle CompanyProfile (company_name, headquarters_country, etc.)
+    """
+    print("\n🏢 Insertion des profils entreprise...")
+    
+    profiles_dir = Path(__file__).parent.parent / "data" / "company_profiles"
+    
+    if not profiles_dir.exists():
+        print("   ⚠️  Dossier data/company_profiles/ non trouvé, ignoré")
+        return
+    
+    count = 0
+    for filepath in sorted(profiles_dir.glob("*.json")):
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # Extraire company_name depuis différentes structures
+            company_data = data.get("company", {})
+            company_name = (
+                company_data.get("company_name") 
+                or company_data.get("legal_name")
+                or data.get("company_name") 
+                or data.get("name", filepath.stem)
+            )
+            
+            headquarters_country = (
+                company_data.get("registration", {}).get("country")
+                or data.get("headquarters_country", "FR")
+            )
+            
+            # Compter sites et fournisseurs si disponibles
+            total_sites = len(data.get("sites", []))
+            total_suppliers = len(data.get("suppliers", []))
+            
+            profile = CompanyProfile(
+                company_name=company_name,
+                headquarters_country=headquarters_country,
+                total_sites=total_sites or None,
+                total_suppliers=total_suppliers or None,
+                risk_tolerance=data.get("risk_tolerance", "medium"),
+                notification_settings=data.get("notification_settings"),
+                data_sources_config=data.get("data_sources_config"),
+                llm_config=data.get("llm_config"),
+            )
+            db.add(profile)
+            count += 1
+            print(f"   ✅ {company_name} ({headquarters_country})")
+            
+        except Exception as e:
+            print(f"   ❌ Erreur {filepath.name}: {e}")
+    
+    db.commit()
+    print(f"   → {count} profil(s) chargé(s)")
+
+
 def seed_data_sources(db):
     """
     Insère les sources de données par défaut pour l'Agent 1A.
@@ -269,6 +328,7 @@ def seed_data_sources(db):
 
 def print_summary(db):
     """Affiche un résumé des données insérées."""
+    profiles_count = db.query(CompanyProfile).count()
     sites_count = db.query(HutchinsonSite).count()
     suppliers_count = db.query(Supplier).count()
     relationships_count = db.query(SupplierRelationship).count()
@@ -277,6 +337,7 @@ def print_summary(db):
     print("\n" + "=" * 60)
     print("📊 RÉSUMÉ DU SEED")
     print("=" * 60)
+    print(f"   Profils entreprise:    {profiles_count}")
     print(f"   Sites Hutchinson:      {sites_count}")
     print(f"   Fournisseurs:          {suppliers_count}")
     print(f"   Relations:             {relationships_count}")
@@ -302,13 +363,25 @@ def main():
     # Charger les données JSON
     data = load_json_data(data_file)
     
-    # Initialiser la BDD
-    init_db()
+    # Note: les tables sont créées par Alembic (start.sh), pas par init_db()
     
     # Créer une session
     db = SessionLocal()
     
     try:
+        # Vérifier si les données existent déjà
+        existing_sites = db.query(HutchinsonSite).count()
+        if existing_sites > 0:
+            print(f"\n✅ Base déjà peuplée ({existing_sites} sites). Seed ignoré.")
+            print("   (Pour re-seeder, utilisez FORCE_SEED=true ou videz les tables)")
+            
+            import os
+            if os.environ.get("FORCE_SEED") != "true":
+                print_summary(db)
+                return
+            else:
+                print("   ⚠️  FORCE_SEED=true → Re-seed forcé")
+        
         # Vider les tables existantes
         clear_tables(db)
         
@@ -321,6 +394,9 @@ def main():
             site_mapping,
             supplier_mapping
         )
+        
+        # Insérer les profils entreprise depuis data/company_profiles/
+        seed_company_profiles(db)
         
         # Insérer les sources de données par défaut
         seed_data_sources(db)

@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -13,6 +14,16 @@ config = context.config
 # This line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# ============================================================
+# Override DATABASE_URL from environment variable (cloud deploy)
+# Si DATABASE_URL est défini (ex: PostgreSQL Azure), on l'utilise
+# Sinon on garde le SQLite de alembic.ini (dev local)
+# ============================================================
+database_url = os.environ.get("DATABASE_URL")
+if database_url:
+    config.set_main_option("sqlalchemy.url", database_url)
+    print(f"🗄️  Alembic: using DATABASE_URL from env ({database_url.split('@')[-1] if '@' in database_url else 'local'})")
 
 # add your model's MetaData object here
 # for 'autogenerate' support
