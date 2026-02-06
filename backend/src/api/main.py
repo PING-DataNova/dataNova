@@ -7,10 +7,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.routes import analyses, impacts, auth, pipeline, supplier, admin, documents, subscriptions
-from src.storage.database import init_db
-
-# Créer les tables (create_all = rapide et idempotent)
-init_db()
 
 
 @asynccontextmanager
@@ -20,14 +16,22 @@ async def lifespan(app: FastAPI):
     print("[MAIN] Initialisation du scheduler automatique...")
     admin.init_scheduler()
     
-    # Seed des données en background (après que uvicorn écoute)
-    import subprocess, threading
-    def run_seed():
+    # Init DB + Seed en background (pour ne pas bloquer le health check)
+    import threading
+    def init_and_seed():
         try:
+            from src.storage.database import init_db
+            init_db()
+            print("[MAIN] Tables créées ✅")
+        except Exception as e:
+            print(f"[MAIN] Erreur init_db: {e}")
+        try:
+            import subprocess
             subprocess.run(["python", "scripts/seed_database.py"], timeout=120)
+            print("[MAIN] Seed terminé ✅")
         except Exception as e:
             print(f"[SEED] Erreur: {e}")
-    threading.Thread(target=run_seed, daemon=True).start()
+    threading.Thread(target=init_and_seed, daemon=True).start()
     
     yield  # Application en cours d'exécution
     

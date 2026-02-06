@@ -82,11 +82,36 @@ def create_db_engine():
     return engine
 
 
-# Créer le moteur global
-engine = create_db_engine()
+# Lazy engine: ne se connecte qu'au premier appel
+_engine = None
+_SessionLocal = None
 
-# Factory de sessions
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_engine():
+    """Retourne le moteur SQLAlchemy (lazy init)"""
+    global _engine
+    if _engine is None:
+        _engine = create_db_engine()
+    return _engine
+
+
+def get_session_factory():
+    """Retourne le session factory (lazy init)"""
+    global _SessionLocal
+    if _SessionLocal is None:
+        _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=get_engine())
+    return _SessionLocal
+
+
+# Compatibilité: SessionLocal reste accessible mais lazy
+class _LazySessionLocal:
+    """Proxy pour SessionLocal avec lazy init"""
+    def __call__(self, *args, **kwargs):
+        return get_session_factory()(*args, **kwargs)
+    def __getattr__(self, name):
+        return getattr(get_session_factory(), name)
+
+SessionLocal = _LazySessionLocal()
 
 
 def get_session() -> Session:
@@ -121,7 +146,7 @@ def init_db():
     Note: Utilise Base.metadata.create_all() - idempotent
     """
     print("🔨 Création des tables de base de données...")
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=get_engine())
     print("✅ Base de données initialisée avec succès!")
     
     # Afficher les tables créées
@@ -138,7 +163,7 @@ def drop_all_tables():
         drop_all_tables()
     """
     print("⚠️  Suppression de toutes les tables...")
-    Base.metadata.drop_all(bind=engine)
+    Base.metadata.drop_all(bind=get_engine())
     print("✅ Toutes les tables ont été supprimées")
 
 
