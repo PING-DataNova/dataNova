@@ -120,7 +120,7 @@ interface AdminPanelProps {
 
 
 
-const API_BASE = 'http://localhost:8000/api/admin';
+const API_BASE = `${import.meta.env.VITE_API_URL || ''}/api/admin`;
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
   // Onglet actif
