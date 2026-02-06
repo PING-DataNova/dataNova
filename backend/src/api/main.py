@@ -2,6 +2,7 @@
 Point d'entrée de l'API FastAPI
 """
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -11,11 +12,27 @@ from src.storage.database import init_db
 # Initialiser la base de données (créer les tables si nécessaire)
 init_db()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Gestion du cycle de vie de l'application (startup/shutdown)."""
+    # Startup
+    print("[MAIN] Initialisation du scheduler automatique...")
+    admin.init_scheduler()
+    
+    yield  # Application en cours d'exécution
+    
+    # Shutdown
+    print("[MAIN] Arrêt du scheduler...")
+    admin.shutdown_scheduler()
+
+
 # Créer l'application FastAPI
 app = FastAPI(
     title="DataNova API",
     description="API de veille réglementaire pour Hutchinson SA",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Configuration CORS pour le frontend

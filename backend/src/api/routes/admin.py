@@ -15,10 +15,22 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+import threading
+
+# APScheduler pour la planification automatique
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from src.storage.database import get_session
 from src.storage.datasource_repository import DataSourceRepository
 from src.storage.models import DataSource
+
+# ============================================================================
+# SCHEDULER GLOBAL
+# ============================================================================
+background_scheduler: Optional[BackgroundScheduler] = None
+scheduler_lock = threading.Lock()
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
@@ -340,6 +352,130 @@ SCHEDULER_CONFIG = {
     "next_run": None
 }
 
+JOB_ID = "scheduled_workflow_job"
+
+
+def _run_scheduled_workflow():
+    """Fonction exécutée par le scheduler automatique."""
+    from src.orchestration.langgraph_workflow import run_ping_workflow
+    import traceback
+    
+    print(f"[SCHEDULER] Démarrage du workflow automatique à {datetime.utcnow().isoformat()}")
+    
+    try:
+        result = run_ping_workflow(keyword="CBAM", max_documents=8, company_name="HUTCHINSON")
+        SCHEDULER_CONFIG["last_run"] = datetime.utcnow().isoformat()
+        print(f"[SCHEDULER] Workflow terminé avec succès: {len(result.get('risk_analyses', []))} analyses créées")
+    except Exception as e:
+        print(f"[SCHEDULER] Erreur lors du workflow: {str(e)}")
+        traceback.print_exc()
+
+
+def _get_cron_trigger(frequency: str, time_str: str, day_of_week: str = None) -> CronTrigger:
+    """Crée un trigger cron selon la configuration."""
+    hour, minute = 6, 0
+    if time_str:
+        parts = time_str.split(":")
+        hour = int(parts[0])
+        minute = int(parts[1]) if len(parts) > 1 else 0
+    
+    if frequency == "hourly":
+        return CronTrigger(minute=minute)  # Toutes les heures à la minute configurée
+    elif frequency == "daily":
+        return CronTrigger(hour=hour, minute=minute)  # Tous les jours
+    elif frequency == "weekly":
+        day_map = {
+            "monday": "mon", "tuesday": "tue", "wednesday": "wed",
+            "thursday": "thu", "friday": "fri", "saturday": "sat", "sunday": "sun"
+        }
+        day = day_map.get(day_of_week, "mon")
+        return CronTrigger(day_of_week=day, hour=hour, minute=minute)
+    else:
+        return None  # manual = pas de trigger
+
+
+def init_scheduler():
+    """Initialise le scheduler au démarrage de l'application."""
+    global background_scheduler
+    
+    with scheduler_lock:
+        if background_scheduler is None:
+            background_scheduler = BackgroundScheduler()
+            background_scheduler.start()
+            print("[SCHEDULER] BackgroundScheduler démarré")
+            
+            # Configurer le job si enabled (sans lock car déjà acquis)
+            if SCHEDULER_CONFIG["enabled"] and SCHEDULER_CONFIG["frequency"] != "manual":
+                _configure_scheduler_job_internal()
+
+
+def _configure_scheduler_job_internal():
+    """Configure le job du scheduler (à appeler quand scheduler_lock est déjà acquis)."""
+    global background_scheduler
+    
+    if background_scheduler is None:
+        return
+    
+    # Supprimer l'ancien job s'il existe
+    try:
+        background_scheduler.remove_job(JOB_ID)
+        print(f"[SCHEDULER] Job existant supprimé")
+    except Exception:
+        pass  # Le job n'existait pas
+    
+    # Si désactivé ou manuel, ne pas créer de job
+    if not SCHEDULER_CONFIG["enabled"] or SCHEDULER_CONFIG["frequency"] == "manual":
+        SCHEDULER_CONFIG["next_run"] = None
+        print(f"[SCHEDULER] Planification désactivée (frequency={SCHEDULER_CONFIG['frequency']}, enabled={SCHEDULER_CONFIG['enabled']})")
+        return
+    
+    # Créer le nouveau trigger
+    trigger = _get_cron_trigger(
+        SCHEDULER_CONFIG["frequency"],
+        SCHEDULER_CONFIG["time"],
+        SCHEDULER_CONFIG["day_of_week"]
+    )
+    
+    if trigger:
+        background_scheduler.add_job(
+            _run_scheduled_workflow,
+            trigger=trigger,
+            id=JOB_ID,
+            name="Workflow PING automatique",
+            replace_existing=True
+        )
+        
+        # Calculer la prochaine exécution
+        job = background_scheduler.get_job(JOB_ID)
+        if job and job.next_run_time:
+            SCHEDULER_CONFIG["next_run"] = job.next_run_time.isoformat()
+            print(f"[SCHEDULER] Job planifié - prochaine exécution: {SCHEDULER_CONFIG['next_run']}")
+        else:
+            SCHEDULER_CONFIG["next_run"] = None
+
+
+def _update_scheduler_job():
+    """Met à jour le job du scheduler selon la configuration actuelle."""
+    global background_scheduler
+    
+    if background_scheduler is None:
+        init_scheduler()
+        return
+    
+    with scheduler_lock:
+        _configure_scheduler_job_internal()
+
+
+def shutdown_scheduler():
+    """Arrête proprement le scheduler."""
+    global background_scheduler
+    
+    with scheduler_lock:
+        if background_scheduler:
+            background_scheduler.shutdown(wait=False)
+            background_scheduler = None
+            print("[SCHEDULER] Scheduler arrêté")
+
 
 @router.get("/scheduler/config")
 async def get_scheduler_config():
@@ -363,6 +499,8 @@ async def update_scheduler_config(config: SchedulerConfig):
     - daily: Une fois par jour (défaut: 06:00)
     - weekly: Une fois par semaine
     - manual: Uniquement sur déclenchement manuel
+    
+    Le scheduler est automatiquement reconfiguré après la mise à jour.
     """
     global SCHEDULER_CONFIG
     
@@ -371,8 +509,11 @@ async def update_scheduler_config(config: SchedulerConfig):
     SCHEDULER_CONFIG["day_of_week"] = config.day_of_week
     SCHEDULER_CONFIG["enabled"] = config.enabled
     
+    # Reconfigurer le scheduler avec les nouveaux paramètres
+    _update_scheduler_job()
+    
     return {
-        "message": "Configuration mise à jour",
+        "message": "Configuration mise à jour et scheduler reconfiguré",
         "config": SCHEDULER_CONFIG
     }
 

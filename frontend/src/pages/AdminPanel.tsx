@@ -659,12 +659,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
     setRunningAnalysis(true);
     try {
       const res = await fetch(`${API_BASE}/scheduler/run-now`, { method: 'POST' });
+      const data = await res.json();
       if (res.ok) {
-        alert('Analyse lancée !');
+        alert(`Analyse terminee !\n\nDocuments collectes: ${data.result?.documents_collected || 0}\nAnalyses de risques: ${data.result?.risk_analyses || 0}\nNotifications: ${data.result?.notifications_sent || 0}`);
         loadScheduler();
+      } else {
+        alert(`Erreur: ${data.detail || 'Echec de l\'analyse'}`);
       }
     } catch (err) {
       console.error('Erreur lancement analyse:', err);
+      alert('Erreur de connexion au serveur. Verifiez que le backend est en cours d\'execution.');
     } finally {
       setRunningAnalysis(false);
     }
@@ -1254,7 +1258,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                     <select
                       value={schedulerForm.frequency}
                       onChange={(e) => setSchedulerForm(prev => ({ ...prev, frequency: e.target.value }))}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-lime-400"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-lime-400 text-slate-900"
                     >
                       <option value="hourly">Toutes les heures</option>
                       <option value="daily">Quotidien</option>
@@ -1270,7 +1274,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                         type="time"
                         value={schedulerForm.time}
                         onChange={(e) => setSchedulerForm(prev => ({ ...prev, time: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-lime-400"
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-lime-400 text-slate-900"
                       />
                     </div>
                   )}
@@ -1281,7 +1285,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onBack }) => {
                       <select
                         value={schedulerForm.day_of_week}
                         onChange={(e) => setSchedulerForm(prev => ({ ...prev, day_of_week: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-lime-400"
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-lime-400 text-slate-900"
                       >
                         <option value="monday">Lundi</option>
                         <option value="tuesday">Mardi</option>

@@ -803,9 +803,8 @@ def node_agent_1a(state: PINGState) -> PINGState:
         # Les mots-clés métier sont extraits automatiquement du profil
         result = asyncio.run(run_agent_1a_full_collection(
             company_profile_path=company_profile_path,
-            min_publication_year=2010,  # Documents depuis 2010
             max_documents_per_keyword=8,  # 8 docs par mot-clé
-            max_keywords=7,  # 7 mots-clés max
+            max_keywords=8,  # 8 mots-clés max
             save_to_db=True,
             use_database=True  # Lire les sites depuis la BDD pour la météo
         ))
