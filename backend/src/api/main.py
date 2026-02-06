@@ -20,6 +20,15 @@ async def lifespan(app: FastAPI):
     print("[MAIN] Initialisation du scheduler automatique...")
     admin.init_scheduler()
     
+    # Seed des données en background (après que uvicorn écoute)
+    import subprocess, threading
+    def run_seed():
+        try:
+            subprocess.run(["python", "scripts/seed_database.py"], timeout=120)
+        except Exception as e:
+            print(f"[SEED] Erreur: {e}")
+    threading.Thread(target=run_seed, daemon=True).start()
+    
     yield  # Application en cours d'exécution
     
     # Shutdown

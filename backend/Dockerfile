@@ -65,5 +65,5 @@ USER appuser
 # Expose port
 EXPOSE 8000
 
-# Seed data puis lancer l'API
-CMD python scripts/seed_database.py && uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+# Lancer l'API (init_db dans main.py crée les tables, seed se fait après)
+CMD uvicorn src.api.main:app --host 0.0.0.0 --port 8000
