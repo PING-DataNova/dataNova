@@ -521,42 +521,35 @@ async def update_scheduler_config(config: SchedulerConfig):
 @router.post("/scheduler/run-now")
 async def run_scheduler_now():
     """
-    Déclenche une analyse immédiate.
+    Déclenche une analyse immédiate en arrière-plan.
     
     Lance le pipeline complet: Agent 1A → Agent 1B → Agent 2 → LLM Judge → Notifications
+    Retourne immédiatement pour éviter le timeout Azure (502).
     """
-    from src.orchestration.langgraph_workflow import run_ping_workflow
-    import asyncio
+    import threading
     
-    try:
-        # Lancer le workflow en mode synchrone dans un thread séparé
-        # pour ne pas bloquer l'event loop
-        loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None, 
-            lambda: run_ping_workflow(keyword="CBAM", max_documents=8, company_name="HUTCHINSON")
-        )
-        
-        SCHEDULER_CONFIG["last_run"] = datetime.utcnow().isoformat()
-        
-        return {
-            "message": "Analyse lancée avec succès",
-            "status": "completed",
-            "triggered_at": SCHEDULER_CONFIG["last_run"],
-            "result": {
-                "documents_collected": len(result.get("documents_collected", [])),
-                "pertinent": len(result.get("documents_pertinent", [])),
-                "risk_analyses": len(result.get("risk_analyses", [])),
-                "notifications_sent": len(result.get("notifications_sent", []))
-            }
-        }
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erreur lors du lancement de l'analyse: {str(e)}"
-        )
+    def _run_workflow():
+        try:
+            from src.orchestration.langgraph_workflow import run_ping_workflow
+            print("[SCHEDULER] Lancement du workflow en arrière-plan...")
+            result = run_ping_workflow(keyword="CBAM", max_documents=8, company_name="HUTCHINSON")
+            SCHEDULER_CONFIG["last_run"] = datetime.utcnow().isoformat()
+            print(f"[SCHEDULER] Workflow terminé: {len(result.get('documents_collected', []))} docs collectés, "
+                  f"{len(result.get('documents_pertinent', []))} pertinents, "
+                  f"{len(result.get('risk_analyses', []))} analyses")
+        except Exception as e:
+            import traceback
+            print(f"[SCHEDULER] Erreur workflow: {e}")
+            traceback.print_exc()
+    
+    thread = threading.Thread(target=_run_workflow, daemon=True)
+    thread.start()
+    
+    return {
+        "message": "Analyse lancée en arrière-plan",
+        "status": "running",
+        "triggered_at": datetime.utcnow().isoformat()
+    }
 
 
 # ============================================================================
