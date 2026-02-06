@@ -20,7 +20,7 @@ from datetime import datetime
 # Ajouter le répertoire parent au path pour les imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.storage.database import SessionLocal
+from src.storage.database import SessionLocal, init_db
 from src.storage.models import HutchinsonSite, Supplier, SupplierRelationship, DataSource, CompanyProfile
 
 
@@ -363,7 +363,8 @@ def main():
     # Charger les données JSON
     data = load_json_data(data_file)
     
-    # Note: les tables sont créées par Alembic (start.sh), pas par init_db()
+    # Créer les tables si elles n'existent pas (create_all = idempotent)
+    init_db()
     
     # Créer une session
     db = SessionLocal()
